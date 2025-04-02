@@ -13,6 +13,21 @@
         android:theme="@style/Theme.Plurry"
         tools:targetApi="31">
         <activity
+            android:name=".ranking.RankingMainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".pointrecord.PointRecordMainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".crewstep.CrewLineMainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".goingwalk.GoingWalkMainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".raising.RaisingMainActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
