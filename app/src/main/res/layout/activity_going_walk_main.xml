@@ -5,14 +5,14 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#5B6DFB"
+    android:background="#FFFFFF"
     tools:context=".goingwalk.GoingWalkMainActivity">
 
     <Button
         android:id="@+id/startWalkButton"
         android:layout_width="120dp"
         android:layout_height="120dp"
-        android:backgroundTint="#0AED44"
+        android:backgroundTint="#438cf3"
         android:text="산책 시작"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
