@@ -3,6 +3,7 @@ package com.SICV.plurry.crewstep
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.SICV.plurry.R
+<<<<<<< HEAD
 import android.graphics.Color
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
@@ -11,11 +12,14 @@ import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 
+=======
+>>>>>>> Dev
 
 class CrewLineMainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_crew_line_main)
+<<<<<<< HEAD
 
         val barChart = findViewById<BarChart>(R.id.barChart)
 
@@ -54,5 +58,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
         // 그래프 업데이트
         barChart.invalidate()
+=======
+>>>>>>> Dev
     }
 }
