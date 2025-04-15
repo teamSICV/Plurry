@@ -22,7 +22,8 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var walkInfoText: TextView
     private lateinit var sensorManager: SensorManager
     private var stepSensor: Sensor? = null
-    private var currentSteps = 0
+    private var totalSteps = 0
+    private var initialStepsToday = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +67,7 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
 
     private fun initStepSensor() {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
         if (stepSensor == null) {
             walkInfoText.text = "걸음 센서를 사용할 수 없습니다."
@@ -86,9 +87,24 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type == Sensor.TYPE_STEP_DETECTOR) {
-            currentSteps++  // 한 걸음 감지될 때마다 1씩 증가
-            walkInfoText.text = "거리: 0.0km     |   걸음: $currentSteps 걸음   |     칼로리: 0kcal"
+        if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
+            totalSteps = event.values[0].toInt()
+
+            if (initialStepsToday == -1) {
+                initialStepsToday = totalSteps
+            }
+
+            val todaySteps = totalSteps - initialStepsToday
+
+            // 평균 보폭: 0.7m, 평균 걸음당 칼로리 소모: 0.04 kcal
+            val distanceMeters = todaySteps * 0.7
+            val caloriesBurned = todaySteps * 0.04
+
+            val distanceKm = distanceMeters / 1000
+            val distanceText = String.format("%.2f", distanceKm)
+            val calorieText = String.format("%.1f", caloriesBurned)
+
+            walkInfoText.text = "거리: ${distanceText}km     |   걸음: ${todaySteps} 걸음   |     칼로리: ${calorieText}kcal"
         }
     }
 
