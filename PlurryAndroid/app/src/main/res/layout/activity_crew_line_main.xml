@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".crewstep.CrewLineMainActivity">
 
-<<<<<<< HEAD
+    <!---
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -162,9 +162,8 @@
 
         </LinearLayout>
     </ScrollView>
-=======
+
     <TextView
-<<<<<<< HEAD
         android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -299,7 +298,8 @@
         android:textSize="20sp"
         tools:layout_editor_absoluteX="109dp"
         tools:layout_editor_absoluteY="603dp" />
-=======
+
+    <TextView
         android:id="@+id/textView2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -308,7 +308,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
->>>>>>> kdaae_dev
 
->>>>>>> Dev
+-->
 </androidx.constraintlayout.widget.ConstraintLayout>

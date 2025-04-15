@@ -15,14 +15,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-        app:layout_constraintTop_toTopOf="parent" />
-=======
-=======
->>>>>>> Dev
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.1" />
+        app:layout_constraintVertical_bias="0.05" />
 
     <Button
         android:id="@+id/b_pointRecord"
@@ -30,17 +24,10 @@
         android:layout_height="wrap_content"
         android:text="PointRecord"
         app:layout_constraintBottom_toBottomOf="parent"
-<<<<<<< HEAD
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.3" />
-=======
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintVertical_bias="0.3"/>
->>>>>>> Dev
+        app:layout_constraintVertical_bias="0.2"/>
 
     <Button
         android:id="@+id/b_crewLine"
@@ -48,17 +35,10 @@
         android:layout_height="wrap_content"
         android:text="CrewLine"
         app:layout_constraintBottom_toBottomOf="parent"
-<<<<<<< HEAD
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5" />
-=======
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintVertical_bias="0.5"/>
->>>>>>> Dev
+        app:layout_constraintVertical_bias="0.35"/>
 
     <Button
         android:id="@+id/b_raising"
@@ -66,16 +46,10 @@
         android:layout_height="wrap_content"
         android:text="Raising"
         app:layout_constraintBottom_toBottomOf="parent"
-<<<<<<< HEAD
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-=======
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
->>>>>>> Dev
-        app:layout_constraintVertical_bias="0.7" />
+        app:layout_constraintVertical_bias="0.5" />
 
     <Button
         android:id="@+id/b_ranking"
@@ -86,10 +60,41 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.9" />
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> Dev
+        app:layout_constraintVertical_bias="0.65" />
+
+    <Button
+        android:id="@+id/b_finish"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Finish"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.8" />
+
+    <Button
+        android:id="@+id/b_show_unity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Show Unity"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.95"
+        app:layout_constraintHorizontal_bias="0.15"/>
+
+    <Button
+        android:id="@+id/b_show_unity_game"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Show Unity Game"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.95"
+        app:layout_constraintHorizontal_bias="0.85"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
