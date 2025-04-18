@@ -27,10 +27,10 @@
         android:theme="@style/Theme.Plurry"
         tools:targetApi="31">
         <activity
-            android:name=".unity.UnityPlayerGameActivity"
+            android:name=".unity.MainUnityGameActivity"
             android:exported="false" />
         <activity
-            android:name=".unity.UnityPlayerActivity"
+            android:name=".unity.MainUnityActivity"
             android:exported="false" />
 
         <provider
