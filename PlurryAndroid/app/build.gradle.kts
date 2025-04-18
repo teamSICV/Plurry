@@ -18,6 +18,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += (project.findProperty("unity.abiFilters") as String?)?.split(",") ?: emptyList()
+            project.findProperty("unity.debugSymbolLevel")?.let { debugSymbolLevel ->
+                this.debugSymbolLevel = debugSymbolLevel as String
+            }
+        }
+
     }
 
     buildTypes {
@@ -79,4 +87,15 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation ("com.google.android.gms:play-services-maps:18.1.0")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+
+    //unity dependencies
+    implementation(project(":unityLibrary"))
+    implementation("androidx.games:games-activity:3.0.0")
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation(fileTree(mapOf(
+        "dir" to layout.projectDirectory.dir("../unityLibrary/libs").asFile.absolutePath,
+        "include" to listOf("*.jar")
+    )))
+
 }

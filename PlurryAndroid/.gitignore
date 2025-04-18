@@ -34,3 +34,7 @@ google-services.json
 
 #googlemaps API
 secrets.properties
+
+#unityLibrary
+unityLibrary/
+gradle.properties
