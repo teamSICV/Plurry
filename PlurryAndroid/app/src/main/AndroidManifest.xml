@@ -5,10 +5,15 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
@@ -21,6 +26,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Plurry"
         tools:targetApi="31">
+        <activity
+            android:name=".unity.UnityPlayerGameActivity"
+            android:exported="false" />
+        <activity
+            android:name=".unity.UnityPlayerActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -47,7 +58,6 @@
         <activity
             android:name=".goingwalk.MapViewActivity"
             android:exported="false" />
-
         <activity
             android:name=".raising.RaisingMainActivity"
             android:exported="false" />
