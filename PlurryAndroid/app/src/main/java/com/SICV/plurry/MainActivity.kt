@@ -3,6 +3,7 @@ package com.SICV.plurry
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
@@ -176,6 +177,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         mShowUnityButton.setOnClickListener{
+            Log.d("Logsicv", "MainActivity setOnClickListener")
+
             isUnityLoaded = true
             isGameActivity = false
             disableShowUnityButtons()

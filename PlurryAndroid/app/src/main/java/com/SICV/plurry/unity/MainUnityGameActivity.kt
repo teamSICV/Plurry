@@ -2,7 +2,6 @@ package com.SICV.plurry.unity
 
 import android.content.Intent
 import android.os.Bundle
-import com.SICV.plurry.unity.SharedClass
 import com.unity3d.player.UnityPlayerGameActivity
 
 class MainUnityGameActivity : UnityPlayerGameActivity() {
