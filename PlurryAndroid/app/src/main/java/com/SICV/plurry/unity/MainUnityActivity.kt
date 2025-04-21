@@ -2,11 +2,14 @@ package com.SICV.plurry.unity
 
 import android.content.Intent
 import android.os.Bundle
-import com.SICV.plurry.unity.SharedClass
+import android.util.Log
 import com.unity3d.player.UnityPlayerActivity
 
 class MainUnityActivity : UnityPlayerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("Logsicv", "MainUnityActivity onCreate")
+
+
         super.onCreate(savedInstanceState)
 
         // Setup activity layout
