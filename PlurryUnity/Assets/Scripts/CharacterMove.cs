@@ -5,9 +5,11 @@ using UnityEngine;
 public class CharacterMove : MonoBehaviour
 {
     [SerializeField]
-    private GameObject obj;
+    private GameObject player;
     Coroutine coroutine;
     bool isCo;
+    [SerializeField]
+    private GameObject pinPoint;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -44,7 +46,10 @@ public class CharacterMove : MonoBehaviour
                     isCo = false;
                     StopCoroutine(coroutine);
                 }
+                GameObject pinObject = GameObject.Find("Mark(Clone)");
+                Destroy(pinObject);
                 coroutine = StartCoroutine(MoveCharacter(hit.point));
+                GameObject.Instantiate(pinPoint, hit.point, Quaternion.Euler(0f, 0f, 0f));
             }
         }
     }
@@ -52,10 +57,10 @@ public class CharacterMove : MonoBehaviour
     private IEnumerator MoveCharacter(Vector3 position)
     {
         isCo = true;
-        while (obj.transform.position != position)
+        while (player.transform.position != position)
         {
-            obj.transform.LookAt(new Vector3(position.x, obj.transform.position.y, position.z));
-            obj.transform.position = Vector3.MoveTowards(obj.transform.position, new Vector3(position.x, obj.transform.position.y, position.z), Time.deltaTime);
+            player.transform.LookAt(new Vector3(position.x, player.transform.position.y, position.z));
+            player.transform.position = Vector3.MoveTowards(player.transform.position, new Vector3(position.x, player.transform.position.y, position.z), Time.deltaTime);
             yield return null;
         }
     }

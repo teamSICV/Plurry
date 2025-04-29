@@ -207,13 +207,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.2588191, y: 0, z: 0, w: 0.9659258}
+  m_LocalRotation: {x: 0.30070576, y: 0, z: 0, w: 0.953717}
   m_LocalPosition: {x: 0, y: 4.07, z: -4.71}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 783653372}
-  m_LocalEulerAnglesHint: {x: 30, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 35, y: 0, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -272,18 +272,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectToFollow: {fileID: 704557477}
   followSpeed: 10
-  touchYSensitivity: 0.2
   touchXSensitivity: 0.1
   zoomSensitivity: 10
-  clampAngle: 70
   mainCameraDist: {fileID: 330585545}
   mainCameraPos: {fileID: 330585546}
   dir: {x: 0, y: 0, z: 0}
   rayDir: {x: 0, y: 0, z: 0}
   dist: 200
+  smoothness: 10
   minDist: 100
   maxDist: 200
-  smoothness: 10
+  fieldOfView: 0
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -296,7 +295,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59dfcfcc0962fc5459af6cce30a59c48, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  obj: {fileID: 1054620141}
+  player: {fileID: 1054620141}
+  pinPoint: {fileID: 8655526200648104801, guid: 990faf0d4d16ee74ca8c30f77906e3ab, type: 3}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -480,18 +480,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectToFollow: {fileID: 704557477}
   followSpeed: 10
-  touchYSensitivity: 0.2
   touchXSensitivity: 0.1
   zoomSensitivity: 0.05
-  clampAngle: 70
   mainCameraDist: {fileID: 330585545}
   mainCameraPos: {fileID: 330585546}
   dir: {x: 0, y: 0, z: 0}
   rayDir: {x: 0, y: 0, z: 0}
   dist: 0
-  minDist: 60
-  maxDist: 100
   smoothness: 10
+  minDist: 60
+  maxDist: 90
+  fieldOfView: 0
 --- !u!4 &783653372
 Transform:
   m_ObjectHideFlags: 0

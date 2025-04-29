@@ -9,7 +9,7 @@ class MainUnityGameActivity : UnityPlayerGameActivity() {
         super.onCreate(savedInstanceState)
 
         // Setup activity layout
-        SharedClass.addControlsToUnityFrame(this)
+        //SharedClass.addControlsToUnityFrame(this)
         val intent = intent
         handleIntent(intent)
     }
