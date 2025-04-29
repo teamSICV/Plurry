@@ -6,7 +6,6 @@ using UnityEngine;
 public class CameraMove : MonoBehaviour
 {
     //Touch Input
-    private Vector2 nowtouchPos, pretouchPos;
     private float zoomPreTouchDistance, zoomNowTouchDistance;
 
     //Camera Follow
@@ -14,13 +13,9 @@ public class CameraMove : MonoBehaviour
     [SerializeField]
     private float followSpeed = 10f;
     [SerializeField]
-    private float touchYSensitivity = 0.2f;
-    [SerializeField]
     private float touchXSensitivity = 0.1f;
     [SerializeField]
     private float zoomSensitivity = 1f;
-    [SerializeField]
-    private float clampAngle = 70f;
 
     private float rotX;
     private float rotY;
