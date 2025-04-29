@@ -55,19 +55,13 @@ public class CameraMove : MonoBehaviour
         if (Input.touchCount == 1)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
+            if (touch.phase == TouchPhase.Moved)
             {
-                pretouchPos = touch.position - touch.deltaPosition;
-            }
-            else if (touch.phase == TouchPhase.Moved)
-            {
-                nowtouchPos = touch.position - touch.deltaPosition;
-                MoveCamera(pretouchPos - nowtouchPos);
-                pretouchPos = touch.position - touch.deltaPosition;
+                MoveCamera(touch.deltaPosition);
             }
         }
 
-        if(Input.touchCount == 2)
+        if (Input.touchCount == 2)
         {
             UnityEngine.Touch touch1 = Input.GetTouch(0);
             UnityEngine.Touch touch2 = Input.GetTouch(1);
@@ -91,7 +85,7 @@ public class CameraMove : MonoBehaviour
 
     private void MoveCamera(Vector2 inputPos)
     {
-        this.rotY -= inputPos.x * this.touchXSensitivity + Time.deltaTime;
+        this.rotY += inputPos.x * this.touchXSensitivity + Time.deltaTime;
         Quaternion rot = Quaternion.Euler(this.rotX, this.rotY, 0);
         this.gameObject.transform.rotation = rot;
     }
