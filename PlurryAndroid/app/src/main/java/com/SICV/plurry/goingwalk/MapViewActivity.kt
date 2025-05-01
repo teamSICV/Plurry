@@ -55,6 +55,11 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
             refreshLocation()
         }
 
+        val btnAddPoint = findViewById<Button>(R.id.btnAddPoint)
+        btnAddPoint.setOnClickListener {
+            AddPointDialogFragment().show(supportFragmentManager, "AddPointDialog")
+        }
+
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync { map ->
             googleMap = map
