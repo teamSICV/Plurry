@@ -115,9 +115,6 @@ class MainUnityActivity : AppCompatActivity(), UnityFragmentHostActivity {
         Log.d("MainUnityActivity", "onCreate called")
 
         try {
-            // 유니티 네이티브 라이브러리 로드
-            UnityLoader.loadLibraries(this)
-
             // 액티비티 시작 즉시 프래그먼트 표시 (자동 시작)
             showUnityFragment()
         } catch (e: Exception) {

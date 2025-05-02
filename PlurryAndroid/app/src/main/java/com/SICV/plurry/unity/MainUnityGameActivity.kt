@@ -36,21 +36,21 @@ class MainUnityGameActivity : UnityPlayerGameActivity() {
     }
 }
 */
-
 package com.SICV.plurry.unity
 
 import android.app.Activity
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import com.SICV.plurry.R
+import com.google.androidgamesdk.GameActivity
 import com.unity3d.player.IUnityPlayerLifecycleEvents
 import com.unity3d.player.UnityPlayerForGameActivity
 
@@ -71,178 +71,94 @@ class MainUnityGameActivity : Fragment(), IUnityPlayerLifecycleEvents {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d("UnityFragment", "onCreateView called")
-
-        try {
-            // XML 레이아웃 사용 (unity_fragment_layout.xml을 생성해야 함)
-            return inflater.inflate(R.layout.unity_fragment_layout, container, false)
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onCreateView: ${e.message}", e)
-            throw e
-        }
+        // XML 레이아웃 사용 (unity_fragment_layout.xml을 생성해야 함)
+        return inflater.inflate(R.layout.unity_fragment_layout, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d("UnityFragment", "onViewCreated called")
 
-        try {
-            // FrameLayout 가져오기 (unity_fragment_layout.xml에 정의해야 함)
-            mFrameLayout = view.findViewById(R.id.unity_frame_layout)
-            Log.d("UnityFragment", "FrameLayout reference acquired: ${mFrameLayout != null}")
+        // FrameLayout 가져오기 (unity_fragment_layout.xml에 정의해야 함)
+        mFrameLayout = view.findViewById(R.id.unity_frame_layout)
 
-            // 활동에 접근
-            val hostActivity = activity as? UnityFragmentHostActivity
-                ?: throw IllegalStateException("호스트 액티비티가 UnityFragmentHostActivity를 구현해야 합니다")
+        // 활동에 접근
+        val hostActivity = activity as? UnityFragmentHostActivity
+            ?: throw IllegalStateException("호스트 액티비티가 UnityFragmentHostActivity를 구현해야 합니다")
 
-            // SurfaceView 생성
-            mSurfaceView = hostActivity.createUnityView()
-            Log.d("UnityFragment", "SurfaceView created: ${mSurfaceView != null}")
+        // SurfaceView 생성
+        mSurfaceView = hostActivity.createUnityView()
 
-            // UnityPlayer 초기화 시도
-            try {
-                val cmdLine = updateUnityCommandLineArguments(
-                    (hostActivity as Activity).intent?.getStringExtra("unity") ?: ""
-                )
-                (hostActivity as Activity).intent?.putExtra("unity", cmdLine)
+        // UnityPlayer 초기화
+        val cmdLine = updateUnityCommandLineArguments(
+            (hostActivity as Activity).intent?.getStringExtra("unity") ?: ""
+        )
+        (hostActivity as Activity).intent?.putExtra("unity", cmdLine)
 
-                if (UnityLoader.isLibraryLoaded()) {
-                    // 유니티 라이브러리가 로드되었다면 정상적으로 초기화
-                    mUnityPlayer = UnityPlayerForGameActivity(
-                        hostActivity as Activity,
-                        mFrameLayout,
-                        mSurfaceView,
-                        this
-                    )
-                    Log.d("UnityFragment", "UnityPlayerForGameActivity 초기화 성공")
-                } else {
-                    // 라이브러리가 로드되지 않았다면 래퍼 사용
-                    Log.w("UnityFragment", "유니티 라이브러리 로드되지 않음, 래퍼 사용")
-                    throw UnsatisfiedLinkError("유니티 라이브러리 로드되지 않음")
-                }
-            } catch (e: UnsatisfiedLinkError) {
-                Log.e("UnityFragment", "네이티브 라이브러리 오류: ${e.message}")
-                // 대체 구현 사용
-                val wrapper = UnityPlayerWrapper(hostActivity as Activity, mFrameLayout!!)
-                Log.d("UnityFragment", "UnityPlayerWrapper로 대체")
-            } catch (e: Exception) {
-                Log.e("UnityFragment", "UnityPlayer 초기화 오류: ${e.message}", e)
-                // 대체 구현 사용
-                val wrapper = UnityPlayerWrapper(hostActivity as Activity, mFrameLayout!!)
-                Log.d("UnityFragment", "UnityPlayerWrapper로 대체")
-            }
-
-            Log.d("UnityFragment", "UnityPlayer initialized: ${mUnityPlayer != null}")
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onViewCreated: ${e.message}", e)
-            throw e
-        }
+        mUnityPlayer = UnityPlayerForGameActivity(
+            hostActivity as Activity,
+            mFrameLayout,
+            mSurfaceView,
+            this
+        )
     }
 
     // 유니티 커맨드 라인 인자 업데이트
     protected fun updateUnityCommandLineArguments(cmdLine: String): String {
-        Log.d("UnityFragment", "updateUnityCommandLineArguments called with: $cmdLine")
         return cmdLine
     }
 
     // 생명주기 메서드
     override fun onPause() {
         super.onPause()
-        Log.d("UnityFragment", "onPause called")
-        try {
-            mUnityPlayer?.onPause()
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onPause: ${e.message}", e)
-        }
+        mUnityPlayer?.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        Log.d("UnityFragment", "onResume called")
-        try {
-            mUnityPlayer?.onResume()
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onResume: ${e.message}", e)
-        }
+        mUnityPlayer?.onResume()
     }
 
     override fun onStart() {
         super.onStart()
-        Log.d("UnityFragment", "onStart called")
-        try {
-            mUnityPlayer?.onStart()
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onStart: ${e.message}", e)
-        }
+        mUnityPlayer?.onStart()
     }
 
     override fun onStop() {
         super.onStop()
-        Log.d("UnityFragment", "onStop called")
-        try {
-            mUnityPlayer?.onStop()
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onStop: ${e.message}", e)
-        }
+        mUnityPlayer?.onStop()
     }
 
     override fun onDestroy() {
-        Log.d("UnityFragment", "onDestroy called")
-        try {
-            mUnityPlayer?.destroy()
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onDestroy: ${e.message}", e)
-        }
+        mUnityPlayer?.destroy()
         super.onDestroy()
     }
 
     override fun onUnityPlayerUnloaded() {
-        Log.d("UnityFragment", "onUnityPlayerUnloaded called")
-        try {
-            // SharedClass 호출
-            (activity as? UnityFragmentHostActivity)?.onUnityPlayerUnloaded()
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onUnityPlayerUnloaded: ${e.message}", e)
-        }
+        // SharedClass 호출
+        (activity as? UnityFragmentHostActivity)?.onUnityPlayerUnloaded()
     }
 
     override fun onUnityPlayerQuitted() {
-        Log.d("UnityFragment", "onUnityPlayerQuitted called")
         // 필요한 경우 구현
     }
 
     // 설정 변경 처리
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        Log.d("UnityFragment", "onConfigurationChanged called")
-        try {
-            mUnityPlayer?.configurationChanged(newConfig)
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error in onConfigurationChanged: ${e.message}", e)
-        }
+        mUnityPlayer?.configurationChanged(newConfig)
     }
 
     // Intent 처리
     fun handleIntent(intent: Intent?) {
-        Log.d("UnityFragment", "handleIntent called")
-        try {
-            if (intent == null || intent.extras == null) {
-                Log.d("UnityFragment", "Intent or extras is null")
-                return
-            }
+        if (intent == null || intent.extras == null) return
 
-            if (intent.extras!!.containsKey("doQuit")) {
-                Log.d("UnityFragment", "doQuit detected in intent")
-                mUnityPlayer?.let {
-                    activity?.finish()
-                }
+        if (intent.extras!!.containsKey("doQuit")) {
+            mUnityPlayer?.let {
+                activity?.finish()
             }
-
-            // 새 인텐트 유니티에 전달
-            mUnityPlayer?.newIntent(intent)
-            Log.d("UnityFragment", "New intent forwarded to Unity player")
-        } catch (e: Exception) {
-            Log.e("UnityFragment", "Error handling intent: ${e.message}", e)
         }
+
+        // 새 인텐트 유니티에 전달
+        mUnityPlayer?.newIntent(intent)
     }
 }
