@@ -63,8 +63,4 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             }
         }
     }
-    override fun onDismiss(dialog: DialogInterface) {
-        super.onDismiss(dialog)
-        requireActivity().onBackPressed()
-    }
 }
