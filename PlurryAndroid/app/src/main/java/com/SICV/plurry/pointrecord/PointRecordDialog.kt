@@ -34,6 +34,7 @@ class PointRecordDialog : DialogFragment() {
 
     }
 
+
     override fun onStart() {
         super.onStart()
         dialog?.window?.setLayout(
