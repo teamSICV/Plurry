@@ -58,7 +58,7 @@
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="250dp"
                 android:layout_margin="12dp"
                 app:cardCornerRadius="12dp">
 
@@ -90,12 +90,14 @@
                     android:orientation="horizontal">
 
                     <ImageButton
+                        android:id="@+id/imageButton1"
                         android:layout_width="100dp"
                         android:layout_height="120dp"
                         android:layout_marginEnd="8dp"
                         android:background="@null"
                         android:contentDescription="point1"
-                        android:src="@drawable/ic_launcher_foreground" />
+                        android:src="@drawable/photo"
+                        android:scaleType="centerCrop"/>
 
                     <ImageButton
                         android:layout_width="100dp"
@@ -103,21 +105,24 @@
                         android:layout_marginEnd="8dp"
                         android:background="@null"
                         android:contentDescription="point2"
-                        android:src="@drawable/ic_launcher_foreground" />
+                        android:src="@drawable/photo1"
+                        android:scaleType="centerCrop" />
                     <ImageButton
                         android:layout_width="100dp"
                         android:layout_height="120dp"
                         android:layout_marginEnd="8dp"
                         android:background="@null"
                         android:contentDescription="point3"
-                        android:src="@drawable/ic_launcher_foreground" />
+                        android:src="@drawable/photo2"
+                        android:scaleType="centerCrop" />
                     <ImageButton
                         android:layout_width="100dp"
                         android:layout_height="120dp"
                         android:layout_marginEnd="8dp"
                         android:background="@null"
                         android:contentDescription="point4"
-                        android:src="@drawable/ic_launcher_foreground" />
+                        android:src="@drawable/photo3"
+                        android:scaleType="centerCrop" />
                     <ImageButton
                         android:layout_width="100dp"
                         android:layout_height="120dp"
@@ -144,14 +149,21 @@
             </HorizontalScrollView>
 
             <TextView
-                android:id="@+id/textView5"
+                android:id="@+id/timeTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:text="--:--:-- 업데이트" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="10dp"
-                android:text="도봉 타임라인(2025년 4월 10일 10시10분)"
+                android:text="크루원    산책종료시간    산책거리    산책시간    칼로리"
+                android:gravity="center"
                 android:textSize="16sp"
-                tools:layout_editor_absoluteX="16dp"
-                tools:layout_editor_absoluteY="491dp" />
+                android:padding="8dp" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/timelineRecyclerView"
@@ -159,6 +171,8 @@
                 android:layout_height="300dp"
                 android:orientation="vertical"
                 android:contentDescription="timeline"/>
+
+
 
 
         </LinearLayout>
