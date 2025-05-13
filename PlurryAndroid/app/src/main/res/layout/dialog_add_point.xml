@@ -17,6 +17,8 @@
         android:id="@+id/btnTakePhoto"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:backgroundTint="#438cf3"
+        android:textColor="#000000"
         android:text="사진 찍기" />
 
     <LinearLayout
@@ -47,5 +49,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="실행 취소"
+        android:backgroundTint="#438cf3"
+        android:textColor="#000000"
         android:layout_marginTop="16dp"/>
 </LinearLayout>
