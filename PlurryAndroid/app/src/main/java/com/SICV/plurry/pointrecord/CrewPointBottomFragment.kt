@@ -46,10 +46,13 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
     private fun fetchImageUrlsFromFirestore() {
         val db = FirebaseFirestore.getInstance()
+        val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
+        val imageUrlList = mutableListOf<String>()
+
         db.collection("Places")
             .get()
             .addOnSuccessListener { result ->
-                val imageUrlList = mutableListOf<String>()
+                val gsUrlList = mutableListOf<String>()
 
                 for (document in result) {
                     val isMyImg = document.getBoolean("myImg") ?: false
@@ -58,13 +61,39 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                     else
                         document.getString("baseImgUrl")
 
-                    imageUrl?.let { imageUrlList.add(it)
-                        android.util.Log.d("FirestoreImage", "Added URL: $it")
+                    imageUrl?.let {
+                        gsUrlList.add(it)
                     }
                 }
 
-                val adapter = CrewPointBottomAdapter(requireContext(), imageUrlList)
-                recyclerView.adapter = adapter
+                val downloadUrls = mutableListOf<String>()
+                var processedCount = 0
+
+                for (gsUrl in gsUrlList){
+                    if(gsUrl.startsWith("gs://")){
+                        val ref = storage.getReferenceFromUrl(gsUrl)
+                        ref.downloadUrl
+                            .addOnSuccessListener { uri ->
+                                downloadUrls.add(uri.toString())
+                                processedCount++
+                                if(processedCount == gsUrlList.size){
+                                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),downloadUrls)
+                                }
+                            }
+                            .addOnFailureListener{
+                                processedCount++
+                                if(processedCount == gsUrlList.size){
+                                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),downloadUrls)
+                                }
+                            }
+                    }else{
+                        downloadUrls.add(gsUrl)
+                        processedCount++
+                        if(processedCount == gsUrlList.size){
+                            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), downloadUrls)
+                        }
+                    }
+                }
             }
             .addOnFailureListener {
                 android.util.Log.e("FirestoreImage", "불러오기 실패: ${it.message}")

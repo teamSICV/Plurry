@@ -31,9 +31,9 @@ class CrewPointBottomAdapter(
         val imageUrl = imageList[position]
 
         Glide.with(context)
-            .load(imageUrl)
-            .placeholder(R.drawable.test1)
+            .load(imageList[position])
             .into(holder.imageView)
+
 
         holder.imageView.setOnClickListener {
             val dialog = PointRecordDialog()
