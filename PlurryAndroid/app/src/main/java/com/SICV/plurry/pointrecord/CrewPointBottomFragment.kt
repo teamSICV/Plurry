@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -16,6 +18,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
     private lateinit var recyclerView: RecyclerView
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var myLatitude: Double? = null
+    private var myLongitude: Double? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +34,20 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
         return inflater.inflate(R.layout.activity_point_record_bottom_crew, container, false)
     }
 
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val earthRadius = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        return String.format("%.2f", earthRadius * c).toDouble()
+    }
+
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState) as BottomSheetDialog
         dialog.window?.setDimAmount(0f)
@@ -41,6 +60,16 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
         recyclerView = view.findViewById(R.id.crewPointRecyclerView)
         recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                myLatitude = location.latitude
+                myLongitude = location.longitude
+                fetchImageUrlsFromFirestore()
+            }
+        }
+
+
         fetchImageUrlsFromFirestore()
     }
 
@@ -51,46 +80,62 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
         db.collection("Places")
             .get()
-            .addOnSuccessListener { result ->
-                val gsUrlList = mutableListOf<String>()
-
-                for (document in result) {
-                    val isMyImg = document.getBoolean("myImg") ?: false
-                    val imageUrl = if (isMyImg)
-                        document.getString("myImgUrl")
-                    else
-                        document.getString("baseImgUrl")
-
-                    imageUrl?.let {
-                        gsUrlList.add(it)
-                    }
-                }
-
-                val downloadUrls = mutableListOf<String>()
+            .addOnSuccessListener { documents ->
+                val tempList = mutableListOf<PlaceData>()
+                val finalList = mutableListOf<PlaceData>()
                 var processedCount = 0
 
-                for (gsUrl in gsUrlList){
-                    if(gsUrl.startsWith("gs://")){
-                        val ref = storage.getReferenceFromUrl(gsUrl)
+                for (doc in documents) {
+                    val imageUrl = if (doc.getBoolean("myImg")==true)
+                        doc.getString("myImgUrl") ?: ""
+                    else
+                        doc.getString("baseImgUrl") ?:""
+
+                    val name = doc.getString("name") ?: "이름 없음"
+                    val addedBy = doc.getString("addedBy") ?: ""
+                    val geoPoint = doc.getGeoPoint("geo")
+                    val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
+                        val distance = calculateDistance(
+                            myLatitude!!, myLongitude!!,
+                            geoPoint.latitude, geoPoint.longitude
+                        )
+                        "$distance km"
+                    } else {
+                        "거리 정보 없음"
+                    }
+
+                    val description = "추가한 유저: $addedBy\n거리: $distanceText"
+
+                    tempList.add(PlaceData(imageUrl,name,description))
+                }
+                if (tempList.isEmpty()){
+                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),finalList)
+                    return@addOnSuccessListener
+            }
+
+                for (place in tempList){
+                    if(place.imageUrl.startsWith("gs://")){
+                        val ref = storage.getReferenceFromUrl(place.imageUrl)
                         ref.downloadUrl
                             .addOnSuccessListener { uri ->
-                                downloadUrls.add(uri.toString())
+                                finalList.add(PlaceData(uri.toString(),place.name, place.description))
                                 processedCount++
-                                if(processedCount == gsUrlList.size){
-                                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),downloadUrls)
+
+                                if(processedCount == tempList.size){
+                                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),finalList)
                                 }
                             }
                             .addOnFailureListener{
                                 processedCount++
-                                if(processedCount == gsUrlList.size){
-                                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),downloadUrls)
+                                if(processedCount == tempList.size){
+                                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(),finalList)
                                 }
                             }
                     }else{
-                        downloadUrls.add(gsUrl)
+                        finalList.add(place)
                         processedCount++
-                        if(processedCount == gsUrlList.size){
-                            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), downloadUrls)
+                        if(processedCount == tempList.size){
+                            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), finalList)
                         }
                     }
                 }

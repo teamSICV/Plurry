@@ -10,9 +10,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
 import com.bumptech.glide.Glide
 
+data class PlaceData(
+    val imageUrl : String,
+    val name : String,
+    val description : String
+)
+
 class CrewPointBottomAdapter(
     private val context: Context,
-    private val imageList: List<String>
+    private val imageList: List<PlaceData>
 ) : RecyclerView.Adapter<CrewPointBottomAdapter.ImageViewHolder>() {
 
     inner class ImageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -28,15 +34,18 @@ class CrewPointBottomAdapter(
     override fun getItemCount(): Int = imageList.size
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-        val imageUrl = imageList[position]
+        val place = imageList[position]
 
         Glide.with(context)
-            .load(imageList[position])
+            .load(place.imageUrl)
             .into(holder.imageView)
 
-
         holder.imageView.setOnClickListener {
-            val dialog = PointRecordDialog()
+            val dialog = PointRecordDialog.newInstance(
+                place.imageUrl,
+                "장소:  ${place.name}",
+                "${place.description}"
+            )
             dialog.show((context as AppCompatActivity).supportFragmentManager, "CrewPointDialog")
         }
     }
