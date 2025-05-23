@@ -1,9 +1,11 @@
 package com.SICV.plurry.goingwalk
-import com.SICV.plurry.R
 
+import com.SICV.plurry.R
 import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -13,6 +15,9 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.core.content.FileProvider
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -20,13 +25,15 @@ import java.util.*
 class AddPointDialogFragment : DialogFragment() {
 
     private val CAMERA_REQUEST_CODE = 101
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1001
     private lateinit var imageUri: Uri
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_point, null)
         val builder = AlertDialog.Builder(requireActivity()).setView(view)
 
-        // View 초기화
+        // 뷰 초기화
         val nameInputLayout = view.findViewById<LinearLayout>(R.id.nameInputLayout)
         val etPlaceName = view.findViewById<EditText>(R.id.etPlaceName)
         val btnSubmitName = view.findViewById<Button>(R.id.btnSubmitName)
@@ -34,14 +41,21 @@ class AddPointDialogFragment : DialogFragment() {
         val btnTakePhoto = view.findViewById<Button>(R.id.btnTakePhoto)
         val btnRetake = view.findViewById<Button>(R.id.btnRetake)
         val btnConfirm = view.findViewById<Button>(R.id.btnConfirm)
-        val btnClose = view.findViewById<Button>(R.id.btnClose)
         val photoActions = view.findViewById<LinearLayout>(R.id.photoActionButtons)
+        val btnClose = view.findViewById<Button>(R.id.btnClose)
 
-        // 초기 상태 설정
+        // 완료 메시지 관련 뷰
+        val completionLayout = view.findViewById<LinearLayout>(R.id.completionLayout)
+        val tvReward = view.findViewById<TextView>(R.id.tvReward)
+        val btnDone = view.findViewById<Button>(R.id.btnDone)
+
+        // 위치 서비스 초기화
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+
+        // 초기 버튼 상태
         btnTakePhoto.visibility = View.GONE
         btnClose.visibility = View.GONE
 
-        // 포인트 이름 입력 후 완료 클릭 시
         btnSubmitName.setOnClickListener {
             val placeName = etPlaceName.text.toString().trim()
             if (placeName.isNotEmpty()) {
@@ -62,15 +76,64 @@ class AddPointDialogFragment : DialogFragment() {
         }
 
         btnConfirm.setOnClickListener {
-            Toast.makeText(requireContext(), "촬영 완료!", Toast.LENGTH_SHORT).show()
-            dismiss()
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    requireActivity(),
+                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                    LOCATION_PERMISSION_REQUEST_CODE
+                )
+                return@setOnClickListener
+            }
+
+            // 권한 있음 → 위치 가져오기
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { location: Location? ->
+                    if (location != null) {
+                        completionLayout.visibility = View.VISIBLE
+                        tvReward.text = "보상 10P 지급!"
+
+                        nameInputLayout.visibility = View.GONE
+                        btnSubmitName.visibility = View.GONE
+                        btnTakePhoto.visibility = View.GONE
+                        btnRetake.visibility = View.GONE
+                        btnConfirm.visibility = View.GONE
+                        btnClose.visibility = View.GONE
+                        photoActions.visibility = View.GONE
+                    } else {
+                        Toast.makeText(requireContext(), "위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }
         }
 
         btnClose.setOnClickListener {
             dismiss()
         }
 
+        btnDone.setOnClickListener {
+            dismiss()
+        }
+
         return builder.create()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(requireContext(), "위치 권한이 허용되었습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun openCamera() {
@@ -79,24 +142,18 @@ class AddPointDialogFragment : DialogFragment() {
 
             if (intent.resolveActivity(requireActivity().packageManager) != null) {
                 val photoFile = createImageFile()
-
                 if (photoFile == null) {
                     Toast.makeText(requireContext(), "❌ 사진 파일 생성 실패!", Toast.LENGTH_SHORT).show()
                     return
                 }
 
                 val authority = "${requireContext().packageName}.fileprovider"
-
-                imageUri = FileProvider.getUriForFile(
-                    requireContext(),
-                    authority,
-                    photoFile
-                )
+                imageUri = FileProvider.getUriForFile(requireContext(), authority, photoFile)
 
                 intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
+
                 startActivityForResult(intent, CAMERA_REQUEST_CODE)
             } else {
                 Toast.makeText(requireContext(), "❌ 카메라 앱 없음", Toast.LENGTH_SHORT).show()
@@ -109,13 +166,12 @@ class AddPointDialogFragment : DialogFragment() {
     private fun createImageFile(): File? {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val storageDir = requireActivity().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-
-        if (storageDir == null) {
+        return if (storageDir != null) {
+            File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+        } else {
             Toast.makeText(requireContext(), "저장소를 찾을 수 없습니다!", Toast.LENGTH_SHORT).show()
-            return null
+            null
         }
-
-        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
