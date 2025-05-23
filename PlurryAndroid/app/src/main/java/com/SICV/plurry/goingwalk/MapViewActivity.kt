@@ -3,11 +3,13 @@ package com.SICV.plurry.goingwalk
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -33,6 +35,8 @@ class MapViewActivity : AppCompatActivity() {
     private lateinit var walkInfoText: TextView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var googleMap: GoogleMap? = null
+    private var myImageUri: Uri? = null
+    private var baseImageUri: Uri? = null
 
     private var startTime: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
@@ -57,6 +61,8 @@ class MapViewActivity : AppCompatActivity() {
         val btnEndWalk = findViewById<Button>(R.id.btnEndWalk)
         val btnRefreshLocation = findViewById<Button>(R.id.btnRefreshLocation)
         val btnAddPoint = findViewById<Button>(R.id.btnAddPoint)
+        val btnSubmitName = findViewById<Button>(R.id.btnSubmitName)
+        val etPlaceName = findViewById<EditText>(R.id.etPlaceName)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -74,6 +80,36 @@ class MapViewActivity : AppCompatActivity() {
 
         btnAddPoint.setOnClickListener {
             AddPointDialogFragment().show(supportFragmentManager, "AddPointDialog")
+
+        }
+
+        btnSubmitName.setOnClickListener{
+            val placeName = etPlaceName.text.toString()
+
+            if(placeName.isNotBlank()&& myImageUri != null && baseImageUri != null){
+                val addPlaceToDB = AddPlaceToDB()
+
+                val latitude = 37.0
+                val longitude = 127.0
+                val distance = 0.0
+                val steps = 0
+                val calories = 0
+                val username = "username003"
+
+                addPlaceToDB.uploadPlaceInfo(
+                    this,
+                    placeName,
+                    myImageUri!!,
+                    latitude,
+                    longitude,
+                    distance,
+                    steps,
+                    calories,
+                    username
+                )else{
+                    Toast.makeText(this, "장소 이름 또는 이미지가 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
