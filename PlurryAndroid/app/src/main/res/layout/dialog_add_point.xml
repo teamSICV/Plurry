@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -19,7 +20,7 @@
         <EditText
             android:id="@+id/etPlaceName"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:hint="포인트 장소 이름 입력"
             android:textColor="#000000"
@@ -27,14 +28,14 @@
             android:padding="8dp"
             android:enabled="true"
             android:focusable="true"
-            android:focusableInTouchMode="true" />
+         android:focusableInTouchMode="true"
+            tools:ignore="InefficientWeight" />
 
         <Button
             android:id="@+id/btnSubmitName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="완료"
-            android:backgroundTint="#438cf3"
             android:layout_marginStart="8dp" />
     </LinearLayout>
 
@@ -91,3 +92,4 @@
         android:layout_marginTop="16dp"
         android:visibility="gone"/>
 </LinearLayout>
+

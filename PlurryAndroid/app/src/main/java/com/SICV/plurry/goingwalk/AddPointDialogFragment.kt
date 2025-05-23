@@ -26,12 +26,32 @@ class AddPointDialogFragment : DialogFragment() {
         val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_point, null)
         val builder = AlertDialog.Builder(requireActivity()).setView(view)
 
+        // View 초기화
+        val nameInputLayout = view.findViewById<LinearLayout>(R.id.nameInputLayout)
+        val etPlaceName = view.findViewById<EditText>(R.id.etPlaceName)
+        val btnSubmitName = view.findViewById<Button>(R.id.btnSubmitName)
         val imagePreview = view.findViewById<ImageView>(R.id.imagePreview)
         val btnTakePhoto = view.findViewById<Button>(R.id.btnTakePhoto)
         val btnRetake = view.findViewById<Button>(R.id.btnRetake)
         val btnConfirm = view.findViewById<Button>(R.id.btnConfirm)
         val btnClose = view.findViewById<Button>(R.id.btnClose)
         val photoActions = view.findViewById<LinearLayout>(R.id.photoActionButtons)
+
+        // 초기 상태 설정
+        btnTakePhoto.visibility = View.GONE
+        btnClose.visibility = View.GONE
+
+        // 포인트 이름 입력 후 완료 클릭 시
+        btnSubmitName.setOnClickListener {
+            val placeName = etPlaceName.text.toString().trim()
+            if (placeName.isNotEmpty()) {
+                nameInputLayout.visibility = View.GONE
+                btnTakePhoto.visibility = View.VISIBLE
+                btnClose.visibility = View.VISIBLE
+            } else {
+                Toast.makeText(requireContext(), "포인트 이름을 입력하세요.", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         btnTakePhoto.setOnClickListener {
             openCamera()
@@ -86,9 +106,6 @@ class AddPointDialogFragment : DialogFragment() {
         }
     }
 
-
-
-
     private fun createImageFile(): File? {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val storageDir = requireActivity().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
@@ -100,7 +117,6 @@ class AddPointDialogFragment : DialogFragment() {
 
         return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
     }
-
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
