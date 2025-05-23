@@ -18,6 +18,9 @@ import androidx.core.content.FileProvider
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.storage.FirebaseStorage
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,7 +36,6 @@ class AddPointDialogFragment : DialogFragment() {
         val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_point, null)
         val builder = AlertDialog.Builder(requireActivity()).setView(view)
 
-        // 뷰 초기화
         val nameInputLayout = view.findViewById<LinearLayout>(R.id.nameInputLayout)
         val etPlaceName = view.findViewById<EditText>(R.id.etPlaceName)
         val btnSubmitName = view.findViewById<Button>(R.id.btnSubmitName)
@@ -44,15 +46,12 @@ class AddPointDialogFragment : DialogFragment() {
         val photoActions = view.findViewById<LinearLayout>(R.id.photoActionButtons)
         val btnClose = view.findViewById<Button>(R.id.btnClose)
 
-        // 완료 메시지 관련 뷰
         val completionLayout = view.findViewById<LinearLayout>(R.id.completionLayout)
         val tvReward = view.findViewById<TextView>(R.id.tvReward)
         val btnDone = view.findViewById<Button>(R.id.btnDone)
 
-        // 위치 서비스 초기화
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
-        // 초기 버튼 상태
         btnTakePhoto.visibility = View.GONE
         btnClose.visibility = View.GONE
 
@@ -89,22 +88,50 @@ class AddPointDialogFragment : DialogFragment() {
                 return@setOnClickListener
             }
 
-            // 권한 있음 → 위치 가져오기
             fusedLocationClient.lastLocation
                 .addOnSuccessListener { location: Location? ->
                     if (location != null) {
-                        completionLayout.visibility = View.VISIBLE
-                        tvReward.text = "보상 10P 지급!"
+                        // 이미지 Firebase Storage에 업로드
+                        val storageRef = FirebaseStorage.getInstance().reference
+                        val timeStamp = System.currentTimeMillis()
+                        val imageRef = storageRef.child("places/${timeStamp}.jpg")
 
-                        nameInputLayout.visibility = View.GONE
-                        btnSubmitName.visibility = View.GONE
-                        btnTakePhoto.visibility = View.GONE
-                        btnRetake.visibility = View.GONE
-                        btnConfirm.visibility = View.GONE
-                        btnClose.visibility = View.GONE
-                        photoActions.visibility = View.GONE
+                        imageRef.putFile(imageUri).addOnSuccessListener {
+                            imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                                // Firestore 저장
+                                val placeData = hashMapOf(
+                                    "name" to etPlaceName.text.toString().trim(),
+                                    "geo" to GeoPoint(location.latitude, location.longitude),
+                                    "imageTime" to timeStamp,
+                                    "myImg" to true,
+                                    "myImgUrl" to downloadUri.toString()
+                                )
+
+                                FirebaseFirestore.getInstance()
+                                    .collection("Places")
+                                    .add(placeData)
+                                    .addOnSuccessListener {
+                                        Toast.makeText(requireContext(), "🔥 장소 저장 완료!", Toast.LENGTH_SHORT).show()
+                                        completionLayout.visibility = View.VISIBLE
+                                        tvReward.text = "보상 10금화 지급!"
+
+                                        nameInputLayout.visibility = View.GONE
+                                        btnSubmitName.visibility = View.GONE
+                                        btnTakePhoto.visibility = View.GONE
+                                        btnRetake.visibility = View.GONE
+                                        btnConfirm.visibility = View.GONE
+                                        btnClose.visibility = View.GONE
+                                        photoActions.visibility = View.GONE
+                                    }
+                                    .addOnFailureListener {
+                                        Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
+                                    }
+                            }
+                        }.addOnFailureListener {
+                            Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
+                        }
                     } else {
-                        Toast.makeText(requireContext(), "위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
                     }
                 }
         }
@@ -129,7 +156,7 @@ class AddPointDialogFragment : DialogFragment() {
 
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(requireContext(), "위치 권한이 허용되었습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "위치 권한 허용됨. 다시 촬영 완료를 눌러주세요.", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
             }
@@ -139,7 +166,6 @@ class AddPointDialogFragment : DialogFragment() {
     private fun openCamera() {
         try {
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-
             if (intent.resolveActivity(requireActivity().packageManager) != null) {
                 val photoFile = createImageFile()
                 if (photoFile == null) {
