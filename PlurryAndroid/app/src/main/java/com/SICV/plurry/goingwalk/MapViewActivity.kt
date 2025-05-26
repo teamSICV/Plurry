@@ -1,38 +1,57 @@
 package com.SICV.plurry.goingwalk
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.SICV.plurry.R
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.fitness.Fitness
+import com.google.android.gms.fitness.FitnessOptions
+import com.google.android.gms.fitness.data.DataType
+import com.google.android.gms.fitness.data.Field
+import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.SICV.plurry.R
+import java.util.concurrent.TimeUnit
 
-class MapViewActivity : AppCompatActivity(), SensorEventListener {
+class MapViewActivity : AppCompatActivity() {
 
     private lateinit var walkInfoText: TextView
-    private lateinit var sensorManager: SensorManager
-    private var stepSensor: Sensor? = null
-    private var totalSteps = 0
-    private var initialStepsToday = -1
-
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private var googleMap: GoogleMap? = null   // 구글맵 객체 저장
+    private var googleMap: GoogleMap? = null
+    private var myImageUri: Uri? = null
+    private var baseImageUri: Uri? = null
+
+    private var startTime: Long = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private val updateInterval = 5000L // 5초 간격
+
+    private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1003
+
+    private val fitnessOptions: FitnessOptions by lazy {
+        FitnessOptions.builder()
+            .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
+            .build()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,11 +59,15 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
 
         walkInfoText = findViewById(R.id.walkIZnfo)
         val btnEndWalk = findViewById<Button>(R.id.btnEndWalk)
-        val btnRefreshLocation = findViewById<Button>(R.id.btnRefreshLocation) // 새로고침 버튼 추가
+        val btnRefreshLocation = findViewById<Button>(R.id.btnRefreshLocation)
+        val btnAddPoint = findViewById<Button>(R.id.btnAddPoint)
+        val btnSubmitName = findViewById<Button>(R.id.btnSubmitName)
+        val etPlaceName = findViewById<EditText>(R.id.etPlaceName)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         btnEndWalk.setOnClickListener {
+            handler.removeCallbacks(updateRunnable) // 업데이트 중단
             val intent = Intent(this, GoingWalkMainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             startActivity(intent)
@@ -55,27 +78,52 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
             refreshLocation()
         }
 
-        val btnAddPoint = findViewById<Button>(R.id.btnAddPoint)
         btnAddPoint.setOnClickListener {
             AddPointDialogFragment().show(supportFragmentManager, "AddPointDialog")
+
+        }
+
+        btnSubmitName.setOnClickListener{
+            val placeName = etPlaceName.text.toString()
+
+            if(placeName.isNotBlank()&& myImageUri != null && baseImageUri != null){
+                val addPlaceToDB = AddPlaceToDB()
+
+                val latitude = 37.0
+                val longitude = 127.0
+                val distance = 0.0
+                val steps = 0
+                val calories = 0
+                val username = "username003"
+
+                addPlaceToDB.uploadPlaceInfo(
+                    this,
+                    placeName,
+                    myImageUri!!,
+                    latitude,
+                    longitude,
+                    distance,
+                    steps,
+                    calories,
+                    username
+                )else{
+                    Toast.makeText(this, "장소 이름 또는 이미지가 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync { map ->
             googleMap = map
-
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
-
                 googleMap?.isMyLocationEnabled = true
-
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     location?.let {
                         val currentLatLng = LatLng(it.latitude, it.longitude)
                         googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
                     }
                 }
-
             } else {
                 ActivityCompat.requestPermissions(
                     this,
@@ -85,106 +133,106 @@ class MapViewActivity : AppCompatActivity(), SensorEventListener {
             }
         }
 
-        // 걸음 수 권한 체크
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
-            != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
+        if (!GoogleSignIn.hasPermissions(GoogleSignIn.getLastSignedInAccount(this), fitnessOptions)) {
+            GoogleSignIn.requestPermissions(
                 this,
-                arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
-                1001
+                GOOGLE_FIT_PERMISSIONS_REQUEST_CODE,
+                GoogleSignIn.getLastSignedInAccount(this),
+                fitnessOptions
             )
         } else {
-            initStepSensor()
+            startWalk()
         }
     }
 
     private fun refreshLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                val latitude = location.latitude
-                val longitude = location.longitude
-                val currentLatLng = LatLng(latitude, longitude)
-
+            location?.let {
+                val currentLatLng = LatLng(it.latitude, it.longitude)
                 googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
-            } else {
-                Toast.makeText(this, "현재 위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            initStepSensor()
-        } else if (requestCode == 1001) {
-            Toast.makeText(this, "걸음 수 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+    private fun startWalk() {
+        startTime = System.currentTimeMillis()
+
+        val account = GoogleSignIn.getAccountForExtension(this, fitnessOptions)
+
+        arrayOf(
+            DataType.TYPE_STEP_COUNT_DELTA,
+            DataType.TYPE_DISTANCE_DELTA,
+            DataType.TYPE_CALORIES_EXPENDED
+        ).forEach { dataType ->
+            Fitness.getRecordingClient(this, account)
+                .subscribe(dataType)
+                .addOnSuccessListener {
+                    Log.d("GoogleFit", "${dataType.name} 데이터 기록이 시작되었습니다!")
+                }
+                .addOnFailureListener {
+                    Log.e("GoogleFit", "${dataType.name} 데이터 기록에 실패했습니다.", it)
+                }
         }
 
-        if (requestCode == 1002 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            recreate()
-        } else if (requestCode == 1002) {
-            Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-        }
+        handler.post(updateRunnable)
     }
 
-    private fun initStepSensor() {
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-
-        if (stepSensor == null) {
-            walkInfoText.text = "걸음 센서를 사용할 수 없습니다."
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        stepSensor?.also {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+    private val updateRunnable = object : Runnable {
+        override fun run() {
+            readFitnessData()
+            handler.postDelayed(this, updateInterval)
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        sensorManager.unregisterListener(this)
-    }
+    private fun readFitnessData() {
+        val endTime = System.currentTimeMillis()
 
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
-            totalSteps = event.values[0].toInt()
+        val readRequest = DataReadRequest.Builder()
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+            .aggregate(DataType.TYPE_DISTANCE_DELTA)
+            .aggregate(DataType.TYPE_CALORIES_EXPENDED)
+            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .bucketByTime(1, TimeUnit.MINUTES)
+            .build()
 
-            if (initialStepsToday == -1) {
-                initialStepsToday = totalSteps
+        val account = GoogleSignIn.getAccountForExtension(this, fitnessOptions)
+
+        Fitness.getHistoryClient(this, account)
+            .readData(readRequest)
+            .addOnSuccessListener { response ->
+                var totalSteps = 0
+                var totalDistance = 0.0
+                var totalCalories = 0.0
+
+                for (bucket in response.buckets) {
+                    for (dataSet in bucket.dataSets) {
+                        for (dp in dataSet.dataPoints) {
+                            when (dp.dataType) {
+                                DataType.TYPE_STEP_COUNT_DELTA -> totalSteps += dp.getValue(Field.FIELD_STEPS).asInt()
+                                DataType.TYPE_DISTANCE_DELTA -> totalDistance += dp.getValue(Field.FIELD_DISTANCE).asFloat()
+                                DataType.TYPE_CALORIES_EXPENDED -> totalCalories += dp.getValue(Field.FIELD_CALORIES).asFloat()
+                            }
+                        }
+                    }
+                }
+
+                val distanceKm = totalDistance / 1000
+                val distanceText = String.format("%.2f", distanceKm)
+                val calorieText = String.format("%.1f", totalCalories)
+
+                Log.d("GoogleFit", "걸음 수: $totalSteps, 거리: $distanceText km, 칼로리: $calorieText kcal")
+
+                walkInfoText.text = "거리: ${distanceText}km | 걸음: ${totalSteps} 걸음 | 칼로리: ${calorieText}kcal"
             }
-
-            val todaySteps = totalSteps - initialStepsToday
-            val distanceMeters = todaySteps * 0.7
-            val caloriesBurned = todaySteps * 0.04
-
-            val distanceKm = distanceMeters / 1000
-            val distanceText = String.format("%.2f", distanceKm)
-            val calorieText = String.format("%.1f", caloriesBurned)
-
-            walkInfoText.text = "거리: ${distanceText}km     |   걸음: ${todaySteps} 걸음   |     칼로리: ${calorieText}kcal"
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // 필요 없음
+            .addOnFailureListener {
+                Log.e("GoogleFit", "피트니스 데이터 읽기 실패", it)
+            }
     }
 }
