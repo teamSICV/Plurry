@@ -29,8 +29,17 @@
         android:theme="@style/Theme.Plurry"
         tools:targetApi="31">
         <activity
-            android:name=".login.LoginMainActivity"
+            android:name=".login.LoginJoinActivity"
             android:exported="false" />
+        <activity
+            android:name=".login.LoginMainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".unity.MainUnityGameActivity"
             android:exported="false" />
@@ -68,13 +77,7 @@
             android:exported="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
