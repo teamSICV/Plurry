@@ -96,7 +96,8 @@ class MapViewActivity : AppCompatActivity() {
                     val distanceKm = String.format("%.2f", totalDistance / 1000)
                     val calorieText = String.format("%.1f", totalCalories)
 
-
+                    val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText)
+                    dialog.show(supportFragmentManager, "WalkEndDialog")
                 }
                 .addOnFailureListener {
                     Toast.makeText(this, "피트니스 데이터 불러오기 실패", Toast.LENGTH_SHORT).show()
