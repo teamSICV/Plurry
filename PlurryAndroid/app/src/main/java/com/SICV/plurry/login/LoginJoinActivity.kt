@@ -55,17 +55,23 @@ class LoginJoinActivity : ComponentActivity() {
                 return@setOnClickListener
             }
 
+            val currentUser = auth.currentUser
+            if (currentUser == null) {
+                Toast.makeText(this, "사용자 인증 정보가 없습니다.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             if (imageUri == null) {
                 AlertDialog.Builder(this)
                     .setTitle("기본 이미지 사용")
                     .setMessage("이미지를 선택하지 않았습니다.\n기본 이미지를 사용하시겠습니까?")
                     .setPositiveButton("예") { _, _ ->
-                        uploadDefaultImageAndNickname(nickname)
+                        uploadDefaultImageAndNickname(nickname, currentUser.uid)
                     }
                     .setNegativeButton("아니요", null)
                     .show()
             } else {
-                uploadProfileAndNickname(nickname)
+                uploadProfileAndNickname(nickname, currentUser.uid)
             }
         }
     }
@@ -87,92 +93,94 @@ class LoginJoinActivity : ComponentActivity() {
         }
     }
 
-    private fun uploadProfileAndNickname(nickname: String) {
-        firestore.collection("Users")
-            .get()
-            .addOnSuccessListener { documents ->
-                val userCount = documents.size()
-                val newUserId = "user" + String.format("%04d", userCount + 1)
-                val newCharacterId = "character" + String.format("%04d", userCount + 1)
+    private fun uploadProfileAndNickname(nickname: String, uid: String) {
+        val newCharacterId = "$uid"
 
-                val storageRef = storage.reference
-                    .child("$newUserId/profileImg/profile.png")
+        val storageRef = storage.reference
+            .child("$uid/profileImg/profile.png")
 
-                val uploadTask = storageRef.putFile(imageUri!!)
-                uploadTask.addOnSuccessListener {
-                    storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                        val userData = hashMapOf(
-                            "name" to nickname,
-                            "characterId" to newCharacterId,
-                            "profileImg" to downloadUri.toString(),
-                            "email" to (auth.currentUser?.email ?: "")
-                        )
+        val uploadTask = storageRef.putFile(imageUri!!)
+        uploadTask.addOnSuccessListener {
+            storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                val userData = hashMapOf(
+                    "name" to nickname,
+                    "characterId" to newCharacterId,
+                    "profileImg" to downloadUri.toString(),
+                    "email" to (auth.currentUser?.email ?: "")
+                )
 
-                        firestore.collection("Users").document(newUserId)
+                firestore.collection("Users").document(uid)
+                    .update(userData.toMap())
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
+                        goToMain()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("LoginJoin", "Firestore 업데이트 실패", e)
+                        firestore.collection("Users").document(uid)
                             .set(userData)
                             .addOnSuccessListener {
                                 Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
                                 goToMain()
                             }
-                            .addOnFailureListener { e ->
-                                Log.e("LoginJoin", "Firestore 저장 실패", e)
+                            .addOnFailureListener { e2 ->
+                                Log.e("LoginJoin", "Firestore 저장 실패", e2)
                                 Toast.makeText(this, "프로필 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
                             }
                     }
-                }.addOnFailureListener { e ->
-                    Log.e("LoginJoin", "이미지 업로드 실패", e)
-                    Toast.makeText(this, "이미지 업로드 실패했습니다.", Toast.LENGTH_SHORT).show()
-                }
             }
-            .addOnFailureListener { e ->
-                Log.e("LoginJoin", "사용자 문서 조회 실패", e)
-                Toast.makeText(this, "사용자 정보 생성 실패했습니다.", Toast.LENGTH_SHORT).show()
-            }
+        }.addOnFailureListener { e ->
+            Log.e("LoginJoin", "이미지 업로드 실패", e)
+            Toast.makeText(this, "이미지 업로드 실패했습니다.", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    private fun uploadDefaultImageAndNickname(nickname: String) {
-        firestore.collection("Users")
-            .get()
-            .addOnSuccessListener { documents ->
-                val userCount = documents.size()
-                val newUserId = "user" + String.format("%04d", userCount + 1)
-                val newCharacterId = "character" + String.format("%03d", userCount + 1)
+    private fun uploadDefaultImageAndNickname(nickname: String, uid: String) {
+        val newCharacterId = "$uid"
 
-                val storageRef = storage.reference
-                    .child("$newUserId/profileImg/profile.png")
+        val storageRef = storage.reference
+            .child("$uid/profileImg/profile.png")
 
-                val drawable = ContextCompat.getDrawable(this, R.drawable.basicprofile) as BitmapDrawable
-                val bitmap = drawable.bitmap
-                val baos = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
-                val data = baos.toByteArray()
+        val drawable = ContextCompat.getDrawable(this, R.drawable.basicprofile) as BitmapDrawable
+        val bitmap = drawable.bitmap
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
+        val data = baos.toByteArray()
 
-                val uploadTask = storageRef.putBytes(data)
-                uploadTask.addOnSuccessListener {
-                    storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                        val userData = hashMapOf(
-                            "name" to nickname,
-                            "characterId" to newCharacterId,
-                            "profileImg" to downloadUri.toString(),
-                            "email" to (auth.currentUser?.email ?: "")
-                        )
+        val uploadTask = storageRef.putBytes(data)
+        uploadTask.addOnSuccessListener {
+            storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                val userData = hashMapOf(
+                    "name" to nickname,
+                    "characterId" to newCharacterId,
+                    "profileImg" to downloadUri.toString(),
+                    "email" to (auth.currentUser?.email ?: "")
+                )
 
-                        firestore.collection("Users").document(newUserId)
+                firestore.collection("Users").document(uid)
+                    .update(userData.toMap())
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
+                        goToMain()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("LoginJoin", "Firestore 업데이트 실패", e)
+                        firestore.collection("Users").document(uid)
                             .set(userData)
                             .addOnSuccessListener {
                                 Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
                                 goToMain()
                             }
-                            .addOnFailureListener { e ->
-                                Log.e("LoginJoin", "Firestore 저장 실패", e)
+                            .addOnFailureListener { e2 ->
+                                Log.e("LoginJoin", "Firestore 저장 실패", e2)
                                 Toast.makeText(this, "프로필 저장 실패했습니다.", Toast.LENGTH_SHORT).show()
                             }
                     }
-                }.addOnFailureListener { e ->
-                    Log.e("LoginJoin", "기본 이미지 업로드 실패", e)
-                    Toast.makeText(this, "이미지 업로드 실패했습니다.", Toast.LENGTH_SHORT).show()
-                }
             }
+        }.addOnFailureListener { e ->
+            Log.e("LoginJoin", "기본 이미지 업로드 실패", e)
+            Toast.makeText(this, "이미지 업로드 실패했습니다.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun goToMain() {
