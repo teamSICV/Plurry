@@ -1,41 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp"
     android:background="#FFFFFF"
-    android:gravity="center">
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:id="@+id/completionLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvCompletionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="장소포인트 추가완료"
+            android:textColor="#000000"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvReward"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="보상 10금화 지급"
+            android:textColor="#438cf3"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btnDone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#438cf3"
+            android:text="종료"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
 
     <!-- 포인트 장소 이름 입력 -->
     <LinearLayout
         android:id="@+id/nameInputLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_marginBottom="16dp"
         android:gravity="center"
-        android:layout_marginBottom="16dp">
+        android:orientation="horizontal">
 
         <EditText
             android:id="@+id/etPlaceName"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:hint="포인트 장소 이름 입력"
-            android:textColor="#000000"
-            android:textColorHint="#B0B0B0"
-            android:padding="8dp"
             android:enabled="true"
             android:focusable="true"
-            android:focusableInTouchMode="true" />
+            android:focusableInTouchMode="true"
+            android:hint="포인트 장소 이름 입력"
+            android:padding="8dp"
+            android:textColor="#000000"
+            android:textColorHint="#B0B0B0"
+            tools:ignore="InefficientWeight" />
 
         <Button
             android:id="@+id/btnSubmitName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="완료"
+            android:layout_marginStart="8dp"
             android:backgroundTint="#438cf3"
-            android:layout_marginStart="8dp" />
+            android:text="완료" />
     </LinearLayout>
 
     <!-- 사진 미리보기 -->
@@ -52,8 +91,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:backgroundTint="#438cf3"
-        android:textColor="#FFFFFF"
         android:text="사진 찍기"
+        android:textColor="#FFFFFF"
         android:visibility="gone" />
 
     <!-- 사진 관련 액션 버튼 -->
@@ -61,10 +100,10 @@
         android:id="@+id/photoActionButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_marginTop="16dp"
         android:gravity="center"
-        android:visibility="gone"
-        android:layout_marginTop="16dp">
+        android:orientation="horizontal"
+        android:visibility="gone">
 
         <Button
             android:id="@+id/btnRetake"
@@ -76,8 +115,8 @@
             android:id="@+id/btnConfirm"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="촬영 완료"
-            android:layout_marginStart="24dp"/>
+            android:layout_marginStart="24dp"
+            android:text="촬영 완료" />
     </LinearLayout>
 
     <!-- 실행 취소 버튼 -->
@@ -85,9 +124,10 @@
         android:id="@+id/btnClose"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="실행 취소"
-        android:backgroundTint="#438cf3"
-        android:textColor="#FFFFFF"
         android:layout_marginTop="16dp"
-        android:visibility="gone"/>
+        android:backgroundTint="#438cf3"
+        android:text="실행 취소"
+        android:textColor="#FFFFFF"
+        android:visibility="gone" />
 </LinearLayout>
+

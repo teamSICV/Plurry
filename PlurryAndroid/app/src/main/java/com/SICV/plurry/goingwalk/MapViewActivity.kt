@@ -61,11 +61,48 @@ class MapViewActivity : AppCompatActivity() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         btnEndWalk.setOnClickListener {
-            handler.removeCallbacks(updateRunnable) // 업데이트 중단
-            val intent = Intent(this, GoingWalkMainActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            startActivity(intent)
-            finish()
+            handler.removeCallbacks(updateRunnable)
+
+            val endTime = System.currentTimeMillis()
+            val readRequest = DataReadRequest.Builder()
+                .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+                .aggregate(DataType.TYPE_DISTANCE_DELTA)
+                .aggregate(DataType.TYPE_CALORIES_EXPENDED)
+                .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+                .bucketByTime(1, TimeUnit.MINUTES)
+                .build()
+
+            val account = GoogleSignIn.getAccountForExtension(this, fitnessOptions)
+
+            Fitness.getHistoryClient(this, account)
+                .readData(readRequest)
+                .addOnSuccessListener { response ->
+                    var totalSteps = 0
+                    var totalDistance = 0.0
+                    var totalCalories = 0.0
+
+                    for (bucket in response.buckets) {
+                        for (dataSet in bucket.dataSets) {
+                            for (dp in dataSet.dataPoints) {
+                                when (dp.dataType) {
+                                    DataType.TYPE_STEP_COUNT_DELTA -> totalSteps += dp.getValue(Field.FIELD_STEPS).asInt()
+                                    DataType.TYPE_DISTANCE_DELTA -> totalDistance += dp.getValue(Field.FIELD_DISTANCE).asFloat()
+                                    DataType.TYPE_CALORIES_EXPENDED -> totalCalories += dp.getValue(Field.FIELD_CALORIES).asFloat()
+                                }
+                            }
+                        }
+                    }
+
+                    val distanceKm = String.format("%.2f", totalDistance / 1000)
+                    val calorieText = String.format("%.1f", totalCalories)
+
+                    val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText)
+                    dialog.show(supportFragmentManager, "WalkEndDialog")
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "피트니스 데이터 불러오기 실패", Toast.LENGTH_SHORT).show()
+                    Log.e("GoogleFit", "산책 종료 시 데이터 로드 실패", it)
+                }
         }
 
         btnRefreshLocation.setOnClickListener {
@@ -80,7 +117,8 @@ class MapViewActivity : AppCompatActivity() {
         mapFragment.getMapAsync { map ->
             googleMap = map
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
+                == PackageManager.PERMISSION_GRANTED
+            ) {
                 googleMap?.isMyLocationEnabled = true
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     location?.let {
@@ -138,10 +176,10 @@ class MapViewActivity : AppCompatActivity() {
             Fitness.getRecordingClient(this, account)
                 .subscribe(dataType)
                 .addOnSuccessListener {
-                    Log.d("GoogleFit", "${dataType.name} 데이터 기록이 시작되었습니다!")
+                    Log.d("GoogleFit", "${dataType.name} 데이터 기록 시작됨!")
                 }
                 .addOnFailureListener {
-                    Log.e("GoogleFit", "${dataType.name} 데이터 기록에 실패했습니다.", it)
+                    Log.e("GoogleFit", "${dataType.name} 기록 실패", it)
                 }
         }
 
