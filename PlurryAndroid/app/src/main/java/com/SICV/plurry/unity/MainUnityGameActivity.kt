@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.Toast
 import com.SICV.plurry.R
 import com.unity3d.player.UnityPlayerGameActivity
@@ -34,6 +35,9 @@ class MainUnityGameActivity : UnityPlayerGameActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
+            // RaisingMainActivity 프래그먼트 추가
+            addRaisingFragment()
+
             // 투명 레이아웃을 Unity 뷰 위에 추가
             rootLayout.addView(androidUIContainer, layoutParams)
 
@@ -47,6 +51,27 @@ class MainUnityGameActivity : UnityPlayerGameActivity() {
 
         // Intent에서 전달된 데이터 처리
         handleIntent(intent)
+    }
+
+    private fun addRaisingFragment() {
+        try {
+            // FrameLayout 직접 만들어서 ID 할당
+            val fragmentContainer = FrameLayout(this)
+            fragmentContainer.id = View.generateViewId() // 동적으로 ID 생성
+
+            val containerParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            containerParams.topMargin = 56
+            containerParams.bottomMargin = 100
+
+            (androidUIContainer as FrameLayout).addView(fragmentContainer, containerParams)
+
+            Log.d("MainUnityGameActivity", "RaisingMainActivity fragment added successfully")
+        } catch (e: Exception) {
+            Log.e("MainUnityGameActivity", "Error adding RaisingMainActivity fragment", e)
+        }
     }
 
     private fun setupUIElements() {

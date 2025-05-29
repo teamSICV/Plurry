@@ -13,12 +13,7 @@ public class CameraMove : MonoBehaviour
     [SerializeField]
     private float followSpeed = 10f;
     [SerializeField]
-    private float touchXSensitivity = 0.1f;
-    [SerializeField]
     private float zoomSensitivity = 1f;
-
-    private float rotX;
-    private float rotY;
 
     public Camera mainCameraDist;
     public Transform mainCameraPos;
@@ -40,9 +35,6 @@ public class CameraMove : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        this.rotX = this.gameObject.transform.localRotation.eulerAngles.x;
-        this.rotY = this.gameObject.transform.localRotation.eulerAngles.y;
-
         this.dir = this.mainCameraPos.localPosition.normalized;
         this.dist = this.mainCameraPos.localPosition.magnitude;
 
@@ -53,15 +45,6 @@ public class CameraMove : MonoBehaviour
     void Update()
     {
         //Get Input
-        if (Input.touchCount == 1)
-        {
-            UnityEngine.Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Moved)
-            {
-                MoveCamera(touch.deltaPosition);
-            }
-        }
-
         if (Input.touchCount == 2)
         {
             UnityEngine.Touch touch1 = Input.GetTouch(0);
@@ -84,20 +67,10 @@ public class CameraMove : MonoBehaviour
         this.mainCameraPos.localPosition = Vector3.Lerp(this.mainCameraPos.localPosition, this.dir * this.dist, Time.deltaTime * this.smoothness);
     }
 
-    private void MoveCamera(Vector2 inputPos)
-    {
-        this.rotY += inputPos.x * this.touchXSensitivity + Time.deltaTime;
-        Quaternion rot = Quaternion.Euler(this.rotX, this.rotY, 0);
-        this.gameObject.transform.rotation = rot;
-    }
-
     private void MoveDistance(float distance)
     {
         fieldOfView -= distance * this.zoomSensitivity;
         fieldOfView = Mathf.Clamp(fieldOfView, minDist, maxDist);
         this.mainCameraDist.GetComponent<Camera>().fieldOfView = fieldOfView;
-
-        //this.mainCameraDist.GetComponent<Camera>().fieldOfView -= distance * this.zoomSensitivity;
-        //this.mainCameraDist.GetComponent<Camera>().fieldOfView = Mathf.Clamp(this.mainCameraDist.GetComponent<Camera>().fieldOfView, minDist, maxDist);
     }
 }
