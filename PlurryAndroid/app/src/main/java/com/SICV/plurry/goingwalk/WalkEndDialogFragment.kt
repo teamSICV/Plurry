@@ -1,5 +1,5 @@
 package com.SICV.plurry.goingwalk
-import com.SICV.plurry.R
+
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
@@ -8,6 +8,10 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
+import com.SICV.plurry.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Date
 
 class WalkEndDialogFragment : DialogFragment() {
 
@@ -17,6 +21,7 @@ class WalkEndDialogFragment : DialogFragment() {
         val distance = arguments?.getString("distance") ?: "0.00"
         val steps = arguments?.getInt("steps") ?: 0
         val calories = arguments?.getString("calories") ?: "0.0"
+        val startTime = arguments?.getLong("startTime") ?: 0L
 
         val tvDistance = view.findViewById<TextView>(R.id.tvWalkDistance)
         val tvSteps = view.findViewById<TextView>(R.id.tvWalkSteps)
@@ -26,6 +31,29 @@ class WalkEndDialogFragment : DialogFragment() {
         tvDistance.text = "거리: $distance km"
         tvSteps.text = "걸음 수: $steps 걸음"
         tvCalories.text = "칼로리 소모: $calories kcal"
+
+        // ✅ Firestore 저장
+        val db = FirebaseFirestore.getInstance()
+        val walkData = hashMapOf(
+            "distance" to distance.toDouble(),
+            "stepCount" to steps,
+            "calories" to calories.toDouble(),
+            "startTime" to Date(startTime),
+            "endTime" to Date()
+        )
+
+        // 🔐 로그인된 Firebase 사용자 UID로 저장
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+
+        db.collection("Users").document(userId)
+            .collection("goWalk")
+            .add(walkData)
+            .addOnSuccessListener {
+                // 저장 성공 로그 (선택)
+            }
+            .addOnFailureListener {
+                // 저장 실패 로그 (선택)
+            }
 
         btnConfirm.setOnClickListener {
             dismiss()
@@ -41,12 +69,13 @@ class WalkEndDialogFragment : DialogFragment() {
     }
 
     companion object {
-        fun newInstance(distance: String, steps: Int, calories: String): WalkEndDialogFragment {
+        fun newInstance(distance: String, steps: Int, calories: String, startTime: Long): WalkEndDialogFragment {
             val fragment = WalkEndDialogFragment()
             val args = Bundle().apply {
                 putString("distance", distance)
                 putInt("steps", steps)
                 putString("calories", calories)
+                putLong("startTime", startTime)
             }
             fragment.arguments = args
             return fragment

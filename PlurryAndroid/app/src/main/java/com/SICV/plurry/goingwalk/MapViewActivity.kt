@@ -96,7 +96,8 @@ class MapViewActivity : AppCompatActivity() {
                     val distanceKm = String.format("%.2f", totalDistance / 1000)
                     val calorieText = String.format("%.1f", totalCalories)
 
-                    val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText)
+                    // 🔥 수정된 부분: startTime 전달
+                    val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText, startTime)
                     dialog.show(supportFragmentManager, "WalkEndDialog")
                 }
                 .addOnFailureListener {
