@@ -1,6 +1,4 @@
 <resources>
     <string name="app_name">Plurry</string>
     <string name="title_activity_map_view">MapViewActivity</string>
-    <string name="default_web_client_id">506744442690-o75l7tl15k3ej6v716rd323u7odpbeaj.apps.googleusercontent.com</string>
-
 </resources>
