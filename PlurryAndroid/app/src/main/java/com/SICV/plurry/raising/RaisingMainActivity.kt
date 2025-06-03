@@ -8,8 +8,14 @@ import android.view.ViewGroup
 import android.widget.Button
 import com.SICV.plurry.R
 import com.unity3d.player.UnityPlayerGameActivity
+import com.unity3d.player.UnityPlayer
 
 class RaisingMainActivity : UnityPlayerGameActivity() {
+
+    private var currentRaisingPoint : Float = 0F;
+    private var currentRaisingAmount : Float = 100F;
+    private var currentStoryLevel : Int = 0;
+    private var currentItemAmount : Int = 0;
 
     private lateinit var androidUIContainer: ViewGroup
 
@@ -78,7 +84,23 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     }
 
     private fun showFloatingPopup() {
-        val intent = Intent(this, RaisingStoryActivity::class.java)
-        startActivity(intent)
+/*        val intent = Intent(this, RaisingStoryActivity::class.java)
+        startActivity(intent)*/
+        RaisingCharacter();
+        Log.d("AndroidToUnity", "showFloatingPopup call")
+    }
+
+    private fun RaisingCharacter() {
+        if(currentRaisingAmount > 0) {
+            currentRaisingPoint += currentRaisingAmount
+            currentRaisingAmount = 0F;
+        }
+
+        try {
+            UnityPlayer.UnitySendMessage("GameController", "PlayRaising", "")
+            Log.d("AndroidToUnity", "Message sent successfully")
+        } catch (e: Exception) {
+            Log.e("AndroidToUnity", "Failed to send message: ${e.message}")
+        }
     }
 }

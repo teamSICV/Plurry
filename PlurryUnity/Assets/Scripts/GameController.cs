@@ -1,9 +1,10 @@
 using UnityEngine;
-using TMPro; // TextMeshPro 네임스페이스 추가
 
 public class GameController : MonoBehaviour
 {
- 
+    private string displayText = "TEST";
+    public GUISkin skin;
+
     void Start()
     {
         
@@ -35,5 +36,16 @@ public class GameController : MonoBehaviour
                 activity.Call("showFloatingPopup");
             }
         }
+    }
+
+    private void PlayRaising()
+    {
+        displayText = "SUCCESS";
+    }
+
+    void OnGUI()
+    {
+        GUI.skin = skin;
+        GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height / 2 - 100, 100, 50), displayText, "Test");
     }
 }
