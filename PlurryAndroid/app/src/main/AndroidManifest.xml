@@ -29,6 +29,12 @@
         android:theme="@style/Theme.Plurry"
         tools:targetApi="31">
         <activity
+            android:name=".crewstep.CrewLineMakeCrewActivity"
+            android:exported="false" />
+        <activity
+            android:name=".crewstep.CrewLineChooseActivity"
+            android:exported="false" />
+        <activity
             android:name=".login.LoginOtherJoinActivity"
             android:exported="false" />
         <activity
