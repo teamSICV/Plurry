@@ -100,10 +100,6 @@ class CrewLineMainActivity : AppCompatActivity() {
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
     }
-    override fun onDestroy() {
-        super.onDestroy()
-        handler.removeCallbacks(timeRunnable) // 꼭 해줘야 메모리 누수 방지됨
-    }
 
 
     private fun setChartData(entries: List<BarEntry>,labels: List<String>, labelName: String) {
