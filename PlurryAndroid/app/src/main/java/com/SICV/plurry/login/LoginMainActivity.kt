@@ -102,6 +102,7 @@ class LoginMainActivity : ComponentActivity() {
                 Log.e("Login", "CredentialManager 실패: ${e.message}")
                 showLoginError()
                 btnOtherLogin.visibility = View.VISIBLE
+                googleSignInWithIntent()
             } catch (e: Exception) {
                 Log.e("Login", "CredentialManager 에러: ${e.message}")
                 showLoginError()
