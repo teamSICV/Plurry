@@ -113,7 +113,7 @@ class MapViewActivity : AppCompatActivity() {
         }
 
         btnExplore.setOnClickListener {
-            PointSelectDialogFragment().show(supportFragmentManager, "PointSelectDialog")
+            PointSelectFragment().show(supportFragmentManager, "PointSelectDialog")
         }
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment

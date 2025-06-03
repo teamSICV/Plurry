@@ -8,6 +8,7 @@ import android.view.*
 import android.widget.*
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.DialogFragment
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -16,7 +17,7 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.SICV.plurry.R
 
-class PointSelectDialogFragment : DialogFragment() {
+class PointSelectFragment : DialogFragment() {
 
     private lateinit var spinner: Spinner
     private lateinit var confirmBtn: Button
@@ -24,7 +25,7 @@ class PointSelectDialogFragment : DialogFragment() {
     private lateinit var adapter: ExploreAdapter
     private val placeList = mutableListOf<PlaceData>()
 
-    private val radiusValues = listOf(1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0) // km
+    private val radiusValues = listOf(1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)
 
     private var userLat = 0.0
     private var userLng = 0.0
@@ -47,14 +48,13 @@ class PointSelectDialogFragment : DialogFragment() {
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = spinnerAdapter
 
-
         confirmBtn.setOnClickListener {
             val selectedRadius = radiusValues.getOrNull(spinner.selectedItemPosition) ?: 1.0
             updateUserLocationThenLoad(selectedRadius)
         }
 
         adapter = ExploreAdapter(placeList) { place ->
-            ExploreConfirmDialog(place).show(parentFragmentManager, "ExploreConfirmDialog")
+            ExploreConfirmDialog(place, this).show(parentFragmentManager, "ExploreConfirmDialog")
         }
         recyclerView.adapter = adapter
         recyclerView.layoutManager = GridLayoutManager(context, 3)
@@ -134,7 +134,8 @@ class PointSelectDialogFragment : DialogFragment() {
         }
     }
 
-    class ExploreConfirmDialog(private val place: PlaceData) : DialogFragment() {
+    class ExploreConfirmDialog(private val place: PlaceData, private val parent: DialogFragment) : DialogFragment() {
+
         override fun onCreateDialog(savedInstanceState: Bundle?): android.app.Dialog {
             val view = LayoutInflater.from(requireContext())
                 .inflate(R.layout.activity_goingwalk_exploreconfirm, null)
@@ -149,10 +150,21 @@ class PointSelectDialogFragment : DialogFragment() {
                 .setView(view)
                 .create()
 
-            btnCancel.setOnClickListener { dialog.dismiss() }
+            btnCancel.setOnClickListener {
+                dismiss()
+            }
+
             btnStart.setOnClickListener {
-                Toast.makeText(context, "탐색 시작 (추후 구현)", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
+                val fragment = ExploreTrackingFragment.newInstance(place.lat, place.lng)
+                val activity = activity as? AppCompatActivity ?: return@setOnClickListener
+
+                activity.supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainerExplore, fragment)
+                    .addToBackStack(null)
+                    .commit()
+
+                parent.dismiss() // ✅ 거리 선택 다이얼로그 닫기
+                dismiss()        // ✅ 탐색 확인 다이얼로그 닫기
             }
 
             return dialog
