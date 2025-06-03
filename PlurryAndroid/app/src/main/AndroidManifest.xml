@@ -31,7 +31,7 @@
         <activity
             android:name=".raising.RaisingStoryActivity"
             android:theme="@style/PopupTheme"
-            android:exported="false" />l
+            android:exported="false" />
         <activity
             android:name=".crewstep.CrewLineMakeCrewActivity"
             android:exported="false" />
