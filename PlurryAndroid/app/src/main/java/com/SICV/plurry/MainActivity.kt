@@ -4,7 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.SICV.plurry.crewstep.CrewLineChooseActivity
 import com.SICV.plurry.crewstep.CrewLineMainActivity
+import com.SICV.plurry.crewstep.CrewLineMakeCrewActivity
 import com.SICV.plurry.goingwalk.GoingWalkMainActivity
 import com.SICV.plurry.pointrecord.PointRecordMainActivity
 import com.SICV.plurry.raising.RaisingMainActivity
@@ -39,7 +41,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonCrewLine.setOnClickListener{
-            val intent = Intent(this, CrewLineMainActivity::class.java)
+            val intent = Intent(this, CrewLineChooseActivity::class.java)
             startActivity(intent)
         }
 
