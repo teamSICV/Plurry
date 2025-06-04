@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
@@ -41,6 +42,13 @@ class LoginMainActivity : ComponentActivity() {
 
         auth = FirebaseAuth.getInstance()
         credentialManager = CredentialManager.create(this)
+
+        val skipLogin = findViewById<TextView>(R.id.SkipLogin)
+
+        skipLogin.setOnClickListener{
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        }
 
         // GoogleSignInOptions for fallback
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
