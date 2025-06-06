@@ -113,4 +113,8 @@ dependencies {
         "include" to listOf("*.jar")
     )))
 
+    //onnx library
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.15.1")
+
+
 }
