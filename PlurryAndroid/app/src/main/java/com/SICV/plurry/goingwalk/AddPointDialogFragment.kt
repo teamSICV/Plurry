@@ -113,7 +113,7 @@ class AddPointDialogFragment : DialogFragment() {
                                     .addOnSuccessListener {
                                         Toast.makeText(requireContext(), "🔥 장소 저장 완료!", Toast.LENGTH_SHORT).show()
                                         completionLayout.visibility = View.VISIBLE
-                                        tvReward.text = "보상 10금화 지급!"
+                                        tvReward.text = "보상 10xp 지급!"
 
                                         nameInputLayout.visibility = View.GONE
                                         btnSubmitName.visibility = View.GONE

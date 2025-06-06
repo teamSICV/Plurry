@@ -11,6 +11,7 @@
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -31,7 +32,7 @@
         <activity
             android:name=".raising.RaisingStoryActivity"
             android:theme="@style/PopupTheme"
-            android:exported="false" />l
+            android:exported="false" />
         <activity
             android:name=".crewstep.CrewLineMakeCrewActivity"
             android:exported="false" />

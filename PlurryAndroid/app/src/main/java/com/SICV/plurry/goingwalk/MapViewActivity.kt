@@ -36,7 +36,7 @@ class MapViewActivity : AppCompatActivity() {
 
     private var startTime: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
-    private val updateInterval = 5000L // 5초 간격
+    private val updateInterval = 5000L
 
     private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1003
 
@@ -57,6 +57,7 @@ class MapViewActivity : AppCompatActivity() {
         val btnEndWalk = findViewById<Button>(R.id.btnEndWalk)
         val btnRefreshLocation = findViewById<Button>(R.id.btnRefreshLocation)
         val btnAddPoint = findViewById<Button>(R.id.btnAddPoint)
+        val btnExplore = findViewById<Button>(R.id.btnExplore) // 🔽
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -96,7 +97,7 @@ class MapViewActivity : AppCompatActivity() {
                     val distanceKm = String.format("%.2f", totalDistance / 1000)
                     val calorieText = String.format("%.1f", totalCalories)
 
-                    val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText)
+                    val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText, startTime)
                     dialog.show(supportFragmentManager, "WalkEndDialog")
                 }
                 .addOnFailureListener {
@@ -105,12 +106,14 @@ class MapViewActivity : AppCompatActivity() {
                 }
         }
 
-        btnRefreshLocation.setOnClickListener {
-            refreshLocation()
-        }
+        btnRefreshLocation.setOnClickListener { refreshLocation() }
 
         btnAddPoint.setOnClickListener {
             AddPointDialogFragment().show(supportFragmentManager, "AddPointDialog")
+        }
+
+        btnExplore.setOnClickListener {
+            PointSelectFragment().show(supportFragmentManager, "PointSelectDialog")
         }
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
