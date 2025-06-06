@@ -4,16 +4,21 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.view.MotionEvent
 import android.widget.Button
+import android.widget.TextView
+import android.os.Handler
+import android.os.Looper
 import com.SICV.plurry.R
 import com.unity3d.player.UnityPlayerGameActivity
 import com.unity3d.player.UnityPlayer
 
 class RaisingMainActivity : UnityPlayerGameActivity() {
 
-    private var currentRaisingPoint : Float = 0F;
-    private var currentRaisingAmount : Float = 100F;
+    private var currentRaisingPoint : Int = 0;
+    private var currentRaisingAmount : Int = 100;
     private var currentStoryLevel : Int = 0;
     private var currentItemAmount : Int = 0;
 
@@ -21,8 +26,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        Log.d("MainUnityGameActivity", "Adding Android UI layer on top of Unity")
 
         try {
             // 루트 레이아웃 가져오기 (이것은 FrameLayout일 것입니다)
@@ -53,17 +56,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         handleIntent(intent)
     }
 
-    private fun setupUIElements() {
-        try {
-                val showPopupBtn = findViewById<Button>(R.id.b_PopUpTest)
-                showPopupBtn.setOnClickListener {
-                    showFloatingPopup()
-                }
-        } catch (e: Exception) {
-            Log.e("MainUnityGameActivity", "Error setting up UI elements", e)
-        }
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -83,24 +75,113 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         finish()
     }
 
-    private fun showFloatingPopup() {
-/*        val intent = Intent(this, RaisingStoryActivity::class.java)
-        startActivity(intent)*/
-        RaisingCharacter();
-        Log.d("AndroidToUnity", "showFloatingPopup call")
+    //setOnClickListener
+    private val handler = Handler(Looper.getMainLooper())
+    private var isBtnGrowingpressed = false
+
+    private fun setupUIElements() {
+        val btnQuit = findViewById<Button>(R.id.b_quit)
+        btnQuit.setOnClickListener { onUnityPlayerUnloaded() }
+
+        val btnGrowing = findViewById<Button>(R.id.b_growing)
+        btnGrowing.setOnTouchListener {_, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isBtnGrowingpressed = true
+                    GrowingRepeat()
+                }
+                MotionEvent.ACTION_UP -> { isBtnGrowingpressed = false }
+            }
+            true
+        }
+        btnGrowing.visibility = View.GONE
+        btnGrowing.isEnabled = false
+
+        val txtcurrentRaisingPoint = findViewById<TextView>(R.id.t_raisingPoint)
+        txtcurrentRaisingPoint.text = currentRaisingPoint.toString()
+
+        val txtcurrentRaisingAmount = findViewById<TextView>(R.id.t_raisingAmount)
+        txtcurrentRaisingAmount.text = currentRaisingAmount.toString()
     }
 
-    private fun RaisingCharacter() {
-        if(currentRaisingAmount > 0) {
-            currentRaisingPoint += currentRaisingAmount
-            currentRaisingAmount = 0F;
-        }
+    //Raising Section
+    private fun ProcessGrowing() {
+        val txtcurrentRaisingPoint = findViewById<TextView>(R.id.t_raisingPoint)
+        val txtcurrentRaisingAmount = findViewById<TextView>(R.id.t_raisingAmount)
 
+        if(currentRaisingAmount > 0) {
+            currentRaisingPoint += 1
+            currentRaisingAmount -= 1
+        }
+        txtcurrentRaisingPoint.text = currentRaisingPoint.toString()
+        txtcurrentRaisingAmount.text = currentRaisingAmount.toString()
+
+        //Call Unity
         try {
-            UnityPlayer.UnitySendMessage("GameController", "PlayRaising", "")
+            UnityPlayer.UnitySendMessage("GameController", "UnityProcessGrowing", "")
             Log.d("AndroidToUnity", "Message sent successfully")
         } catch (e: Exception) {
             Log.e("AndroidToUnity", "Failed to send message: ${e.message}")
         }
+    }
+
+    private fun GrowingRepeat() {
+        if(isBtnGrowingpressed) {
+            ProcessGrowing()
+            handler.postDelayed({ GrowingRepeat() }, 100)
+        }
+    }
+
+
+
+//UnityCall
+
+    private fun showFloatingPopup() {
+/*        val intent = Intent(this, RaisingStoryActivity::class.java)
+        startActivity(intent)*/
+        Log.d("AndroidToUnity", "showFloatingPopup call")
+    }
+
+    private fun AndroidProcessGrowing() {
+        Log.d("AndroidToUnity", "AndroidProcessGrowing call")
+
+        runOnUiThread {
+            val btnGrowing = findViewById<Button>(R.id.b_growing)
+            btnGrowing.visibility = View.VISIBLE
+            btnGrowing.isEnabled = true
+        }
+    }
+
+    private fun AndroidProcessStory() {
+        Log.d("AndroidToUnity", "AndroidProcessStory call")
+        try {
+            UnityPlayer.UnitySendMessage("GameController", "UnityProcessStory", "")
+            Log.d("AndroidToUnity", "Message sent successfully")
+        } catch (e: Exception) {
+            Log.e("AndroidToUnity", "Failed to send message: ${e.message}")
+        }
+
+    }
+
+    private fun AndroidProcessRanking() {
+        Log.d("AndroidToUnity", "AndroidProcessRanking call")
+        try {
+            UnityPlayer.UnitySendMessage("GameController", "UnityProcessRanking", "")
+            Log.d("AndroidToUnity", "Message sent successfully")
+        } catch (e: Exception) {
+            Log.e("AndroidToUnity", "Failed to send message: ${e.message}")
+        }
+
+    }
+
+    private fun AndroidProcessItem() {
+        Log.d("AndroidToUnity", "AndroidProcessItem call")
+        try {
+            UnityPlayer.UnitySendMessage("GameController", "UnityProcessItem", "")
+            Log.d("AndroidToUnity", "Message sent successfully")
+        } catch (e: Exception) {
+            Log.e("AndroidToUnity", "Failed to send message: ${e.message}")
+        }
+
     }
 }
