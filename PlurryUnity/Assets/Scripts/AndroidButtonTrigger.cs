@@ -18,7 +18,7 @@ public class AndroidButtonTrigger : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        Debug.Log("OnTriggerEnter Beggin");
-        gameController.GetComponent<GameController>().SendMessage("SendMessageToAndroid");
+        Debug.Log("OnTriggerEnter Beggin : " + gameObject.tag);
+        gameController.GetComponent<GameController>().SendMessage("SendCommendToAndroid", gameObject.tag);
     }
 }

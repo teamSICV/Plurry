@@ -2,28 +2,47 @@ using UnityEngine;
 
 public class GameController : MonoBehaviour
 {
-    private string displayText = "TEST";
+    private string displayText = "Unity Callback test";
     public GUISkin skin;
+    string androidFunctionName;
 
     void Start()
     {
-        
+        androidFunctionName = "";
     }
 
-    // 안드로이드에서 호출될 메소드
-    public void OnMessageReceived(string message)
-    {
 
-    }
-
-    // 안드로이드로 메시지 전송
-    public void SendMessageToAndroid()
+//Call Out Section
+    public void SendCommendToAndroid(string tagName)
     {
+        switch (tagName)
+        {
+            case "Growing":
+                androidFunctionName = "AndroidProcessGrowing";
+                break;
+
+            case "Story":
+                androidFunctionName = "AndroidProcessStory";
+                break;
+
+            case "Ranking":
+                androidFunctionName = "AndroidProcessRanking";
+                break;
+
+            case "Item":
+                androidFunctionName = "AndroidProcessItem";
+                break;
+
+            default:
+                break;
+        }
 #if UNITY_ANDROID && !UNITY_EDITOR
         CallAndroidFunction();
 #else
-        Debug.Log("안드로이드 플랫폼에서만 작동합니다.");
+        Debug.Log("안드로이드 플랫폼에서만 작동합니다. : " + androidFunctionName);
 #endif
+
+        androidFunctionName = "";
     }
 
     private void CallAndroidFunction()
@@ -32,20 +51,39 @@ public class GameController : MonoBehaviour
         {
             using (AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
             {
-                // RaisingMainActivity의 showFloatingPopup() 메서드 직접 호출
-                activity.Call("showFloatingPopup");
+                activity.Call(androidFunctionName);
             }
         }
     }
 
-    private void PlayRaising()
+
+    //Call Back Section
+    private void UnityProcessGrowing()
     {
-        displayText = "SUCCESS";
+        displayText = "Growing success";
     }
+
+    private void UnityProcessStory()
+    {
+        displayText = "Story success";
+    }
+
+    private void UnityProcessRanking()
+    {
+        displayText = "Ranking success";
+    }
+
+    private void UnityProcessItem()
+    {
+        displayText = "Item success";
+    }
+
+
+    //Debugging Section
 
     void OnGUI()
     {
         GUI.skin = skin;
-        GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height / 2 - 100, 100, 50), displayText, "Test");
+        GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height*4 / 5, 100, 50), displayText, "Test");
     }
 }

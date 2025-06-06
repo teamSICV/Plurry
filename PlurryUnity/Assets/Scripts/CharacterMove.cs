@@ -37,8 +37,10 @@ public class CharacterMove : MonoBehaviour
         Ray ray = Camera.main.ScreenPointToRay(position);
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit))
+        //if (Physics.Raycast(ray, out hit))
+        if(Physics.Raycast(ray, out hit, Mathf.Infinity, ~(1 << LayerMask.NameToLayer("Wall"))))
         {
+            Debug.Log("Raycast Hitted : " + hit.transform.tag);
             if (hit.transform.tag == "Floor")
             {
                 if (isCo)
