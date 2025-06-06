@@ -1,29 +1,41 @@
 package com.SICV.plurry.goingwalk
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.SICV.plurry.R
 import com.google.android.gms.location.*
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
+import kotlin.math.*
 
 class ExploreTrackingFragment : Fragment() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private lateinit var tvDistanceInfo: TextView
+    private lateinit var arrowImageView: ImageView
+    private lateinit var mapFragment: SupportMapFragment
 
+    private var googleMap: com.google.android.gms.maps.GoogleMap? = null
     private var targetLat = 0.0
     private var targetLng = 0.0
     private var lastNotifiedLevel = -1  // 0:100m, 1:50m, 2:10m
+    private var lastVibrationLevel = Int.MAX_VALUE  // 예: 100m 단위 진동 체크용
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,6 +45,8 @@ class ExploreTrackingFragment : Fragment() {
         val view = inflater.inflate(R.layout.activity_goingwalk_exploremain, container, false)
 
         tvDistanceInfo = view.findViewById(R.id.tvDistanceInfo)
+        arrowImageView = view.findViewById(R.id.arrowImageView)
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         arguments?.let {
@@ -40,8 +54,12 @@ class ExploreTrackingFragment : Fragment() {
             targetLng = it.getDouble("targetLng")
         }
 
-        startLocationTracking()
+        mapFragment = parentFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync { map ->
+            googleMap = map
+        }
 
+        startLocationTracking()
         return view
     }
 
@@ -55,23 +73,24 @@ class ExploreTrackingFragment : Fragment() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val current = result.lastLocation ?: return
-                val distance = calculateDistance(current.latitude, current.longitude)
 
+                val distance = calculateDistance(current.latitude, current.longitude)
                 tvDistanceInfo.text = "목표까지 남은 거리: %.1f m".format(distance)
 
-                when {
-                    distance <= 10 && lastNotifiedLevel < 2 -> {
-                        Toast.makeText(requireContext(), "🎯 목적지에 도착했습니다!", Toast.LENGTH_SHORT).show()
-                        lastNotifiedLevel = 2
-                    }
-                    distance <= 50 && lastNotifiedLevel < 1 -> {
-                        Toast.makeText(requireContext(), "📍 50m 이내에 접근했습니다", Toast.LENGTH_SHORT).show()
-                        lastNotifiedLevel = 1
-                    }
-                    distance <= 100 && lastNotifiedLevel < 0 -> {
-                        Toast.makeText(requireContext(), "📍 100m 이내에 접근했습니다", Toast.LENGTH_SHORT).show()
-                        lastNotifiedLevel = 0
-                    }
+                // 화살표 회전
+                val destLoc = Location("dest").apply {
+                    latitude = targetLat
+                    longitude = targetLng
+                }
+                val bearing = calculateBearing(current, destLoc)
+                arrowImageView.rotation = bearing
+
+
+                // 🔔 100m 단위 진동
+                val roundedLevel = (distance / 100).toInt()
+                if (roundedLevel < lastVibrationLevel) {
+                    triggerVibration()
+                    lastVibrationLevel = roundedLevel
                 }
             }
         }
@@ -96,6 +115,28 @@ class ExploreTrackingFragment : Fragment() {
             longitude = targetLng
         }
         return curLoc.distanceTo(destLoc)
+    }
+
+    private fun calculateBearing(start: Location, end: Location): Float {
+        val startLat = Math.toRadians(start.latitude)
+        val startLng = Math.toRadians(start.longitude)
+        val endLat = Math.toRadians(end.latitude)
+        val endLng = Math.toRadians(end.longitude)
+
+        val dLng = endLng - startLng
+        val y = sin(dLng) * cos(endLat)
+        val x = cos(startLat) * sin(endLat) - sin(startLat) * cos(endLat) * cos(dLng)
+        val bearing = Math.toDegrees(atan2(y, x))
+        return ((bearing + 360) % 360).toFloat()
+    }
+
+    private fun triggerVibration() {
+        val vibrator = requireContext().getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            vibrator.vibrate(500)
+        }
     }
 
     override fun onDestroyView() {
