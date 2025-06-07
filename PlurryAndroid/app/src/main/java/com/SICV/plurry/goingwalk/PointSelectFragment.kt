@@ -155,7 +155,7 @@ class PointSelectFragment : DialogFragment() {
             }
 
             btnStart.setOnClickListener {
-                val fragment = ExploreTrackingFragment.newInstance(place.lat, place.lng)
+                val fragment = ExploreTrackingFragment.newInstance(place.lat, place.lng, place.imageUrl)
                 val activity = activity as? AppCompatActivity ?: return@setOnClickListener
 
                 activity.supportFragmentManager.beginTransaction()
