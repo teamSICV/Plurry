@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@android:color/white"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- 안내 문구 -->
+        <TextView
+            android:id="@+id/tvDialogTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="장소에 도착했어요!\n사진을 찍어주세요"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:padding="12dp"
+            android:textColor="#000000" />
+
+        <!-- 포인트 장소 이미지 -->
+        <ImageView
+            android:id="@+id/ivPlaceImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="12dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_launcher_background" />
+
+        <!-- 촬영하기 / 다시 촬영하기 버튼 -->
+        <Button
+            android:id="@+id/btnMainAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="촬영하기"
+            android:layout_marginTop="20dp" />
+
+        <!-- 탐색 종료 버튼 (성공 시에만 보여짐) -->
+        <Button
+            android:id="@+id/btnSecondaryAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="탐색 종료"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</ScrollView>
+
