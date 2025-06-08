@@ -3,14 +3,22 @@ package com.SICV.plurry.goingwalk
 import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
+import androidx.core.content.FileProvider
 import androidx.fragment.app.DialogFragment
 import com.SICV.plurry.R
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ExploreResultDialogFragment : DialogFragment() {
 
@@ -22,6 +30,9 @@ class ExploreResultDialogFragment : DialogFragment() {
     private var mode: String = "confirm"
     private var imageUrl: String? = null
     private val REQUEST_IMAGE_CAPTURE = 2020
+
+    private var imageFile: File? = null
+    private var imageUri: Uri? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val builder = android.app.AlertDialog.Builder(requireContext())
@@ -80,27 +91,55 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
-    // 🔧 저장 없이 단순히 카메라 앱 실행만
     private fun launchCamera() {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         if (intent.resolveActivity(requireActivity().packageManager) != null) {
+            val photoFile = createImageFile()
+            imageFile = photoFile
+            imageUri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                photoFile
+            )
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
             startActivityForResult(intent, REQUEST_IMAGE_CAPTURE)
         } else {
             Toast.makeText(context, "카메라 앱이 없습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // 🔁 사진 찍은 후: 무조건 성공으로 처리
+    private fun createImageFile(): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = requireActivity().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir!!)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
-            ExploreResultDialogFragment
-                .newInstance("success", imageUrl ?: "")
-                .show(parentFragmentManager, "explore_success")
-
-            dismiss() // 현재 confirm 팝업 닫기
+            uploadToFirebase()
         } else {
             Toast.makeText(context, "촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun uploadToFirebase() {
+        val file = imageFile ?: return
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val fileName = "${userId}_${file.name}"
+        val storageRef = FirebaseStorage.getInstance().reference
+            .child("exploreTempImages/$fileName")
+
+        storageRef.putFile(Uri.fromFile(file))
+            .addOnSuccessListener {
+                Toast.makeText(context, "사진이 임시 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                ExploreResultDialogFragment
+                    .newInstance("success", imageUrl ?: "")
+                    .show(parentFragmentManager, "explore_success")
+                dismiss()
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "업로드 실패", Toast.LENGTH_SHORT).show()
+            }
     }
 
     companion object {
@@ -114,3 +153,4 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 }
+
