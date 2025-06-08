@@ -26,6 +26,7 @@ class CrewLineChooseActivity : AppCompatActivity() {
 
         adapter = CrewAdapter(crewList) { crew ->
             val intent = Intent(this, CrewLineMainActivity::class.java)
+            intent.putExtra("crewId", crew.crewId)
             startActivity(intent)
         }
 

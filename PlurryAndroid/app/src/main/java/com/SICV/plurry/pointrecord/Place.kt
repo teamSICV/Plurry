@@ -7,5 +7,7 @@ data class Place(
     val imageUrl : String = "",
     val description : String = "",
     val geo : GeoPoint,
-    val distanceKm : Double? = null
+    val distanceKm : Double? = null,
+    val imgUrl: String = "",
+    val placeId: String = ""
 )

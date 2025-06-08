@@ -86,6 +86,7 @@
                 tools:layout_editor_absoluteY="341dp">
 
                 <LinearLayout
+                    android:id="@+id/pointButtonContainer"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:orientation="horizontal">

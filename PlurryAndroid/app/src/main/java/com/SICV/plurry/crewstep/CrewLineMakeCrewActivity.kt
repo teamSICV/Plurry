@@ -126,7 +126,7 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
                 }
             }
 
-            Toast.makeText(this, "크루가 생성 완료", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "크루 생성 완료", Toast.LENGTH_SHORT).show()
 
             val intent = Intent(this, CrewLineMainActivity::class.java)
             intent.putExtra("crewId", crewId)
