@@ -15,14 +15,14 @@ class RaisingStoryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_raising_story)
 
-        //supportActionBar?.hide()
-/*        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        supportActionBar?.hide()
+        //window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setFinishOnTouchOutside(true)
         window.setLayout(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
         )
-        window.setGravity(Gravity.CENTER)*/
+        window.setGravity(Gravity.CENTER)
 
         setupUIElements()
     }
@@ -37,7 +37,7 @@ class RaisingStoryActivity : AppCompatActivity() {
         btnQuit.setOnClickListener { onBackPressed() }
 
         val btnStory1 = findViewById<Button>(R.id.b_story1)
-        btnQuit.setOnClickListener { onBackPressed() }
+        btnStory1.setOnClickListener { StoryPopup() }
     }
 
     private fun StoryPopup() {
