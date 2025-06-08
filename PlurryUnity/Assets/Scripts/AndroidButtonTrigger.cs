@@ -18,7 +18,21 @@ public class AndroidButtonTrigger : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        Debug.Log("OnTriggerEnter Beggin");
-        gameController.GetComponent<GameController>().SendMessage("SendMessageToAndroid");
+        if(other.tag == "Player")
+        {
+            string functionName = "Unity" + gameObject.tag + "TriggerEnter";
+            Debug.Log("OnTriggerEnter Beggin : " + functionName);
+            gameController.GetComponent<GameController>().SendMessage("SendCommendToAndroid", functionName);
+        }
+    }
+
+    void OnTriggerExit(Collider other)
+    {
+        if (other.tag == "Player")
+        {
+            string functionName = "Unity" + gameObject.tag + "TriggerExit";
+            Debug.Log("OnTriggerEnd Beggin : " + functionName);
+            gameController.GetComponent<GameController>().SendMessage("SendCommendToAndroid", functionName);
+        }
     }
 }

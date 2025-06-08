@@ -5,6 +5,11 @@ TagManager:
   serializedVersion: 3
   tags:
   - Floor
+  - Wall
+  - Growing
+  - Story
+  - Ranking
+  - Item
   layers:
   - Default
   - TransparentFX
@@ -14,7 +19,7 @@ TagManager:
   - UI
   - Player
   - Mark
-  - 
+  - Wall
   - 
   - 
   - 
