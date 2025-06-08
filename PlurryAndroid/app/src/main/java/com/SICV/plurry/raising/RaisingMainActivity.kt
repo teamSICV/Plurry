@@ -154,6 +154,9 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
     private fun AndroidProcessStory() {
         Log.d("AndroidToUnity", "AndroidProcessStory call")
+        val intent = Intent(this, RaisingStoryActivity::class.java)
+        startActivity(intent)
+
         try {
             UnityPlayer.UnitySendMessage("GameController", "UnityProcessStory", "")
             Log.d("AndroidToUnity", "Message sent successfully")
