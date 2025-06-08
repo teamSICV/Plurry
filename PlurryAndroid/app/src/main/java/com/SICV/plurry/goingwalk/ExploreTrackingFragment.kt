@@ -20,8 +20,10 @@ import androidx.fragment.app.Fragment
 import com.SICV.plurry.R
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
 import kotlin.math.*
+import android.net.Uri
+import android.util.Log
+import com.bumptech.glide.Glide
 
 class ExploreTrackingFragment : Fragment() {
 
@@ -29,13 +31,15 @@ class ExploreTrackingFragment : Fragment() {
     private lateinit var locationCallback: LocationCallback
     private lateinit var tvDistanceInfo: TextView
     private lateinit var arrowImageView: ImageView
+    private lateinit var imgTargetPreview: ImageView
     private lateinit var mapFragment: SupportMapFragment
 
     private var googleMap: com.google.android.gms.maps.GoogleMap? = null
     private var targetLat = 0.0
     private var targetLng = 0.0
-    private var lastNotifiedLevel = -1  // 0:100m, 1:50m, 2:10m
-    private var lastVibrationLevel = Int.MAX_VALUE  // 예: 100m 단위 진동 체크용
+    private var lastVibrationLevel = Int.MAX_VALUE
+    private var arrivalDialogShown = false
+    private var targetImageUrl: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,12 +50,21 @@ class ExploreTrackingFragment : Fragment() {
 
         tvDistanceInfo = view.findViewById(R.id.tvDistanceInfo)
         arrowImageView = view.findViewById(R.id.arrowImageView)
+        imgTargetPreview = view.findViewById(R.id.imgTargetPreview)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         arguments?.let {
             targetLat = it.getDouble("targetLat")
             targetLng = it.getDouble("targetLng")
+            targetImageUrl = it.getString("targetImageUrl")
+        }
+
+        // 목표 장소 이미지 로딩
+        targetImageUrl?.let { url ->
+            Glide.with(this)
+                .load(url)
+                .into(imgTargetPreview)
         }
 
         mapFragment = parentFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
@@ -73,11 +86,9 @@ class ExploreTrackingFragment : Fragment() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val current = result.lastLocation ?: return
-
                 val distance = calculateDistance(current.latitude, current.longitude)
-                tvDistanceInfo.text = "목표까지 남은 거리: %.1f m".format(distance)
+                tvDistanceInfo.text = "남은 거리: %.1f m".format(distance)
 
-                // 화살표 회전
                 val destLoc = Location("dest").apply {
                     latitude = targetLat
                     longitude = targetLng
@@ -85,12 +96,19 @@ class ExploreTrackingFragment : Fragment() {
                 val bearing = calculateBearing(current, destLoc)
                 arrowImageView.rotation = bearing
 
-
-                // 🔔 100m 단위 진동
                 val roundedLevel = (distance / 100).toInt()
                 if (roundedLevel < lastVibrationLevel) {
                     triggerVibration()
                     lastVibrationLevel = roundedLevel
+                }
+
+                if (distance < 50 && !arrivalDialogShown) {
+                    arrivalDialogShown = true
+                    targetImageUrl?.let { url ->
+                        ExploreResultDialogFragment
+                            .newInstance("confirm", url)
+                            .show(parentFragmentManager, "explore_confirm")
+                    }
                 }
             }
         }
@@ -144,15 +162,31 @@ class ExploreTrackingFragment : Fragment() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
+    fun onPhotoTaken(photoUri: Uri) {
+        Log.d("Explore", "onPhotoTaken 호출됨! URI: $photoUri")
+
+        targetImageUrl?.let { url ->
+            Log.d("Explore", "imageUrl 전달됨: $url")
+
+            ExploreResultDialogFragment
+                .newInstance("fail", url)
+                .show(parentFragmentManager, "explore_result")
+
+            Log.d("Explore", "팝업 show() 호출 완료!")
+        } ?: run {
+            Log.e("Explore", "targetImageUrl 가 null이야!!")
+        }
+    }
+
     companion object {
-        fun newInstance(lat: Double, lng: Double): ExploreTrackingFragment {
+        fun newInstance(lat: Double, lng: Double, imageUrl: String): ExploreTrackingFragment {
             return ExploreTrackingFragment().apply {
                 arguments = Bundle().apply {
                     putDouble("targetLat", lat)
                     putDouble("targetLng", lng)
+                    putString("targetImageUrl", imageUrl)
                 }
             }
         }
     }
 }
-
