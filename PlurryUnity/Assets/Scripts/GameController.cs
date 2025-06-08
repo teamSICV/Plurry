@@ -13,29 +13,13 @@ public class GameController : MonoBehaviour
 
 
 //Call Out Section
-    public void SendCommendToAndroid(string tagName)
+    public void SendCommendToAndroid(string functionName)
     {
-        switch (tagName)
+        if(functionName != "")
         {
-            case "Growing":
-                androidFunctionName = "AndroidProcessGrowing";
-                break;
-
-            case "Story":
-                androidFunctionName = "AndroidProcessStory";
-                break;
-
-            case "Ranking":
-                androidFunctionName = "AndroidProcessRanking";
-                break;
-
-            case "Item":
-                androidFunctionName = "AndroidProcessItem";
-                break;
-
-            default:
-                break;
+            androidFunctionName = functionName; 
         }
+
 #if UNITY_ANDROID && !UNITY_EDITOR
         CallAndroidFunction();
 #else
