@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/transparent">
 
-    <!-- 거리 정보 텍스트 -->
+    <!-- 실시간 정보 박스 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -16,13 +16,31 @@
         android:layout_gravity="top"
         android:elevation="8dp">
 
-        <TextView
-            android:id="@+id/tvDistanceInfo"
-            android:layout_width="wrap_content"
+        <!-- 거리 + 이미지 -->
+        <LinearLayout
+            android:id="@+id/layoutDistanceInfo"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="목표까지 남은 거리: --- m"
-            android:textSize="18sp"
-            android:textColor="#000000" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvDistanceInfo"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="남은 거리: --- m"
+                android:textSize="18sp"
+                android:textColor="#000000" />
+
+            <ImageView
+                android:id="@+id/imgTargetPreview"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_marginStart="8dp"
+                android:scaleType="centerCrop"
+                android:contentDescription="목표 장소 이미지" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- 방향 화살표 이미지 -->
@@ -36,5 +54,3 @@
         android:src="@drawable/ic_arrow"
         android:contentDescription="방향 화살표" />
 </FrameLayout>
-
-
