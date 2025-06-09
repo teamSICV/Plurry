@@ -9,7 +9,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -53,11 +53,16 @@ class MapViewActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map_view)
 
+        // 🔒 뒤로가기 무시
+        onBackPressedDispatcher.addCallback(this) {
+            // 아무 동작도 하지 않음
+        }
+
         walkInfoText = findViewById(R.id.walkIZnfo)
         val btnEndWalk = findViewById<Button>(R.id.btnEndWalk)
         val btnRefreshLocation = findViewById<Button>(R.id.btnRefreshLocation)
         val btnAddPoint = findViewById<Button>(R.id.btnAddPoint)
-        val btnExplore = findViewById<Button>(R.id.btnExplore) // 🔽
+        val btnExplore = findViewById<Button>(R.id.btnExplore)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -101,7 +106,6 @@ class MapViewActivity : AppCompatActivity() {
                     dialog.show(supportFragmentManager, "WalkEndDialog")
                 }
                 .addOnFailureListener {
-                    Toast.makeText(this, "피트니스 데이터 불러오기 실패", Toast.LENGTH_SHORT).show()
                     Log.e("GoogleFit", "산책 종료 시 데이터 로드 실패", it)
                 }
         }
@@ -154,7 +158,6 @@ class MapViewActivity : AppCompatActivity() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
