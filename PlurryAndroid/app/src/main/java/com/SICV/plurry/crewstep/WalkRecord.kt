@@ -3,17 +3,22 @@ package com.SICV.plurry.crewstep
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 data class WalkRecord(
-    val userId: String,
-    val time: String, // 예: "2025-04-10 10:10"
+    val name: String,
+    val time: String,
     val distance: String,
     val duration: String,
     val calories: String
 ) {
     fun getParsedTime(): Date? {
         return try {
-            SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).parse(time)
+            val koreaTimeZone = TimeZone.getTimeZone("Asia/Seoul")
+            val koreaLocale = Locale.KOREA
+            val formatter = SimpleDateFormat("yy-MM-dd HH:mm", koreaLocale)
+            formatter.timeZone = koreaTimeZone
+            formatter.parse(time)
         } catch (e: Exception) {
             null
         }
