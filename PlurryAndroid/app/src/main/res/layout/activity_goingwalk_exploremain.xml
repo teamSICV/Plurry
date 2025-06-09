@@ -43,6 +43,19 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- 탐색 종료 버튼 -->
+    <Button
+        android:id="@+id/btnExitExplore"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="탐색 종료"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="190dp"
+        android:backgroundTint="#438cf3"
+        android:textColor="#000000"
+        android:elevation="6dp" />
+
     <!-- 방향 화살표 이미지 -->
     <ImageView
         android:id="@+id/arrowImageView"
@@ -53,4 +66,6 @@
         android:layout_marginBottom="100dp"
         android:src="@drawable/ic_arrow"
         android:contentDescription="방향 화살표" />
+
 </FrameLayout>
+

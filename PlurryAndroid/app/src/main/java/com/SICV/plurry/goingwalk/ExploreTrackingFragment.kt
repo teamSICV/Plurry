@@ -12,9 +12,11 @@ import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.SICV.plurry.R
@@ -32,12 +34,14 @@ class ExploreTrackingFragment : Fragment() {
     private lateinit var tvDistanceInfo: TextView
     private lateinit var arrowImageView: ImageView
     private lateinit var imgTargetPreview: ImageView
+    private lateinit var btnExitExplore: Button
     private lateinit var mapFragment: SupportMapFragment
 
     private var googleMap: com.google.android.gms.maps.GoogleMap? = null
     private var targetLat = 0.0
     private var targetLng = 0.0
     private var lastVibrationLevel = Int.MAX_VALUE
+    private var lastLoggedDistanceLevel = -1
     private var arrivalDialogShown = false
     private var targetImageUrl: String? = null
 
@@ -51,6 +55,7 @@ class ExploreTrackingFragment : Fragment() {
         tvDistanceInfo = view.findViewById(R.id.tvDistanceInfo)
         arrowImageView = view.findViewById(R.id.arrowImageView)
         imgTargetPreview = view.findViewById(R.id.imgTargetPreview)
+        btnExitExplore = view.findViewById(R.id.btnExitExplore)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
@@ -60,12 +65,22 @@ class ExploreTrackingFragment : Fragment() {
             targetImageUrl = it.getString("targetImageUrl")
         }
 
-        // 목표 장소 이미지 로딩
         targetImageUrl?.let { url ->
             Glide.with(this)
                 .load(url)
                 .into(imgTargetPreview)
         }
+
+        btnExitExplore.setOnClickListener {
+            parentFragmentManager.popBackStack() // 탐색 종료 → 산책 모드로 복귀
+        }
+
+        // ✅ 뒤로가기 버튼 비활성화 처리
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // 뒤로가기 무시
+            }
+        })
 
         mapFragment = parentFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync { map ->
@@ -100,6 +115,18 @@ class ExploreTrackingFragment : Fragment() {
                 if (roundedLevel < lastVibrationLevel) {
                     triggerVibration()
                     lastVibrationLevel = roundedLevel
+                }
+
+                val currentLevel50m = (distance / 50).toInt()
+                if (currentLevel50m != lastLoggedDistanceLevel) {
+                    if (lastLoggedDistanceLevel != -1) {
+                        if (currentLevel50m < lastLoggedDistanceLevel) {
+                            Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
+                        } else {
+                            Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
+                        }
+                    }
+                    lastLoggedDistanceLevel = currentLevel50m
                 }
 
                 if (distance < 50 && !arrivalDialogShown) {

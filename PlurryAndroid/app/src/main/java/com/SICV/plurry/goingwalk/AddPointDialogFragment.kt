@@ -31,6 +31,7 @@ class AddPointDialogFragment : DialogFragment() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
     private lateinit var imageUri: Uri
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var isUploading = false  // ✅ 중복 업로드 방지용 플래그
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_point, null)
@@ -75,6 +76,9 @@ class AddPointDialogFragment : DialogFragment() {
         }
 
         btnConfirm.setOnClickListener {
+            if (isUploading) return@setOnClickListener  // ✅ 이미 업로드 중이면 무시
+            isUploading = true                          // ✅ 업로드 시작
+
             if (ActivityCompat.checkSelfPermission(
                     requireContext(),
                     android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -85,20 +89,19 @@ class AddPointDialogFragment : DialogFragment() {
                     arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                     LOCATION_PERMISSION_REQUEST_CODE
                 )
+                isUploading = false  // 권한 요청 시 업로드 취소
                 return@setOnClickListener
             }
 
             fusedLocationClient.lastLocation
                 .addOnSuccessListener { location: Location? ->
                     if (location != null) {
-                        // 이미지 Firebase Storage에 업로드
                         val storageRef = FirebaseStorage.getInstance().reference
                         val timeStamp = System.currentTimeMillis()
                         val imageRef = storageRef.child("places/${timeStamp}.jpg")
 
                         imageRef.putFile(imageUri).addOnSuccessListener {
                             imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                                // Firestore 저장
                                 val placeData = hashMapOf(
                                     "name" to etPlaceName.text.toString().trim(),
                                     "geo" to GeoPoint(location.latitude, location.longitude),
@@ -111,7 +114,6 @@ class AddPointDialogFragment : DialogFragment() {
                                     .collection("Places")
                                     .add(placeData)
                                     .addOnSuccessListener {
-                                        Toast.makeText(requireContext(), "🔥 장소 저장 완료!", Toast.LENGTH_SHORT).show()
                                         completionLayout.visibility = View.VISIBLE
                                         tvReward.text = "보상 10xp 지급!"
 
@@ -122,17 +124,28 @@ class AddPointDialogFragment : DialogFragment() {
                                         btnConfirm.visibility = View.GONE
                                         btnClose.visibility = View.GONE
                                         photoActions.visibility = View.GONE
+
+                                        isUploading = false  // ✅ 완료 후 플래그 해제
                                     }
                                     .addOnFailureListener {
                                         Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
+                                        isUploading = false
                                     }
+                            }.addOnFailureListener {
+                                Toast.makeText(requireContext(), "❌ URL 획득 실패", Toast.LENGTH_SHORT).show()
+                                isUploading = false
                             }
                         }.addOnFailureListener {
                             Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
+                            isUploading = false
                         }
                     } else {
                         Toast.makeText(requireContext(), "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                        isUploading = false
                     }
+                }.addOnFailureListener {
+                    Toast.makeText(requireContext(), "위치 획득 실패", Toast.LENGTH_SHORT).show()
+                    isUploading = false
                 }
         }
 

@@ -24,6 +24,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
     private lateinit var placeImageView: ImageView
     private lateinit var titleTextView: TextView
+    private lateinit var rewardTextView: TextView
     private lateinit var mainActionButton: Button
     private lateinit var secondaryButton: Button
 
@@ -40,6 +41,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         titleTextView = view.findViewById(R.id.tvDialogTitle)
         placeImageView = view.findViewById(R.id.ivPlaceImage)
+        rewardTextView = view.findViewById(R.id.tvRewardInfo)
         mainActionButton = view.findViewById(R.id.btnMainAction)
         secondaryButton = view.findViewById(R.id.btnSecondaryAction)
 
@@ -61,6 +63,7 @@ class ExploreResultDialogFragment : DialogFragment() {
         when (mode) {
             "confirm" -> {
                 titleTextView.text = "장소에 도착했어요!\n사진을 찍어주세요"
+                rewardTextView.visibility = View.GONE
                 mainActionButton.text = "촬영하기"
                 secondaryButton.visibility = View.GONE
 
@@ -71,6 +74,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
             "fail" -> {
                 titleTextView.text = "사진이 일치하지 않아요\n다시 시도해볼까요?"
+                rewardTextView.visibility = View.GONE
                 mainActionButton.text = "다시 촬영하기"
                 secondaryButton.visibility = View.GONE
 
@@ -81,11 +85,13 @@ class ExploreResultDialogFragment : DialogFragment() {
 
             "success" -> {
                 titleTextView.text = "탐색 성공!\n보상을 획득했어요!"
+                rewardTextView.visibility = View.VISIBLE
                 mainActionButton.visibility = View.GONE
                 secondaryButton.visibility = View.VISIBLE
 
                 secondaryButton.setOnClickListener {
                     dismiss()
+                    activity?.supportFragmentManager?.popBackStack()
                 }
             }
         }
@@ -103,8 +109,6 @@ class ExploreResultDialogFragment : DialogFragment() {
             )
             intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
             startActivityForResult(intent, REQUEST_IMAGE_CAPTURE)
-        } else {
-            Toast.makeText(context, "카메라 앱이 없습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -117,8 +121,6 @@ class ExploreResultDialogFragment : DialogFragment() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
             uploadToFirebase()
-        } else {
-            Toast.makeText(context, "촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -131,14 +133,13 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         storageRef.putFile(Uri.fromFile(file))
             .addOnSuccessListener {
-                Toast.makeText(context, "사진이 임시 저장되었습니다.", Toast.LENGTH_SHORT).show()
                 ExploreResultDialogFragment
                     .newInstance("success", imageUrl ?: "")
                     .show(parentFragmentManager, "explore_success")
                 dismiss()
             }
             .addOnFailureListener {
-                Toast.makeText(context, "업로드 실패", Toast.LENGTH_SHORT).show()
+                // 실패 시 아무 동작 없음
             }
     }
 
@@ -153,4 +154,3 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 }
-
