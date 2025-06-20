@@ -19,34 +19,50 @@ class OnnxHelper(context: Context) {
     fun preprocess(bitmap: Bitmap): FloatBuffer {
         val resized = Bitmap.createScaledBitmap(bitmap, 160, 160, true)
         val floatBuffer = FloatBuffer.allocate(3 * 160 * 160)
+        val pixels = IntArray(160 * 160)
+        resized.getPixels(pixels, 0, 160, 0, 0, 160, 160)
 
         // Normalize to [0, 1] and CHW format
-        for (c in 0..2) {
-            for (y in 0 until 160) {
-                for (x in 0 until 160) {
-                    val pixel = resized.getPixel(x, y)
-                    val value = when (c) {
-                        0 -> ((pixel shr 16) and 0xFF) / 255.0f // R
-                        1 -> ((pixel shr 8) and 0xFF) / 255.0f  // G
-                        else -> (pixel and 0xFF) / 255.0f       // B
-                    }
-                    floatBuffer.put((c * 160 * 160) + (y * 160) + x, value)
-                }
-            }
+        for (i in pixels.indices) {
+            val pixel = pixels[i]
+            val r = ((pixel shr 16) and 0xFF) / 255.0f
+            val g = ((pixel shr 8) and 0xFF) / 255.0f
+            val b = (pixel and 0xFF) / 255.0f
+
+            floatBuffer.put(i, r) // R 채널
+            floatBuffer.put(i + 160 * 160, g) // G 채널
+            floatBuffer.put(i + 160 * 160 * 2, b) // B 채널
         }
 
         return floatBuffer
     }
+    fun runInference(bitmap: Bitmap): FloatArray? {
+        return try {
+            val inputName = session.inputNames.iterator().next()
+            val inputBuffer = preprocess(bitmap)
+            val inputShape = longArrayOf(1, 3, 160, 160)
 
-    fun runInference(bitmap: Bitmap): FloatArray {
-        val inputName = session.inputNames.iterator().next()
-        val inputBuffer = preprocess(bitmap)
-        val inputShape = longArrayOf(1, 3, 160, 160)
-        val inputTensor = OnnxTensor.createTensor(ortEnv, inputBuffer, inputShape)
+            var inputTensor: OnnxTensor? = null
+            var output: OrtSession.Result? = null
 
-        val output = session.run(mapOf(inputName to inputTensor)) // 추론 수행
-        val result = output[0].value as Array<FloatArray>
-        return result[0] // 512차원 벡터 하나 반환
+            try {
+                inputTensor = OnnxTensor.createTensor(ortEnv, inputBuffer, inputShape)
+                output = session.run(mapOf(inputName to inputTensor))
+                val result = output[0].value as Array<FloatArray>
+                result[0]
+            } finally {
+                inputTensor?.close()
+                output?.close()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("OnnxHelper", "추론 실패: ${e.message}")
+            null
         }
+    }
+
+    // 클래스 해제시 세션 정리
+    fun close() {
+        session.close()
+    }
 
 }

@@ -11,6 +11,7 @@ import com.SICV.plurry.raising.RaisingMainActivity
 import com.SICV.plurry.ranking.RankingMainActivity
 
 
+
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +50,11 @@ class MainActivity : AppCompatActivity() {
         buttonRanking.setOnClickListener{
             val intent = Intent(this, RankingMainActivity::class.java)
             startActivity(intent)
+        }
+
+        val testButton: Button = findViewById(R.id.b_ranking)
+        testButton.setOnClickListener {
+            startActivity(Intent(this, TestComparisonActivity::class.java))
         }
     }
 }
