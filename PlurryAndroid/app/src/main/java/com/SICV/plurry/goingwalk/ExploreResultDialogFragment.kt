@@ -3,6 +3,8 @@ package com.SICV.plurry.goingwalk
 import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -13,22 +15,20 @@ import android.widget.*
 import androidx.core.content.FileProvider
 import androidx.fragment.app.DialogFragment
 import com.SICV.plurry.R
+import com.SICV.plurry.onnx.OnnxComparator
+import com.SICV.plurry.onnx.OnnxHelper
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
-//유사도 비교 통합 과정에서 추가된 부분
-import java.net.URL
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.SICV.plurry.onnx.OnnxHelper
-import com.SICV.plurry.onnx.OnnxComparator
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import java.io.File
+import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ExploreResultDialogFragment : DialogFragment() {
 
@@ -38,13 +38,13 @@ class ExploreResultDialogFragment : DialogFragment() {
     private lateinit var mainActionButton: Button
     private lateinit var secondaryButton: Button
 
-    //onnx helper 추가
     private lateinit var onnxHelper: OnnxHelper
 
     private var mode: String = "confirm"
     private var imageUrl: String? = null
-    private val REQUEST_IMAGE_CAPTURE = 2020
+    private var placeId: String? = null
 
+    private val REQUEST_IMAGE_CAPTURE = 2020
     private var imageFile: File? = null
     private var imageUri: Uri? = null
 
@@ -58,16 +58,14 @@ class ExploreResultDialogFragment : DialogFragment() {
         mainActionButton = view.findViewById(R.id.btnMainAction)
         secondaryButton = view.findViewById(R.id.btnSecondaryAction)
 
-        // ONNX Helper 초기화
         onnxHelper = OnnxHelper(requireContext())
 
         mode = arguments?.getString("mode") ?: "confirm"
         imageUrl = arguments?.getString("imageUrl")
+        placeId = arguments?.getString("placeId")
 
         imageUrl?.let {
-            Glide.with(this)
-                .load(it)
-                .into(placeImageView)
+            Glide.with(this).load(it).into(placeImageView)
         }
 
         setupDialogByMode()
@@ -83,9 +81,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                 mainActionButton.text = "촬영하기"
                 secondaryButton.visibility = View.GONE
 
-                mainActionButton.setOnClickListener {
-                    launchCamera()
-                }
+                mainActionButton.setOnClickListener { launchCamera() }
             }
 
             "fail" -> {
@@ -95,9 +91,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                 mainActionButton.text = "다시 촬영하기"
                 secondaryButton.visibility = View.GONE
 
-                mainActionButton.setOnClickListener {
-                    launchCamera()
-                }
+                mainActionButton.setOnClickListener { launchCamera() }
             }
 
             "success" -> {
@@ -137,38 +131,26 @@ class ExploreResultDialogFragment : DialogFragment() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == Activity.RESULT_OK) {
-            //변경 : ploadToFirebase()
             compareImages()
         }
     }
 
-//유사도 비교 통합 과정에서 추가된 부분
     private fun compareImages() {
-        // UI 업데이트 - 비교 중 표시
         titleTextView.text = "📷 이미지를 비교하고 있어요..."
         mainActionButton.isEnabled = false
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 1. 촬영한 이미지 로드
                 val userBitmap = loadImageFromFile(imageFile)
-                if (userBitmap == null) {
+                val referenceBitmap = loadImageFromUrl(imageUrl)
+
+                if (userBitmap == null || referenceBitmap == null) {
                     withContext(Dispatchers.Main) {
                         showComparisonResult(false, 0f, "이미지 로드 실패")
                     }
                     return@launch
                 }
 
-                // 2. 참조 이미지 로드 (imageUrl에서)
-                val referenceBitmap = loadImageFromUrl(imageUrl)
-                if (referenceBitmap == null) {
-                    withContext(Dispatchers.Main) {
-                        showComparisonResult(false, 0f, "참조 이미지 로드 실패")
-                    }
-                    return@launch
-                }
-
-                // 3. ONNX 모델로 특징 추출
                 val userFeatures = onnxHelper.runInference(userBitmap)
                 val referenceFeatures = onnxHelper.runInference(referenceBitmap)
 
@@ -179,20 +161,14 @@ class ExploreResultDialogFragment : DialogFragment() {
                     return@launch
                 }
 
-                // 4. 코사인 유사도 계산
                 val similarity = OnnxComparator.cosineSimilarity(userFeatures, referenceFeatures)
-
-                // 5. 결과 판정 (임계값 0.8)
                 val threshold = 0.8f
                 val isMatch = similarity >= threshold
 
-                // 6. UI 업데이트
                 withContext(Dispatchers.Main) {
                     if (isMatch) {
-                        // 성공 시 Firebase 업로드 후 성공 화면
                         uploadToFirebase()
                     } else {
-                        // 실패 시 재촬영 옵션
                         showComparisonResult(false, similarity, null)
                     }
                 }
@@ -206,11 +182,7 @@ class ExploreResultDialogFragment : DialogFragment() {
     }
 
     private fun loadImageFromFile(file: File?): Bitmap? {
-        return try {
-            file?.let { BitmapFactory.decodeFile(it.absolutePath) }
-        } catch (e: Exception) {
-            null
-        }
+        return try { file?.let { BitmapFactory.decodeFile(it.absolutePath) } } catch (e: Exception) { null }
     }
 
     private fun loadImageFromUrl(url: String?): Bitmap? {
@@ -222,20 +194,12 @@ class ExploreResultDialogFragment : DialogFragment() {
                 val inputStream = connection.getInputStream()
                 BitmapFactory.decodeStream(inputStream)
             }
-        } catch (e: Exception) {
-            null
-        }
+        } catch (e: Exception) { null }
     }
 
     private fun showComparisonResult(isSuccess: Boolean, similarity: Float, errorMessage: String?) {
-        if (isSuccess) {
-            // 성공 모드로 전환 (이미 uploadToFirebase에서 처리됨)
-            return
-        } else {
-            // 실패 모드로 전환
-            val failDialog = ExploreResultDialogFragment
-                .newInstance("fail", imageUrl ?: "")
-
+        if (!isSuccess) {
+            val failDialog = newInstance("fail", imageUrl ?: "", placeId ?: "")
             failDialog.show(parentFragmentManager, "explore_fail")
             dismiss()
         }
@@ -252,35 +216,58 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         storageRef.putFile(Uri.fromFile(file))
             .addOnSuccessListener {
-                // 업로드 성공 시 성공 화면으로
-                val successDialog = ExploreResultDialogFragment
-                    .newInstance("success", imageUrl ?: "")
-
-                successDialog.show(parentFragmentManager, "explore_success")
-                dismiss()
+                storageRef.downloadUrl.addOnSuccessListener { uri ->
+                    saveImageUrlToFirestore(uri.toString())  // ✅ Firestore에 저장
+                    val successDialog = newInstance("success", imageUrl ?: "", placeId ?: "")
+                    successDialog.show(parentFragmentManager, "explore_success")
+                    dismiss()
+                }
             }
             .addOnFailureListener {
-                // 업로드 실패 시
                 titleTextView.text = "업로드 실패\n다시 시도해주세요"
                 mainActionButton.isEnabled = true
             }
     }
 
+    private fun saveImageUrlToFirestore(imageDownloadUrl: String) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val firestore = FirebaseFirestore.getInstance()
+
+        // 경로: Users/{uid}/walk/{walkId}/visitedPlace/
+        val visitedPlaceRef = firestore
+            .collection("Users")
+            .document(userId)
+            .collection("walk")
+            .document("latest")  // TODO: 필요하면 진짜 walkId로 교체
+            .collection("visitedPlace")
+
+        val data = hashMapOf(
+            "imgUrl" to imageDownloadUrl,
+            "placeId" to placeId,
+            "timestamp" to System.currentTimeMillis()
+        )
+
+        visitedPlaceRef.add(data)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        if (::onnxHelper.isInitialized) {
-            onnxHelper.close()
-        }
+        if (::onnxHelper.isInitialized) onnxHelper.close()
     }
-//위에서부터 여기까지 추가됨
+
     companion object {
-        fun newInstance(mode: String, imageUrl: String): ExploreResultDialogFragment {
+        fun newInstance(mode: String, imageUrl: String, placeId: String): ExploreResultDialogFragment {
             return ExploreResultDialogFragment().apply {
                 arguments = Bundle().apply {
                     putString("mode", mode)
                     putString("imageUrl", imageUrl)
+                    putString("placeId", placeId)
                 }
             }
+        }
+
+        fun newInstance(mode: String, imageUrl: String): ExploreResultDialogFragment {
+            return newInstance(mode, imageUrl, "")
         }
     }
 }
