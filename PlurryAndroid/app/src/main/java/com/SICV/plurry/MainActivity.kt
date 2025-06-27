@@ -52,9 +52,5 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        val testButton: Button = findViewById(R.id.b_ranking)
-        testButton.setOnClickListener {
-            startActivity(Intent(this, TestComparisonActivity::class.java))
-        }
     }
 }
