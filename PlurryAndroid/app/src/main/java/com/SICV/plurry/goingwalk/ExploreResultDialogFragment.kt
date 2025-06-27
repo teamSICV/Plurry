@@ -30,6 +30,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
     private var mode: String = "confirm"
     private var imageUrl: String? = null
+    private var placeId: String? = null  // placeId 변수 추가
     private val REQUEST_IMAGE_CAPTURE = 2020
 
     private var imageFile: File? = null
@@ -47,6 +48,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         mode = arguments?.getString("mode") ?: "confirm"
         imageUrl = arguments?.getString("imageUrl")
+        placeId = arguments?.getString("placeId")  // placeId 받아오기
 
         imageUrl?.let {
             Glide.with(this)
@@ -134,7 +136,7 @@ class ExploreResultDialogFragment : DialogFragment() {
         storageRef.putFile(Uri.fromFile(file))
             .addOnSuccessListener {
                 ExploreResultDialogFragment
-                    .newInstance("success", imageUrl ?: "")
+                    .newInstance("success", imageUrl ?: "", placeId ?: "")
                     .show(parentFragmentManager, "explore_success")
                 dismiss()
             }
@@ -144,13 +146,19 @@ class ExploreResultDialogFragment : DialogFragment() {
     }
 
     companion object {
-        fun newInstance(mode: String, imageUrl: String): ExploreResultDialogFragment {
+        fun newInstance(mode: String, imageUrl: String, placeId: String): ExploreResultDialogFragment {
             return ExploreResultDialogFragment().apply {
                 arguments = Bundle().apply {
                     putString("mode", mode)
                     putString("imageUrl", imageUrl)
+                    putString("placeId", placeId)
                 }
             }
+        }
+
+        // 기존 2개 인자 버전도 남겨둠 (호환용)
+        fun newInstance(mode: String, imageUrl: String): ExploreResultDialogFragment {
+            return newInstance(mode, imageUrl, "")
         }
     }
 }

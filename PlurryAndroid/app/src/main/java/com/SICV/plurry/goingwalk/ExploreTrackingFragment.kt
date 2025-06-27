@@ -44,6 +44,7 @@ class ExploreTrackingFragment : Fragment() {
     private var lastLoggedDistanceLevel = -1
     private var arrivalDialogShown = false
     private var targetImageUrl: String? = null
+    private var placeId: String? = null  // 🔥 placeId 변수 추가
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -59,7 +60,9 @@ class ExploreTrackingFragment : Fragment() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
+        // 🔥 arguments 처리 부분 수정
         arguments?.let {
+            placeId = it.getString("placeId")
             targetLat = it.getDouble("targetLat")
             targetLng = it.getDouble("targetLng")
             targetImageUrl = it.getString("targetImageUrl")
@@ -129,13 +132,10 @@ class ExploreTrackingFragment : Fragment() {
                     lastLoggedDistanceLevel = currentLevel50m
                 }
 
+                // 🔥 도착 시 다이얼로그 호출 부분 수정
                 if (distance < 50 && !arrivalDialogShown) {
                     arrivalDialogShown = true
-                    targetImageUrl?.let { url ->
-                        ExploreResultDialogFragment
-                            .newInstance("confirm", url)
-                            .show(parentFragmentManager, "explore_confirm")
-                    }
+                    onArriveAtPlace()
                 }
             }
         }
@@ -148,6 +148,15 @@ class ExploreTrackingFragment : Fragment() {
         }
 
         fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+    }
+
+    // 🔥 장소 도착 시 호출되는 메서드 추가
+    private fun onArriveAtPlace() {
+        targetImageUrl?.let { imageUrl ->
+            ExploreResultDialogFragment
+                .newInstance("confirm", imageUrl, placeId ?: "")
+                .show(parentFragmentManager, "explore_confirm")
+        }
     }
 
     private fun calculateDistance(currentLat: Double, currentLng: Double): Float {
@@ -195,8 +204,9 @@ class ExploreTrackingFragment : Fragment() {
         targetImageUrl?.let { url ->
             Log.d("Explore", "imageUrl 전달됨: $url")
 
+            // 🔥 placeId도 함께 전달
             ExploreResultDialogFragment
-                .newInstance("fail", url)
+                .newInstance("fail", url, placeId ?: "")
                 .show(parentFragmentManager, "explore_result")
 
             Log.d("Explore", "팝업 show() 호출 완료!")
@@ -206,9 +216,11 @@ class ExploreTrackingFragment : Fragment() {
     }
 
     companion object {
-        fun newInstance(lat: Double, lng: Double, imageUrl: String): ExploreTrackingFragment {
+        // 🔥 placeId 매개변수 추가
+        fun newInstance(placeId: String, lat: Double, lng: Double, imageUrl: String): ExploreTrackingFragment {
             return ExploreTrackingFragment().apply {
                 arguments = Bundle().apply {
+                    putString("placeId", placeId)
                     putDouble("targetLat", lat)
                     putDouble("targetLng", lng)
                     putString("targetImageUrl", imageUrl)
