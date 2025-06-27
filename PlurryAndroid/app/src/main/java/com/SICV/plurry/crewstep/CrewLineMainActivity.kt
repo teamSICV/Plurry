@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
 import com.SICV.plurry.pointrecord.PointRecordMainActivity
+import com.SICV.plurry.pointrecord.PointRecordDialog
 import com.bumptech.glide.Glide
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
@@ -114,7 +115,10 @@ class CrewLineMainActivity : AppCompatActivity() {
 
                     db.collection("Places").document(placeId).get()
                         .addOnSuccessListener { placeDoc ->
-                            val imageUrl = placeDoc.getString("myImgUrl")
+                            val imageUrl = placeDoc.getString("myImgUrl") ?: ""
+                            val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
+                            val placeDescription = placeDoc.getString("description") ?: "설명 없음"
+
                             val imageButton = ImageButton(this)
                             val layoutParams = LinearLayout.LayoutParams(
                                 (100 * resources.displayMetrics.density).toInt(),
@@ -133,6 +137,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
                             imageButton.setOnClickListener {
                                 Log.d("CrewLineMain", "장소 버튼 클릭: $placeId")
+                                showPlaceDetailDialog(imageUrl, placeName, placeDescription)
                             }
 
                             pointButtonContainer.addView(imageButton)
@@ -184,6 +189,16 @@ class CrewLineMainActivity : AppCompatActivity() {
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+    }
+
+    private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String) {
+        try {
+            val dialog = PointRecordDialog.newInstance(imageUrl, name, description)
+            dialog.show(supportFragmentManager, "PlaceDetailDialog")
+        } catch (e: Exception) {
+            Log.e("CrewLineMain", "팝업 다이얼로그 표시 오류", e)
+            Toast.makeText(this, "장소 정보를 표시할 수 없습니다.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun getKoreaTimeString(): String {
@@ -264,7 +279,9 @@ class CrewLineMainActivity : AppCompatActivity() {
     data class VisitedPlace(
         val placeId: String,
         val visitTime: Long,
-        val imageUrl: String
+        val imageUrl: String,
+        val name: String = "",
+        val description: String = ""
     )
 
     private fun fetchVisitedPlacesForMembers(memberUids: List<String>, db: FirebaseFirestore, container: LinearLayout) {
@@ -293,8 +310,11 @@ class CrewLineMainActivity : AppCompatActivity() {
                                     .addOnSuccessListener { placeDoc ->
                                         if (placeDoc.exists()) {
                                             val imageUrl = placeDoc.getString("myImgUrl") ?: placeDoc.getString("imageUrl") ?: ""
+                                            val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
+                                            val placeDescription = placeDoc.getString("description") ?: "설명 없음"
+
                                             if (imageUrl.isNotEmpty()) {
-                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl))
+                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, placeName, placeDescription))
                                             }
                                         }
 
@@ -333,11 +353,11 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
 
         for (place in uniquePlaces) {
-            addPlaceImageToContainer(place.imageUrl, place.placeId, container)
+            addPlaceImageToContainer(place.imageUrl, place.placeId, place.name, place.description, container)
         }
     }
 
-    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, container: LinearLayout) {
+    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, description: String, container: LinearLayout) {
         val imageButton = ImageButton(this)
         val layoutParams = LinearLayout.LayoutParams(
             (100 * resources.displayMetrics.density).toInt(),
@@ -354,6 +374,10 @@ class CrewLineMainActivity : AppCompatActivity() {
             .placeholder(R.drawable.placeholder)
             .error(R.drawable.basiccrewprofile)
             .into(imageButton)
+
+        imageButton.setOnClickListener {
+            showPlaceDetailDialog(imageUrl, name, description)
+        }
 
         container.addView(imageButton)
     }
