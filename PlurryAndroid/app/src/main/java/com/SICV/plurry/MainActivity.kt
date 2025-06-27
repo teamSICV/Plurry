@@ -11,6 +11,7 @@ import com.SICV.plurry.raising.RaisingMainActivity
 import com.SICV.plurry.ranking.RankingMainActivity
 
 
+
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,5 +51,6 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, RankingMainActivity::class.java)
             startActivity(intent)
         }
+
     }
 }
