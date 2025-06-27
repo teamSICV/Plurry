@@ -17,7 +17,7 @@ class RaisingStoryActivity : AppCompatActivity() {
 
         supportActionBar?.hide()
         //window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        setFinishOnTouchOutside(true)
+        setFinishOnTouchOutside(false)
         window.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
