@@ -27,7 +27,7 @@ class WalkRecordAdapter(private val recordList: List<WalkRecord>) :
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val record = recordList[position]
-        holder.userId.text = record.userId
+        holder.userId.text = record.name
         holder.time.text = record.time
         holder.distance.text = record.distance
         holder.duration.text = record.duration
