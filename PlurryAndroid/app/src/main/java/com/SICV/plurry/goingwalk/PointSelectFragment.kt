@@ -100,7 +100,8 @@ class PointSelectFragment : DialogFragment() {
 
                 if (userLocation.distanceTo(placeLocation) <= radiusKm * 1000) {
                     val imgUrl = doc.getString("myImgUrl") ?: continue
-                    placeList.add(PlaceData(geo.latitude, geo.longitude, imgUrl))
+                    val placeId = doc.id // 🔥 문서 ID를 placeId로 사용
+                    placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl))
                 }
             }
 
@@ -108,7 +109,8 @@ class PointSelectFragment : DialogFragment() {
         }
     }
 
-    data class PlaceData(val lat: Double, val lng: Double, val imageUrl: String)
+    // 🔥 placeId 추가
+    data class PlaceData(val placeId: String, val lat: Double, val lng: Double, val imageUrl: String)
 
     inner class ExploreAdapter(
         private val items: List<PlaceData>,
@@ -155,7 +157,8 @@ class PointSelectFragment : DialogFragment() {
             }
 
             btnStart.setOnClickListener {
-                val fragment = ExploreTrackingFragment.newInstance(place.lat, place.lng, place.imageUrl)
+                // 🔥 placeId도 함께 전달
+                val fragment = ExploreTrackingFragment.newInstance(place.placeId, place.lat, place.lng, place.imageUrl)
                 val activity = activity as? AppCompatActivity ?: return@setOnClickListener
 
                 activity.supportFragmentManager.beginTransaction()
