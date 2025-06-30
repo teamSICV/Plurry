@@ -43,6 +43,8 @@ class CrewLineMainActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var walkRecordAdapter: WalkRecordAdapter
     private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
+
     private var crewWalkData = mutableListOf<WalkRecord>()
     private var currentCrewId = ""
 
@@ -54,11 +56,25 @@ class CrewLineMainActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val earthRadius = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        return earthRadius * c
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_crew_line_main)
 
         auth = FirebaseAuth.getInstance()
+        db = FirebaseFirestore.getInstance()
 
         val timeTextView = findViewById<TextView>(R.id.timeTextView)
         val crewNameTextView = findViewById<TextView>(R.id.textView3)
@@ -67,6 +83,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         val crewId = intent.getStringExtra("crewId") ?: ""
         currentCrewId = crewId
         val rankingButton = findViewById<ImageView>(R.id.rankingButton)
+        val crewBackBtn = findViewById<ImageView>(R.id.crewBackButton)
 
         handler = Handler(Looper.getMainLooper())
         timeRunnable = object : Runnable {
@@ -86,7 +103,9 @@ class CrewLineMainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        val db = FirebaseFirestore.getInstance()
+        crewBackBtn.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
 
         joinCrewMemberTextView.setOnClickListener {
             joinCrewMember(crewId, db)
@@ -201,6 +220,9 @@ class CrewLineMainActivity : AppCompatActivity() {
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        checkAndRequestLocationPermission()
     }
 
     private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String) {
@@ -251,7 +273,6 @@ class CrewLineMainActivity : AppCompatActivity() {
                         Toast.makeText(this, "크루에 성공적으로 가입했습니다!", Toast.LENGTH_SHORT).show()
 
                         loadCrewWalkRecords(crewId, db)
-                        loadVisitedPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
                     }
                     .addOnFailureListener { e ->
                         Toast.makeText(this, "크루 가입에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -326,8 +347,14 @@ class CrewLineMainActivity : AppCompatActivity() {
                                             val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
                                             val geoPoint = placeDoc.getGeoPoint("geo")
 
-                                            val distance = 0
-                                            val detailInfo = "추가한 유저: $addedBy\n거리: $distance"
+                                            val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
+                                                val distance = calculateDistance(myLatitude!!, myLongitude!!, geoPoint.latitude, geoPoint.longitude)
+                                                String.format("%.2f", distance) + "km"
+                                            } else {
+                                                "거리 계산 불가"
+                                            }
+
+                                            val detailInfo = "추가한 유저: $addedBy\n거리: $distanceText"
 
                                             if (imageUrl.isNotEmpty()) {
                                                 visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, "장소: $placeName", detailInfo))
@@ -342,7 +369,6 @@ class CrewLineMainActivity : AppCompatActivity() {
                             }
                         }
                     }
-
                     completedRequests++
                     if (completedRequests == memberUids.size) {
                         updateVisitedPlacesUI(visitedPlaces, container)
@@ -356,6 +382,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                 }
         }
     }
+
 
     private fun updateVisitedPlacesUI(visitedPlaces: MutableList<VisitedPlace>, container: LinearLayout) {
         val uniquePlaces = visitedPlaces
@@ -740,6 +767,81 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
 
         return monthlyData.mapIndexed { index, value -> BarEntry(index.toFloat(), value) }
+    }
+
+    private fun checkAndRequestLocationPermission() {
+        if (androidx.core.app.ActivityCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            getCurrentLocation { success ->
+                if (success) {
+                    val crewId = intent.getStringExtra("crewId") ?: ""
+                    if (crewId.isNotEmpty()) {
+                        loadCrewWalkRecords(crewId, db)
+                    }
+                }
+            }
+        } else {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    private fun getCurrentLocation(callback: (Boolean) -> Unit) {
+        if (androidx.core.app.ActivityCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    myLatitude = location.latitude
+                    myLongitude = location.longitude
+                    Log.d("CrewLineMain", "현재 위치: $myLatitude, $myLongitude")
+                    callback(true)
+                } else {
+                    Log.w("CrewLineMain", "위치 정보를 가져올 수 없습니다.")
+                    callback(false)
+                }
+            }.addOnFailureListener { e ->
+                Log.e("CrewLineMain", "위치 정보 가져오기 실패", e)
+                callback(false)
+            }
+        } else {
+            callback(false)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                getCurrentLocation { success ->
+                    if (success) {
+                        val crewId = intent.getStringExtra("crewId") ?: ""
+                        if (crewId.isNotEmpty()) {
+                            loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
+                            loadVisitedPlaces(crewId, FirebaseFirestore.getInstance(), findViewById(R.id.pointButtonContainer))
+                        }
+                    }
+                }
+            } else {
+                Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+                val crewId = intent.getStringExtra("crewId") ?: ""
+                if (crewId.isNotEmpty()) {
+                    loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
