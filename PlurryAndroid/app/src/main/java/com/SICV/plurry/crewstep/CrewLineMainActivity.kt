@@ -27,7 +27,10 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.location.LocationManagerCompat.getCurrentLocation
 import com.SICV.plurry.ranking.RankingMainActivity
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -45,6 +48,11 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private val koreaTimeZone = TimeZone.getTimeZone("Asia/Seoul")
     private val koreaLocale = Locale.KOREA
+
+    private var myLatitude: Double? = null
+    private var myLongitude: Double? = null
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,7 +125,11 @@ class CrewLineMainActivity : AppCompatActivity() {
                         .addOnSuccessListener { placeDoc ->
                             val imageUrl = placeDoc.getString("myImgUrl") ?: ""
                             val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
-                            val placeDescription = placeDoc.getString("description") ?: "설명 없음"
+                            val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
+                            val geoPoint = placeDoc.getGeoPoint("geo")
+
+                            val distance = 0
+                            val detailInfo = "추가한 유저: $addedBy\n거리: $distance"
 
                             val imageButton = ImageButton(this)
                             val layoutParams = LinearLayout.LayoutParams(
@@ -137,7 +149,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
                             imageButton.setOnClickListener {
                                 Log.d("CrewLineMain", "장소 버튼 클릭: $placeId")
-                                showPlaceDetailDialog(imageUrl, placeName, placeDescription)
+                                showPlaceDetailDialog(imageUrl, "장소: $placeName", detailInfo)
                             }
 
                             pointButtonContainer.addView(imageButton)
@@ -281,7 +293,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         val visitTime: Long,
         val imageUrl: String,
         val name: String = "",
-        val description: String = ""
+        val detailInfo: String = ""
     )
 
     private fun fetchVisitedPlacesForMembers(memberUids: List<String>, db: FirebaseFirestore, container: LinearLayout) {
@@ -309,12 +321,16 @@ class CrewLineMainActivity : AppCompatActivity() {
                                 db.collection("Places").document(placeId).get()
                                     .addOnSuccessListener { placeDoc ->
                                         if (placeDoc.exists()) {
-                                            val imageUrl = placeDoc.getString("myImgUrl") ?: placeDoc.getString("imageUrl") ?: ""
+                                            val imageUrl = placeDoc.getString("myImgUrl") ?: ""
                                             val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
-                                            val placeDescription = placeDoc.getString("description") ?: "설명 없음"
+                                            val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
+                                            val geoPoint = placeDoc.getGeoPoint("geo")
+
+                                            val distance = 0
+                                            val detailInfo = "추가한 유저: $addedBy\n거리: $distance"
 
                                             if (imageUrl.isNotEmpty()) {
-                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, placeName, placeDescription))
+                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, "장소: $placeName", detailInfo))
                                             }
                                         }
 
@@ -353,11 +369,11 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
 
         for (place in uniquePlaces) {
-            addPlaceImageToContainer(place.imageUrl, place.placeId, place.name, place.description, container)
+            addPlaceImageToContainer(place.imageUrl, place.placeId, place.name, place.detailInfo, container)
         }
     }
 
-    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, description: String, container: LinearLayout) {
+    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout) {
         val imageButton = ImageButton(this)
         val layoutParams = LinearLayout.LayoutParams(
             (100 * resources.displayMetrics.density).toInt(),
@@ -376,9 +392,8 @@ class CrewLineMainActivity : AppCompatActivity() {
             .into(imageButton)
 
         imageButton.setOnClickListener {
-            showPlaceDetailDialog(imageUrl, name, description)
+            showPlaceDetailDialog(imageUrl, name, detailInfo)
         }
-
         container.addView(imageButton)
     }
 
@@ -582,6 +597,10 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private fun getDayData(): List<BarEntry> {
         val timeSlots = FloatArray(6) { 0f }
+        val today = Calendar.getInstance(koreaTimeZone, koreaLocale)
+        val todayYear = today.get(Calendar.YEAR)
+        val todayMonth = today.get(Calendar.MONTH)
+        val todayDay = today.get(Calendar.DAY_OF_MONTH)
 
         for (record in crewWalkData) {
             try {
@@ -589,20 +608,24 @@ class CrewLineMainActivity : AppCompatActivity() {
                 if (time != null) {
                     val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
                     calendar.time = time
-                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
-                    val slotIndex = when (hour) {
-                        in 0..3 -> 0
-                        in 4..7 -> 1
-                        in 8..11 -> 2
-                        in 12..15 -> 3
-                        in 16..19 -> 4
-                        in 20..23 -> 5
-                        else -> 0
+                    if (calendar.get(Calendar.YEAR) == todayYear &&
+                        calendar.get(Calendar.MONTH) == todayMonth &&
+                        calendar.get(Calendar.DAY_OF_MONTH) == todayDay) {
+
+                        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                        val slotIndex = when (hour) {
+                            in 0..3 -> 0
+                            in 4..7 -> 1
+                            in 8..11 -> 2
+                            in 12..15 -> 3
+                            in 16..19 -> 4
+                            in 20..23 -> 5
+                            else -> 0
+                        }
+                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
+                        timeSlots[slotIndex] += distance
                     }
-
-                    val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                    timeSlots[slotIndex] += distance
                 }
             } catch (e: Exception) {
                 Log.e("CrewLineMain", "시간 파싱 오류: ${record.time}", e)
@@ -618,6 +641,22 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private fun getWeekData(): List<BarEntry> {
         val weeklyData = FloatArray(7) { 0f }
+        val today = Calendar.getInstance(koreaTimeZone, koreaLocale)
+
+        val startOfWeek = Calendar.getInstance(koreaTimeZone, koreaLocale)
+        startOfWeek.time = today.time
+        startOfWeek.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        startOfWeek.set(Calendar.HOUR_OF_DAY, 0)
+        startOfWeek.set(Calendar.MINUTE, 0)
+        startOfWeek.set(Calendar.SECOND, 0)
+        startOfWeek.set(Calendar.MILLISECOND, 0)
+
+        val endOfWeek = Calendar.getInstance(koreaTimeZone, koreaLocale)
+        endOfWeek.time = startOfWeek.time
+        endOfWeek.add(Calendar.DAY_OF_WEEK, 6)
+        endOfWeek.set(Calendar.HOUR_OF_DAY, 23)
+        endOfWeek.set(Calendar.MINUTE, 59)
+        endOfWeek.set(Calendar.SECOND, 59)
 
         for (record in crewWalkData) {
             try {
@@ -625,31 +664,23 @@ class CrewLineMainActivity : AppCompatActivity() {
                 if (time != null) {
                     val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
                     calendar.time = time
-                    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
 
-                    val index = when (dayOfWeek) {
-                        Calendar.MONDAY -> 0
-                        Calendar.TUESDAY -> 1
-                        Calendar.WEDNESDAY -> 2
-                        Calendar.THURSDAY -> 3
-                        Calendar.FRIDAY -> 4
-                        Calendar.SATURDAY -> 5
-                        Calendar.SUNDAY -> 6
-                        else -> 0
-                    }
+                    if (calendar.timeInMillis >= startOfWeek.timeInMillis &&
+                        calendar.timeInMillis <= endOfWeek.timeInMillis) {
 
-                    val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                    weeklyData[index] += distance
-
-                    val dayName = when(dayOfWeek) {
-                        Calendar.SUNDAY -> "일요일"
-                        Calendar.MONDAY -> "월요일"
-                        Calendar.TUESDAY -> "화요일"
-                        Calendar.WEDNESDAY -> "수요일"
-                        Calendar.THURSDAY -> "목요일"
-                        Calendar.FRIDAY -> "금요일"
-                        Calendar.SATURDAY -> "토요일"
-                        else -> "알수없음"
+                        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                        val index = when (dayOfWeek) {
+                            Calendar.MONDAY -> 0
+                            Calendar.TUESDAY -> 1
+                            Calendar.WEDNESDAY -> 2
+                            Calendar.THURSDAY -> 3
+                            Calendar.FRIDAY -> 4
+                            Calendar.SATURDAY -> 5
+                            Calendar.SUNDAY -> 6
+                            else -> 0
+                        }
+                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
+                        weeklyData[index] += distance
                     }
                 }
             } catch (e: Exception) {
@@ -697,11 +728,10 @@ class CrewLineMainActivity : AppCompatActivity() {
 
                     if (recordYear == currentYear && recordMonth == currentMonth) {
                         val index = recordDay - 1
-                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                        monthlyData[index] += distance
-
-                        val dateFormat = SimpleDateFormat("yyyy-MM-dd", koreaLocale)
-                        dateFormat.timeZone = koreaTimeZone
+                        if (index >= 0 && index < maxDayOfMonth) {
+                            val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
+                            monthlyData[index] += distance
+                        }
                     }
                 }
             } catch (e: Exception) {
