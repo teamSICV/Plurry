@@ -35,7 +35,7 @@ class AddPointDialogFragment : DialogFragment() {
     private var isUploading = false
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_point, null)
+        val view = requireActivity().layoutInflater.inflate(R.layout.activity_goingwalk_dialog_add_point, null)
         val builder = AlertDialog.Builder(requireActivity()).setView(view)
 
         val nameInputLayout = view.findViewById<LinearLayout>(R.id.nameInputLayout)
@@ -51,6 +51,8 @@ class AddPointDialogFragment : DialogFragment() {
         val completionLayout = view.findViewById<LinearLayout>(R.id.completionLayout)
         val tvReward = view.findViewById<TextView>(R.id.tvReward)
         val btnDone = view.findViewById<Button>(R.id.btnDone)
+
+        val progressLayout = view.findViewById<LinearLayout>(R.id.progressLayout)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
@@ -80,6 +82,10 @@ class AddPointDialogFragment : DialogFragment() {
             if (isUploading) return@setOnClickListener
             isUploading = true
 
+            // 중복 클릭 방지 + 로딩 표시
+            btnConfirm.isEnabled = false
+            progressLayout.visibility = View.VISIBLE
+
             if (ActivityCompat.checkSelfPermission(
                     requireContext(),
                     android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -91,6 +97,8 @@ class AddPointDialogFragment : DialogFragment() {
                     LOCATION_PERMISSION_REQUEST_CODE
                 )
                 isUploading = false
+                progressLayout.visibility = View.GONE
+                btnConfirm.isEnabled = true
                 return@setOnClickListener
             }
 
@@ -103,6 +111,8 @@ class AddPointDialogFragment : DialogFragment() {
                         if (uid == null) {
                             Toast.makeText(requireContext(), "❌ 사용자 인증 오류", Toast.LENGTH_SHORT).show()
                             isUploading = false
+                            progressLayout.visibility = View.GONE
+                            btnConfirm.isEnabled = true
                             return@addOnSuccessListener
                         }
 
@@ -113,6 +123,8 @@ class AddPointDialogFragment : DialogFragment() {
                             if (characterId == null) {
                                 Toast.makeText(requireContext(), "❌ 사용자 정보 없음 (characterId)", Toast.LENGTH_SHORT).show()
                                 isUploading = false
+                                progressLayout.visibility = View.GONE
+                                btnConfirm.isEnabled = true
                                 return@addOnSuccessListener
                             }
 
@@ -137,7 +149,7 @@ class AddPointDialogFragment : DialogFragment() {
                                         .add(placeData)
                                         .addOnSuccessListener {
                                             completionLayout.visibility = View.VISIBLE
-                                            tvReward.text = "보상 10xp 지급!"
+                                            tvReward.text = "일반 보상 아이템 지급!"
 
                                             nameInputLayout.visibility = View.GONE
                                             btnSubmitName.visibility = View.GONE
@@ -146,35 +158,48 @@ class AddPointDialogFragment : DialogFragment() {
                                             btnConfirm.visibility = View.GONE
                                             btnClose.visibility = View.GONE
                                             photoActions.visibility = View.GONE
+                                            progressLayout.visibility = View.GONE
 
                                             isUploading = false
                                         }
                                         .addOnFailureListener {
                                             Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
                                             isUploading = false
+                                            progressLayout.visibility = View.GONE
+                                            btnConfirm.isEnabled = true
                                         }
 
                                 }.addOnFailureListener {
                                     Toast.makeText(requireContext(), "❌ URL 획득 실패", Toast.LENGTH_SHORT).show()
                                     isUploading = false
+                                    progressLayout.visibility = View.GONE
+                                    btnConfirm.isEnabled = true
                                 }
                             }.addOnFailureListener {
                                 Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
                                 isUploading = false
+                                progressLayout.visibility = View.GONE
+                                btnConfirm.isEnabled = true
                             }
 
                         }.addOnFailureListener {
                             Toast.makeText(requireContext(), "❌ 사용자 정보 로드 실패", Toast.LENGTH_SHORT).show()
                             isUploading = false
+                            progressLayout.visibility = View.GONE
+                            btnConfirm.isEnabled = true
                         }
 
                     } else {
                         Toast.makeText(requireContext(), "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
                         isUploading = false
+                        progressLayout.visibility = View.GONE
+                        btnConfirm.isEnabled = true
                     }
                 }.addOnFailureListener {
                     Toast.makeText(requireContext(), "위치 획득 실패", Toast.LENGTH_SHORT).show()
                     isUploading = false
+                    progressLayout.visibility = View.GONE
+                    btnConfirm.isEnabled = true
                 }
         }
 
