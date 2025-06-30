@@ -16,7 +16,7 @@ import java.util.Date
 class WalkEndDialogFragment : DialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_walk_end, null)
+        val view = LayoutInflater.from(requireContext()).inflate(R.layout.activity_goingwalk_dialog_walk_end, null)
 
         val distance = arguments?.getString("distance") ?: "0.00"
         val steps = arguments?.getInt("steps") ?: 0
