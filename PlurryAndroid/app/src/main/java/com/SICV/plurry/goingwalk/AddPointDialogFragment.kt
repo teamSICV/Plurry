@@ -21,6 +21,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,10 +32,10 @@ class AddPointDialogFragment : DialogFragment() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
     private lateinit var imageUri: Uri
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private var isUploading = false  // ✅ 중복 업로드 방지용 플래그
+    private var isUploading = false
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_point, null)
+        val view = requireActivity().layoutInflater.inflate(R.layout.activity_goingwalk_dialog_add_point, null)
         val builder = AlertDialog.Builder(requireActivity()).setView(view)
 
         val nameInputLayout = view.findViewById<LinearLayout>(R.id.nameInputLayout)
@@ -50,6 +51,8 @@ class AddPointDialogFragment : DialogFragment() {
         val completionLayout = view.findViewById<LinearLayout>(R.id.completionLayout)
         val tvReward = view.findViewById<TextView>(R.id.tvReward)
         val btnDone = view.findViewById<Button>(R.id.btnDone)
+
+        val progressLayout = view.findViewById<LinearLayout>(R.id.progressLayout)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
@@ -76,8 +79,12 @@ class AddPointDialogFragment : DialogFragment() {
         }
 
         btnConfirm.setOnClickListener {
-            if (isUploading) return@setOnClickListener  // ✅ 이미 업로드 중이면 무시
-            isUploading = true                          // ✅ 업로드 시작
+            if (isUploading) return@setOnClickListener
+            isUploading = true
+
+            // 중복 클릭 방지 + 로딩 표시
+            btnConfirm.isEnabled = false
+            progressLayout.visibility = View.VISIBLE
 
             if (ActivityCompat.checkSelfPermission(
                     requireContext(),
@@ -89,63 +96,110 @@ class AddPointDialogFragment : DialogFragment() {
                     arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                     LOCATION_PERMISSION_REQUEST_CODE
                 )
-                isUploading = false  // 권한 요청 시 업로드 취소
+                isUploading = false
+                progressLayout.visibility = View.GONE
+                btnConfirm.isEnabled = true
                 return@setOnClickListener
             }
 
             fusedLocationClient.lastLocation
                 .addOnSuccessListener { location: Location? ->
                     if (location != null) {
-                        val storageRef = FirebaseStorage.getInstance().reference
-                        val timeStamp = System.currentTimeMillis()
-                        val imageRef = storageRef.child("places/${timeStamp}.jpg")
+                        val currentUser = FirebaseAuth.getInstance().currentUser
+                        val uid = currentUser?.uid
 
-                        imageRef.putFile(imageUri).addOnSuccessListener {
-                            imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                                val placeData = hashMapOf(
-                                    "name" to etPlaceName.text.toString().trim(),
-                                    "geo" to GeoPoint(location.latitude, location.longitude),
-                                    "imageTime" to timeStamp,
-                                    "myImg" to true,
-                                    "myImgUrl" to downloadUri.toString()
-                                )
-
-                                FirebaseFirestore.getInstance()
-                                    .collection("Places")
-                                    .add(placeData)
-                                    .addOnSuccessListener {
-                                        completionLayout.visibility = View.VISIBLE
-                                        tvReward.text = "보상 10xp 지급!"
-
-                                        nameInputLayout.visibility = View.GONE
-                                        btnSubmitName.visibility = View.GONE
-                                        btnTakePhoto.visibility = View.GONE
-                                        btnRetake.visibility = View.GONE
-                                        btnConfirm.visibility = View.GONE
-                                        btnClose.visibility = View.GONE
-                                        photoActions.visibility = View.GONE
-
-                                        isUploading = false  // ✅ 완료 후 플래그 해제
-                                    }
-                                    .addOnFailureListener {
-                                        Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
-                                        isUploading = false
-                                    }
-                            }.addOnFailureListener {
-                                Toast.makeText(requireContext(), "❌ URL 획득 실패", Toast.LENGTH_SHORT).show()
-                                isUploading = false
-                            }
-                        }.addOnFailureListener {
-                            Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
+                        if (uid == null) {
+                            Toast.makeText(requireContext(), "❌ 사용자 인증 오류", Toast.LENGTH_SHORT).show()
                             isUploading = false
+                            progressLayout.visibility = View.GONE
+                            btnConfirm.isEnabled = true
+                            return@addOnSuccessListener
                         }
+
+                        val usersRef = FirebaseFirestore.getInstance().collection("Users").document(uid)
+                        usersRef.get().addOnSuccessListener { userDoc ->
+                            val characterId = userDoc.getString("characterId")
+
+                            if (characterId == null) {
+                                Toast.makeText(requireContext(), "❌ 사용자 정보 없음 (characterId)", Toast.LENGTH_SHORT).show()
+                                isUploading = false
+                                progressLayout.visibility = View.GONE
+                                btnConfirm.isEnabled = true
+                                return@addOnSuccessListener
+                            }
+
+                            val storageRef = FirebaseStorage.getInstance().reference
+                            val timeStamp = System.currentTimeMillis()
+                            val imageRef = storageRef.child("places/${timeStamp}.jpg")
+
+                            imageRef.putFile(imageUri).addOnSuccessListener {
+                                imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+
+                                    val placeData = hashMapOf(
+                                        "name" to etPlaceName.text.toString().trim(),
+                                        "geo" to GeoPoint(location.latitude, location.longitude),
+                                        "imageTime" to timeStamp,
+                                        "myImg" to true,
+                                        "myImgUrl" to downloadUri.toString(),
+                                        "addedBy" to characterId
+                                    )
+
+                                    FirebaseFirestore.getInstance()
+                                        .collection("Places")
+                                        .add(placeData)
+                                        .addOnSuccessListener {
+                                            completionLayout.visibility = View.VISIBLE
+                                            tvReward.text = "일반 보상 아이템 지급!"
+
+                                            nameInputLayout.visibility = View.GONE
+                                            btnSubmitName.visibility = View.GONE
+                                            btnTakePhoto.visibility = View.GONE
+                                            btnRetake.visibility = View.GONE
+                                            btnConfirm.visibility = View.GONE
+                                            btnClose.visibility = View.GONE
+                                            photoActions.visibility = View.GONE
+                                            progressLayout.visibility = View.GONE
+
+                                            isUploading = false
+                                        }
+                                        .addOnFailureListener {
+                                            Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
+                                            isUploading = false
+                                            progressLayout.visibility = View.GONE
+                                            btnConfirm.isEnabled = true
+                                        }
+
+                                }.addOnFailureListener {
+                                    Toast.makeText(requireContext(), "❌ URL 획득 실패", Toast.LENGTH_SHORT).show()
+                                    isUploading = false
+                                    progressLayout.visibility = View.GONE
+                                    btnConfirm.isEnabled = true
+                                }
+                            }.addOnFailureListener {
+                                Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
+                                isUploading = false
+                                progressLayout.visibility = View.GONE
+                                btnConfirm.isEnabled = true
+                            }
+
+                        }.addOnFailureListener {
+                            Toast.makeText(requireContext(), "❌ 사용자 정보 로드 실패", Toast.LENGTH_SHORT).show()
+                            isUploading = false
+                            progressLayout.visibility = View.GONE
+                            btnConfirm.isEnabled = true
+                        }
+
                     } else {
                         Toast.makeText(requireContext(), "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
                         isUploading = false
+                        progressLayout.visibility = View.GONE
+                        btnConfirm.isEnabled = true
                     }
                 }.addOnFailureListener {
                     Toast.makeText(requireContext(), "위치 획득 실패", Toast.LENGTH_SHORT).show()
                     isUploading = false
+                    progressLayout.visibility = View.GONE
+                    btnConfirm.isEnabled = true
                 }
         }
 
