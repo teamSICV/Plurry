@@ -22,7 +22,7 @@ class RaisingStoryActivity : AppCompatActivity() {
     private var storyButtons = mutableListOf<Button>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.d("Story", "onCreate called")
+        //Log.d("Story", "onCreate called")
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_raising_story)
@@ -53,7 +53,7 @@ class RaisingStoryActivity : AppCompatActivity() {
     }
 
     private fun setupUIElements() {
-        Log.d("Story", "setupUIElements called")
+        //Log.d("Story", "setupUIElements called")
         val btnQuit = findViewById<Button>(R.id.b_quit)
         btnQuit.setOnClickListener { onBackPressed() }
 
@@ -65,11 +65,11 @@ class RaisingStoryActivity : AppCompatActivity() {
             return
         }
         else{
-            Log.d("Story", "storyContainer: $storyContainer")
+            //Log.d("Story", "storyContainer: $storyContainer")
         }
 
         for (i in 0 until storyCount) {
-            Log.d("Story", "storyCount start : ${i}")
+            //Log.d("Story", "storyCount start : ${i}")
             val storyButton = Button(this).apply {
                 text = "스토리 ${i + 1}"
                 layoutParams = LinearLayout.LayoutParams(

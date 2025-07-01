@@ -48,10 +48,10 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
 
         // ScrollView에 터치 리스너 추가
         scrollView.setOnTouchListener { _, event ->
-            Log.d("Story", "ScrollView touch detected")
+            //Log.d("Story", "ScrollView touch detected")
             if (event.action == MotionEvent.ACTION_DOWN) {
                 addNextStoryLine()
-                Log.d("Story", "addNextStoryLine Called")
+                //Log.d("Story", "addNextStoryLine Called")
                 true
             } else {
                 false
@@ -60,9 +60,9 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
     }
 
     private fun loadStoryFromAssets() {
-        Log.d("Story", "loadStoryFromAssets called")
+        //Log.d("Story", "loadStoryFromAssets called")
         val assetDir : String = "story/teststory$currentStory.txt"
-        Log.d("Story", "assetDir : ${assetDir}")
+        //Log.d("Story", "assetDir : ${assetDir}")
         try {
             val inputStream = assets.open(assetDir)
             val reader = BufferedReader(InputStreamReader(inputStream))
