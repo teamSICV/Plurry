@@ -8,12 +8,22 @@
     android:layout_height="match_parent"
     tools:context=".crewstep.CrewLineMakeCrewActivity">
 
+    <ImageView
+        android:id="@+id/crewMakeBackBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="16dp"/>
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="50dp"
+        android:layout_marginStart="70dp"
         android:text="크루 이미지 선택"
-        android:layout_marginTop="70dp"
+        android:layout_marginTop="32dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -22,7 +32,7 @@
         android:layout_width="180dp"
         android:layout_height="180dp"
         android:padding="40dp"
-        android:layout_marginTop="150dp"
+        android:layout_marginTop="110dp"
         android:scaleType="fitCenter"
         android:src="@drawable/icons8"
         android:clickable="true"

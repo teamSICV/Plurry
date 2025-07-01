@@ -49,8 +49,14 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
         findLocationButton = findViewById(R.id.findLocation)
         makeCrewButton = findViewById(R.id.btnMakeCrew)
 
+        val crewMakeBackBtn = findViewById<ImageView>(R.id.crewMakeBackBtn)
+
         imageView.setOnClickListener {
             openImageChooser()
+        }
+
+        crewMakeBackBtn.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
         }
 
         findLocationButton.setOnClickListener {

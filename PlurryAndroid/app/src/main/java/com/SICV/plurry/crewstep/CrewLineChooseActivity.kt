@@ -1,7 +1,9 @@
 package com.SICV.plurry.crewstep
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -24,6 +26,8 @@ class CrewLineChooseActivity : AppCompatActivity() {
         val makeCrewButton = findViewById<TextView>(R.id.makeCrew)
         recyclerView = findViewById(R.id.chooseCrewRecyclerView)
 
+        val crewChooseBackBtn = findViewById<ImageView>(R.id.crewChooseBackBtn)
+
         adapter = CrewAdapter(crewList) { crew ->
             val intent = Intent(this, CrewLineMainActivity::class.java)
             intent.putExtra("crewId", crew.crewId)
@@ -36,6 +40,10 @@ class CrewLineChooseActivity : AppCompatActivity() {
         makeCrewButton.setOnClickListener {
             val intent = Intent(this, CrewLineMakeCrewActivity::class.java)
             startActivity(intent)
+        }
+
+        crewChooseBackBtn.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
         }
 
         fetchCrewList()
