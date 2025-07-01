@@ -17,6 +17,7 @@ import java.io.InputStreamReader
 class RaisingStoryPlayActivity : AppCompatActivity() {
     private lateinit var storyContainer: LinearLayout
     private lateinit var scrollView: ScrollView
+    private var currentStory : Int = 0
     private var storyLines = mutableListOf<String>()
     private var currentLineIndex = 0
 
@@ -32,8 +33,10 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
         )
         window.setGravity(Gravity.CENTER)
 
-        setupUIElements()
+        currentStory = intent.getIntExtra("currentStory", 0)
+
         loadStoryFromAssets()
+        setupUIElements()
     }
 
     private fun setupUIElements() {
@@ -57,19 +60,20 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
     }
 
     private fun loadStoryFromAssets() {
+        Log.d("Story", "loadStoryFromAssets called")
+        val assetDir : String = "story/teststory$currentStory.txt"
+        Log.d("Story", "assetDir : ${assetDir}")
         try {
-            val inputStream = assets.open("story/teststory.txt")
+            val inputStream = assets.open(assetDir)
             val reader = BufferedReader(InputStreamReader(inputStream))
             storyLines = reader.readLines().toMutableList()
             reader.close()
         } catch (e: Exception) {
             // story 폴더에서 파일을 찾을 수 없는 경우 기본 텍스트 사용
             storyLines = mutableListOf(
-                "테스트스토리1",
-                "테스트스토리2",
-                "테스트스토리3",
-                "테스트스토리4",
-                "테스트스토리5"
+                "스토리 로드 실패1",
+                "스토리 로드 실패2",
+                "스토리 로드 실패3"
             )
         }
     }
