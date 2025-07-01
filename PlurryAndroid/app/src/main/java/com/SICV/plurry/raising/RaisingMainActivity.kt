@@ -153,6 +153,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         }
         txtcurrentRaisingPoint.text = currentRaisingPoint.toString()
         txtcurrentRaisingAmount.text = currentRaisingAmount.toString()
+        currentStoryLevel = currentRaisingPoint / 100
 
         //Call Unity
         SendMessageToUnity( "UnityProcessGrowing" )
@@ -172,6 +173,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 * *********/
     private fun ShowStoryPopup() {
         val intent = Intent(this, RaisingStoryActivity::class.java)
+        intent.putExtra("currentLevel", currentStoryLevel)
         startActivity(intent)
     }
 
