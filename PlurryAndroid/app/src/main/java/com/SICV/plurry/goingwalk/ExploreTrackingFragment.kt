@@ -220,8 +220,9 @@ class ExploreTrackingFragment : Fragment() {
                 )
 
                 targetImageUrl?.let { imageUrl ->
+                    // 🚀 변경사항: 새로운 newInstance 함수 호출
                     ExploreResultDialogFragment
-                        .newInstance("confirm", imageUrl, placeId ?: "")
+                        .newInstance("confirm", imageUrl, placeId ?: "", totalSteps, totalDistance, totalCalories)
                         .show(parentFragmentManager, "explore_confirm")
                 }
             }
@@ -325,8 +326,11 @@ class ExploreTrackingFragment : Fragment() {
         targetImageUrl?.let { url ->
             Log.d("Explore", "imageUrl 전달됨: $url")
 
+            // Note: This call might be redundant if comparison handles showing appropriate dialogs.
+            // Consider if "fail" dialog should be handled here or only after image comparison.
+            // For now, it remains as per original code.
             ExploreResultDialogFragment
-                .newInstance("fail", url, placeId ?: "")
+                .newInstance("fail", url, placeId ?: "") // You might want to pass the stats here too if "fail" uses them
                 .show(parentFragmentManager, "explore_result")
 
             Log.d("Explore", "팝업 show() 호출 완료!")
