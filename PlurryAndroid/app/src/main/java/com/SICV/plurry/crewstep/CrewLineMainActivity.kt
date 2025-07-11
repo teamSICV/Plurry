@@ -28,6 +28,7 @@ import android.os.Looper
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.location.LocationManagerCompat.getCurrentLocation
+import com.SICV.plurry.MainActivity
 import com.SICV.plurry.ranking.RankingMainActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -109,7 +110,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
 
         crewBackBtn.setOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
+            checkCrewMembershipAndNavigate()
         }
 
         joinCrewMemberTextView.setOnClickListener {
@@ -230,6 +231,51 @@ class CrewLineMainActivity : AppCompatActivity() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         checkAndRequestLocationPermission()
+    }
+
+    private fun checkCrewMembershipAndNavigate() {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            val intent = Intent(this, CrewLineChooseActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            startActivity(intent)
+            finish()
+            return
+        }
+
+        val uid = currentUser.uid
+        val crewId = intent.getStringExtra("crewId") ?: ""
+
+        db.collection("Users").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                if (userDoc.exists()) {
+                    val crewAt = userDoc.getString("crewAt")
+
+                    if (crewAt == crewId) {
+                        val intent = Intent(this, MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        val intent = Intent(this, CrewLineChooseActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                        finish()
+                    }
+                } else {
+                    val intent = Intent(this, CrewLineChooseActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    startActivity(intent)
+                    finish()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "사용자 정보 확인 실패", e)
+                val intent = Intent(this, CrewLineChooseActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                startActivity(intent)
+                finish()
+            }
     }
 
     private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String) {
@@ -375,6 +421,11 @@ class CrewLineMainActivity : AppCompatActivity() {
                         db.collection("Users").document(uid).update("crewAt", null)
                             .addOnSuccessListener {
                                 Log.d("CrewLineMain", "사용자 crewAt 필드 제거 완료")
+
+                                val intent = Intent(this@CrewLineMainActivity, CrewLineChooseActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                startActivity(intent)
+                                finish()
                             }
                             .addOnFailureListener { e ->
                                 Log.e("CrewLineMain", "사용자 crewAt 필드 제거 실패", e)
