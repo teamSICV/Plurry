@@ -11,6 +11,8 @@ android {
     namespace = "com.SICV.plurry"
     compileSdk = 35
 
+
+
     defaultConfig {
         applicationId = "com.SICV.plurry"
         minSdk = 24
@@ -117,6 +119,11 @@ dependencies {
 
     //onnx library
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.15.1")
+    // MediaPipe
+    implementation ("com.google.mediapipe:tasks-vision:0.10.7")
+    //이미지 회전문제 해결
+    implementation ("androidx.exifinterface:exifinterface:1.3.6")
+
 
 
 }

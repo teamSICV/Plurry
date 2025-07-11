@@ -27,7 +27,11 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.location.LocationManagerCompat.getCurrentLocation
+import com.SICV.plurry.MainActivity
 import com.SICV.plurry.ranking.RankingMainActivity
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -40,17 +44,38 @@ class CrewLineMainActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var walkRecordAdapter: WalkRecordAdapter
     private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
+
     private var crewWalkData = mutableListOf<WalkRecord>()
     private var currentCrewId = ""
 
     private val koreaTimeZone = TimeZone.getTimeZone("Asia/Seoul")
     private val koreaLocale = Locale.KOREA
 
+    private var myLatitude: Double? = null
+    private var myLongitude: Double? = null
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1001
+
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val earthRadius = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        return earthRadius * c
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_crew_line_main)
 
         auth = FirebaseAuth.getInstance()
+        db = FirebaseFirestore.getInstance()
 
         val timeTextView = findViewById<TextView>(R.id.timeTextView)
         val crewNameTextView = findViewById<TextView>(R.id.textView3)
@@ -59,6 +84,8 @@ class CrewLineMainActivity : AppCompatActivity() {
         val crewId = intent.getStringExtra("crewId") ?: ""
         currentCrewId = crewId
         val rankingButton = findViewById<ImageView>(R.id.rankingButton)
+        val crewBackBtn = findViewById<ImageView>(R.id.crewBackButton)
+        val exitCrewMemberTextView = findViewById<TextView>(R.id.ExitCrewMember)
 
         handler = Handler(Looper.getMainLooper())
         timeRunnable = object : Runnable {
@@ -73,12 +100,18 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
         handler.post(timeRunnable)
 
+        exitCrewMemberTextView.setOnClickListener {
+            exitCrewMember(crewId, db)
+        }
+
         rankingButton.setOnClickListener {
             val intent = Intent(this, RankingMainActivity::class.java)
             startActivity(intent)
         }
 
-        val db = FirebaseFirestore.getInstance()
+        crewBackBtn.setOnClickListener {
+            checkCrewMembershipAndNavigate()
+        }
 
         joinCrewMemberTextView.setOnClickListener {
             joinCrewMember(crewId, db)
@@ -99,6 +132,8 @@ class CrewLineMainActivity : AppCompatActivity() {
                 val crewName = document.getString("name") ?: "크루"
                 crewNameTextView.text = crewName
                 Log.d("CrewLineMain", "크루 이름 설정: $crewName")
+                checkCrewMemberStatus(crewId, db, joinCrewMemberTextView, exitCrewMemberTextView)
+
             }
             .addOnFailureListener { e ->
                 Log.e("Firestore", "크루 이름 가져오기 실패", e)
@@ -117,7 +152,11 @@ class CrewLineMainActivity : AppCompatActivity() {
                         .addOnSuccessListener { placeDoc ->
                             val imageUrl = placeDoc.getString("myImgUrl") ?: ""
                             val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
-                            val placeDescription = placeDoc.getString("description") ?: "설명 없음"
+                            val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
+                            val geoPoint = placeDoc.getGeoPoint("geo")
+
+                            val distance = 0
+                            val detailInfo = "추가한 유저: $addedBy\n거리: $distance"
 
                             val imageButton = ImageButton(this)
                             val layoutParams = LinearLayout.LayoutParams(
@@ -137,7 +176,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
                             imageButton.setOnClickListener {
                                 Log.d("CrewLineMain", "장소 버튼 클릭: $placeId")
-                                showPlaceDetailDialog(imageUrl, placeName, placeDescription)
+                                showPlaceDetailDialog(imageUrl, "장소: $placeName", detailInfo)
                             }
 
                             pointButtonContainer.addView(imageButton)
@@ -189,6 +228,54 @@ class CrewLineMainActivity : AppCompatActivity() {
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        checkAndRequestLocationPermission()
+    }
+
+    private fun checkCrewMembershipAndNavigate() {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            val intent = Intent(this, CrewLineChooseActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            startActivity(intent)
+            finish()
+            return
+        }
+
+        val uid = currentUser.uid
+        val crewId = intent.getStringExtra("crewId") ?: ""
+
+        db.collection("Users").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                if (userDoc.exists()) {
+                    val crewAt = userDoc.getString("crewAt")
+
+                    if (crewAt == crewId) {
+                        val intent = Intent(this, MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        val intent = Intent(this, CrewLineChooseActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        startActivity(intent)
+                        finish()
+                    }
+                } else {
+                    val intent = Intent(this, CrewLineChooseActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    startActivity(intent)
+                    finish()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "사용자 정보 확인 실패", e)
+                val intent = Intent(this, CrewLineChooseActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                startActivity(intent)
+                finish()
+            }
     }
 
     private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String) {
@@ -237,9 +324,17 @@ class CrewLineMainActivity : AppCompatActivity() {
                     .set(memberData)
                     .addOnSuccessListener {
                         Toast.makeText(this, "크루에 성공적으로 가입했습니다!", Toast.LENGTH_SHORT).show()
-
-                        loadCrewWalkRecords(crewId, db)
-                        loadVisitedPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                        db.collection("Users").document(uid).update("crewAt", crewId)
+                            .addOnSuccessListener {
+                                Log.d("CrewLineMain", "사용자 crewAt 필드 업데이트 완료")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("CrewLineMain", "사용자 crewAt 필드 업데이트 실패", e)
+                            }
+                        val joinTextView = findViewById<TextView>(R.id.joinCrewMember)
+                        val exitTextView = findViewById<TextView>(R.id.ExitCrewMember)
+                        joinTextView.visibility = android.view.View.GONE
+                        exitTextView.visibility = android.view.View.VISIBLE
                     }
                     .addOnFailureListener { e ->
                         Toast.makeText(this, "크루 가입에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -247,6 +342,131 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun checkCrewMemberStatus(crewId: String, db: FirebaseFirestore,
+                                      joinTextView: TextView, exitTextView: TextView) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            joinTextView.visibility = android.view.View.VISIBLE
+            exitTextView.visibility = android.view.View.GONE
+            return
+        }
+
+        val uid = currentUser.uid
+
+        db.collection("Users").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                if (userDoc.exists()) {
+                    val crewAt = userDoc.getString("crewAt")
+
+                    if (crewAt == crewId) {
+                        joinTextView.visibility = android.view.View.GONE
+                        exitTextView.visibility = android.view.View.VISIBLE
+                    } else {
+                        joinTextView.visibility = android.view.View.VISIBLE
+                        exitTextView.visibility = android.view.View.GONE
+                    }
+                } else {
+                    joinTextView.visibility = android.view.View.VISIBLE
+                    exitTextView.visibility = android.view.View.GONE
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "사용자 정보 확인 실패", e)
+                joinTextView.visibility = android.view.View.VISIBLE
+                exitTextView.visibility = android.view.View.GONE
+            }
+    }
+
+    private fun exitCrewMember(crewId: String, db: FirebaseFirestore) {
+        val exitDialog = CrewExit(this) {
+            performExitCrew(crewId, db)
+        }
+        exitDialog.show()
+    }
+
+    private fun performExitCrew(crewId: String, db: FirebaseFirestore) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (crewId.isEmpty()) {
+            Toast.makeText(this, "크루 ID가 유효하지 않습니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val uid = currentUser.uid
+
+        db.collection("Crew").document(crewId).collection("member").document("members").get()
+            .addOnSuccessListener { document ->
+                val memberData = document.data?.toMutableMap() ?: mutableMapOf<String, Any>()
+
+                if (!memberData.containsKey(uid)) {
+                    Toast.makeText(this, "크루 멤버가 아닙니다.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                memberData.remove(uid)
+
+                db.collection("Crew").document(crewId).collection("member").document("members")
+                    .set(memberData)
+                    .addOnSuccessListener {
+                        removeFromCrewReward(crewId, uid, db)
+
+                        Toast.makeText(this, "크루에서 성공적으로 탈퇴했습니다.", Toast.LENGTH_SHORT).show()
+                        db.collection("Users").document(uid).update("crewAt", null)
+                            .addOnSuccessListener {
+                                Log.d("CrewLineMain", "사용자 crewAt 필드 제거 완료")
+
+                                val intent = Intent(this@CrewLineMainActivity, CrewLineChooseActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                startActivity(intent)
+                                finish()
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("CrewLineMain", "사용자 crewAt 필드 제거 실패", e)
+                            }
+
+                        val joinTextView = findViewById<TextView>(R.id.joinCrewMember)
+                        val exitTextView = findViewById<TextView>(R.id.ExitCrewMember)
+                        joinTextView.visibility = android.view.View.VISIBLE
+                        exitTextView.visibility = android.view.View.GONE
+
+                        loadCrewWalkRecords(crewId, db)
+                        loadVisitedPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("CrewLineMain", "크루 탈퇴 실패", e)
+                        Toast.makeText(this, "크루 탈퇴에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "멤버 정보 확인 실패", e)
+                Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+
+    private fun removeFromCrewReward(crewId: String, uid: String, db: FirebaseFirestore) {
+        db.collection("Game").document("users").collection("userReward").document(uid).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    db.collection("Game").document("users").collection("userReward").document(uid)
+                        .update("crewRewardItem", null)
+                        .addOnSuccessListener {
+                            Log.d("CrewLineMain", "userReward에서 crewRewardItem 제거 완료")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("CrewLineMain", "userReward에서 crewRewardItem 제거 실패", e)
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "userReward 문서 확인 실패", e)
             }
     }
 
@@ -281,7 +501,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         val visitTime: Long,
         val imageUrl: String,
         val name: String = "",
-        val description: String = ""
+        val detailInfo: String = ""
     )
 
     private fun fetchVisitedPlacesForMembers(memberUids: List<String>, db: FirebaseFirestore, container: LinearLayout) {
@@ -309,12 +529,22 @@ class CrewLineMainActivity : AppCompatActivity() {
                                 db.collection("Places").document(placeId).get()
                                     .addOnSuccessListener { placeDoc ->
                                         if (placeDoc.exists()) {
-                                            val imageUrl = placeDoc.getString("myImgUrl") ?: placeDoc.getString("imageUrl") ?: ""
+                                            val imageUrl = placeDoc.getString("myImgUrl") ?: ""
                                             val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
-                                            val placeDescription = placeDoc.getString("description") ?: "설명 없음"
+                                            val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
+                                            val geoPoint = placeDoc.getGeoPoint("geo")
+
+                                            val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
+                                                val distance = calculateDistance(myLatitude!!, myLongitude!!, geoPoint.latitude, geoPoint.longitude)
+                                                String.format("%.2f", distance) + "km"
+                                            } else {
+                                                "거리 계산 불가"
+                                            }
+
+                                            val detailInfo = "추가한 유저: $addedBy\n거리: $distanceText"
 
                                             if (imageUrl.isNotEmpty()) {
-                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, placeName, placeDescription))
+                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, "장소: $placeName", detailInfo))
                                             }
                                         }
 
@@ -326,7 +556,6 @@ class CrewLineMainActivity : AppCompatActivity() {
                             }
                         }
                     }
-
                     completedRequests++
                     if (completedRequests == memberUids.size) {
                         updateVisitedPlacesUI(visitedPlaces, container)
@@ -341,6 +570,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun updateVisitedPlacesUI(visitedPlaces: MutableList<VisitedPlace>, container: LinearLayout) {
         val uniquePlaces = visitedPlaces
             .groupBy { it.placeId }
@@ -353,11 +583,11 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
 
         for (place in uniquePlaces) {
-            addPlaceImageToContainer(place.imageUrl, place.placeId, place.name, place.description, container)
+            addPlaceImageToContainer(place.imageUrl, place.placeId, place.name, place.detailInfo, container)
         }
     }
 
-    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, description: String, container: LinearLayout) {
+    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout) {
         val imageButton = ImageButton(this)
         val layoutParams = LinearLayout.LayoutParams(
             (100 * resources.displayMetrics.density).toInt(),
@@ -376,9 +606,8 @@ class CrewLineMainActivity : AppCompatActivity() {
             .into(imageButton)
 
         imageButton.setOnClickListener {
-            showPlaceDetailDialog(imageUrl, name, description)
+            showPlaceDetailDialog(imageUrl, name, detailInfo)
         }
-
         container.addView(imageButton)
     }
 
@@ -582,6 +811,10 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private fun getDayData(): List<BarEntry> {
         val timeSlots = FloatArray(6) { 0f }
+        val today = Calendar.getInstance(koreaTimeZone, koreaLocale)
+        val todayYear = today.get(Calendar.YEAR)
+        val todayMonth = today.get(Calendar.MONTH)
+        val todayDay = today.get(Calendar.DAY_OF_MONTH)
 
         for (record in crewWalkData) {
             try {
@@ -589,20 +822,24 @@ class CrewLineMainActivity : AppCompatActivity() {
                 if (time != null) {
                     val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
                     calendar.time = time
-                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
 
-                    val slotIndex = when (hour) {
-                        in 0..3 -> 0
-                        in 4..7 -> 1
-                        in 8..11 -> 2
-                        in 12..15 -> 3
-                        in 16..19 -> 4
-                        in 20..23 -> 5
-                        else -> 0
+                    if (calendar.get(Calendar.YEAR) == todayYear &&
+                        calendar.get(Calendar.MONTH) == todayMonth &&
+                        calendar.get(Calendar.DAY_OF_MONTH) == todayDay) {
+
+                        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                        val slotIndex = when (hour) {
+                            in 0..3 -> 0
+                            in 4..7 -> 1
+                            in 8..11 -> 2
+                            in 12..15 -> 3
+                            in 16..19 -> 4
+                            in 20..23 -> 5
+                            else -> 0
+                        }
+                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
+                        timeSlots[slotIndex] += distance
                     }
-
-                    val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                    timeSlots[slotIndex] += distance
                 }
             } catch (e: Exception) {
                 Log.e("CrewLineMain", "시간 파싱 오류: ${record.time}", e)
@@ -618,6 +855,22 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private fun getWeekData(): List<BarEntry> {
         val weeklyData = FloatArray(7) { 0f }
+        val today = Calendar.getInstance(koreaTimeZone, koreaLocale)
+
+        val startOfWeek = Calendar.getInstance(koreaTimeZone, koreaLocale)
+        startOfWeek.time = today.time
+        startOfWeek.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        startOfWeek.set(Calendar.HOUR_OF_DAY, 0)
+        startOfWeek.set(Calendar.MINUTE, 0)
+        startOfWeek.set(Calendar.SECOND, 0)
+        startOfWeek.set(Calendar.MILLISECOND, 0)
+
+        val endOfWeek = Calendar.getInstance(koreaTimeZone, koreaLocale)
+        endOfWeek.time = startOfWeek.time
+        endOfWeek.add(Calendar.DAY_OF_WEEK, 6)
+        endOfWeek.set(Calendar.HOUR_OF_DAY, 23)
+        endOfWeek.set(Calendar.MINUTE, 59)
+        endOfWeek.set(Calendar.SECOND, 59)
 
         for (record in crewWalkData) {
             try {
@@ -625,31 +878,23 @@ class CrewLineMainActivity : AppCompatActivity() {
                 if (time != null) {
                     val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
                     calendar.time = time
-                    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
 
-                    val index = when (dayOfWeek) {
-                        Calendar.MONDAY -> 0
-                        Calendar.TUESDAY -> 1
-                        Calendar.WEDNESDAY -> 2
-                        Calendar.THURSDAY -> 3
-                        Calendar.FRIDAY -> 4
-                        Calendar.SATURDAY -> 5
-                        Calendar.SUNDAY -> 6
-                        else -> 0
-                    }
+                    if (calendar.timeInMillis >= startOfWeek.timeInMillis &&
+                        calendar.timeInMillis <= endOfWeek.timeInMillis) {
 
-                    val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                    weeklyData[index] += distance
-
-                    val dayName = when(dayOfWeek) {
-                        Calendar.SUNDAY -> "일요일"
-                        Calendar.MONDAY -> "월요일"
-                        Calendar.TUESDAY -> "화요일"
-                        Calendar.WEDNESDAY -> "수요일"
-                        Calendar.THURSDAY -> "목요일"
-                        Calendar.FRIDAY -> "금요일"
-                        Calendar.SATURDAY -> "토요일"
-                        else -> "알수없음"
+                        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                        val index = when (dayOfWeek) {
+                            Calendar.MONDAY -> 0
+                            Calendar.TUESDAY -> 1
+                            Calendar.WEDNESDAY -> 2
+                            Calendar.THURSDAY -> 3
+                            Calendar.FRIDAY -> 4
+                            Calendar.SATURDAY -> 5
+                            Calendar.SUNDAY -> 6
+                            else -> 0
+                        }
+                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
+                        weeklyData[index] += distance
                     }
                 }
             } catch (e: Exception) {
@@ -697,11 +942,10 @@ class CrewLineMainActivity : AppCompatActivity() {
 
                     if (recordYear == currentYear && recordMonth == currentMonth) {
                         val index = recordDay - 1
-                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                        monthlyData[index] += distance
-
-                        val dateFormat = SimpleDateFormat("yyyy-MM-dd", koreaLocale)
-                        dateFormat.timeZone = koreaTimeZone
+                        if (index >= 0 && index < maxDayOfMonth) {
+                            val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
+                            monthlyData[index] += distance
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -710,6 +954,81 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
 
         return monthlyData.mapIndexed { index, value -> BarEntry(index.toFloat(), value) }
+    }
+
+    private fun checkAndRequestLocationPermission() {
+        if (androidx.core.app.ActivityCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            getCurrentLocation { success ->
+                if (success) {
+                    val crewId = intent.getStringExtra("crewId") ?: ""
+                    if (crewId.isNotEmpty()) {
+                        loadCrewWalkRecords(crewId, db)
+                    }
+                }
+            }
+        } else {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    private fun getCurrentLocation(callback: (Boolean) -> Unit) {
+        if (androidx.core.app.ActivityCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    myLatitude = location.latitude
+                    myLongitude = location.longitude
+                    Log.d("CrewLineMain", "현재 위치: $myLatitude, $myLongitude")
+                    callback(true)
+                } else {
+                    Log.w("CrewLineMain", "위치 정보를 가져올 수 없습니다.")
+                    callback(false)
+                }
+            }.addOnFailureListener { e ->
+                Log.e("CrewLineMain", "위치 정보 가져오기 실패", e)
+                callback(false)
+            }
+        } else {
+            callback(false)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                getCurrentLocation { success ->
+                    if (success) {
+                        val crewId = intent.getStringExtra("crewId") ?: ""
+                        if (crewId.isNotEmpty()) {
+                            loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
+                            loadVisitedPlaces(crewId, FirebaseFirestore.getInstance(), findViewById(R.id.pointButtonContainer))
+                        }
+                    }
+                }
+            } else {
+                Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+                val crewId = intent.getStringExtra("crewId") ?: ""
+                if (crewId.isNotEmpty()) {
+                    loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
+                }
+            }
+        }
     }
 
     override fun onDestroy() {

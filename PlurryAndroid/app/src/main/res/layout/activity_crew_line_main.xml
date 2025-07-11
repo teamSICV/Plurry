@@ -20,18 +20,27 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
+                <ImageView
+                    android:id="@+id/crewBackButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/back"
+                    android:clickable="true"/>
 
                 <TextView
                     android:id="@+id/textView3"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
+                    android:layout_marginTop="5dp"
                     android:text="도봉(크루예시이름)"
+                    android:textStyle="bold"
                     android:textAlignment="center"
                     android:textSize="20sp" />
 
@@ -46,6 +55,19 @@
                     android:text="크루 가입"
                     android:textSize="14sp"
                     android:padding="15dp"/>
+
+                <TextView
+                    android:id="@+id/ExitCrewMember"
+                    android:layout_width="100dp"
+                    android:layout_height="50dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:textAlignment="center"
+                    android:clickable="true"
+                    android:text="크루 탈퇴"
+                    android:textSize="14sp"
+                    android:padding="15dp"/>
+
 
             </RelativeLayout>
 
