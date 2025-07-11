@@ -220,7 +220,6 @@ class ExploreTrackingFragment : Fragment() {
                 )
 
                 targetImageUrl?.let { imageUrl ->
-                    // 🚀 변경사항: 새로운 newInstance 함수 호출
                     ExploreResultDialogFragment
                         .newInstance("confirm", imageUrl, placeId ?: "", totalSteps, totalDistance, totalCalories)
                         .show(parentFragmentManager, "explore_confirm")
@@ -259,23 +258,22 @@ class ExploreTrackingFragment : Fragment() {
             "stepNum" to steps,
             "walkDistance" to distance,
             "walkEndTime" to endTime,
-            "walkStartTime" to startTime
+            "walkStartTime" to startTime,
+            "userId" to userId
         )
 
-        // 🔥 경로 수정: Users > {userId} > walk > visitedPlace > {placeId}
+        // 🚀 수정: 데이터 저장 경로를 Users/{userId}/visitedPlaces/{placeId}로 간소화합니다.
         db.collection("Users") // 'Users' 컬렉션
             .document(userId) // 사용자 UID 문서
-            .collection("walk") // 'walk' 컬렉션
-            .document("visitedPlace") // 'visitedPlace' 문서 (이 부분이 컬렉션이라면 다음처럼 변경)
-            .collection(placeId!!) // 'placeId'를 문서가 아닌 컬렉션으로 사용
-            .document("data") // 'placeId' 하위에 데이터를 저장할 문서 이름 (원하는 이름으로 변경 가능)
-            .set(visitedPlaceData)
+            .collection("visitedPlaces") // 새로운 컬렉션: 'visitedPlaces'
+            .document(placeId!!) // placeId를 문서 ID로 사용
+            .set(visitedPlaceData) // 여기에 직접 탐색 데이터를 저장
             .addOnSuccessListener {
-                Log.d("Firebase", "탐색 데이터 Firebase 저장 성공!")
+                Log.d("Firebase", "탐색 데이터 Firebase 저장 성공 (새 경로)!")
                 Toast.makeText(requireContext(), "탐색 기록이 성공적으로 저장되었습니다!", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
-                Log.e("Firebase", "탐색 데이터 Firebase 저장 실패", e)
+                Log.e("Firebase", "탐색 데이터 Firebase 저장 실패 (새 경로)", e)
                 Toast.makeText(requireContext(), "탐색 기록 저장 실패: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
     }
@@ -326,11 +324,8 @@ class ExploreTrackingFragment : Fragment() {
         targetImageUrl?.let { url ->
             Log.d("Explore", "imageUrl 전달됨: $url")
 
-            // Note: This call might be redundant if comparison handles showing appropriate dialogs.
-            // Consider if "fail" dialog should be handled here or only after image comparison.
-            // For now, it remains as per original code.
             ExploreResultDialogFragment
-                .newInstance("fail", url, placeId ?: "") // You might want to pass the stats here too if "fail" uses them
+                .newInstance("fail", url, placeId ?: "")
                 .show(parentFragmentManager, "explore_result")
 
             Log.d("Explore", "팝업 show() 호출 완료!")
