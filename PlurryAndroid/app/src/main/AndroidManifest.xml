@@ -32,7 +32,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Plurry"
         tools:targetApi="31">
-
+        <activity
+            android:name=".crewstep.CrewExit"
+            android:exported="false" />
         <activity
             android:name=".raising.RaisingItemActivity"
             android:exported="false"
@@ -43,8 +45,8 @@
             android:theme="@style/PopupTheme" />
         <activity
             android:name=".raising.RaisingStoryActivity"
-            android:theme="@style/PopupTheme"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/PopupTheme" />
         <activity
             android:name=".crewstep.CrewLineMakeCrewActivity"
             android:exported="false" />
@@ -62,6 +64,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -86,10 +89,13 @@
         <activity
             android:name=".MainActivity"
             android:exported="false">
-            <!--<intent-filter>
+
+            <!--
+            <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>-->
+            </intent-filter>
+            -->
         </activity>
 
         <provider
