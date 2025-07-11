@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,12 +21,19 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.SICV.plurry.R
+import com.bumptech.glide.Glide
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.fitness.Fitness
+import com.google.android.gms.fitness.FitnessOptions
+import com.google.android.gms.fitness.data.DataType
+import com.google.android.gms.fitness.data.Field
+import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
+import java.util.concurrent.TimeUnit
 import kotlin.math.*
-import android.net.Uri
-import android.util.Log
-import com.bumptech.glide.Glide
 
 class ExploreTrackingFragment : Fragment() {
 
@@ -44,7 +52,15 @@ class ExploreTrackingFragment : Fragment() {
     private var lastLoggedDistanceLevel = -1
     private var arrivalDialogShown = false
     private var targetImageUrl: String? = null
-    private var placeId: String? = null  // 🔥 placeId 변수 추가
+    private var placeId: String? = null
+
+    private lateinit var fitnessOptions: FitnessOptions
+    private var exploreStartTime: Long = 0L
+
+    // Firebase Firestore 인스턴스
+    private lateinit var db: FirebaseFirestore
+    // Firebase Auth 인스턴스 (사용자별 데이터 저장 시 필요)
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,7 +76,6 @@ class ExploreTrackingFragment : Fragment() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
-        // 🔥 arguments 처리 부분 수정
         arguments?.let {
             placeId = it.getString("placeId")
             targetLat = it.getDouble("targetLat")
@@ -75,20 +90,33 @@ class ExploreTrackingFragment : Fragment() {
         }
 
         btnExitExplore.setOnClickListener {
-            parentFragmentManager.popBackStack() // 탐색 종료 → 산책 모드로 복귀
+            parentFragmentManager.popBackStack()
         }
 
-        // ✅ 뒤로가기 버튼 비활성화 처리
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // 뒤로가기 무시
-            }
+            override fun handleOnBackPressed() {}
         })
 
         mapFragment = parentFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync { map ->
             googleMap = map
         }
+
+        exploreStartTime = System.currentTimeMillis()
+        fitnessOptions = FitnessOptions.builder()
+            .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.TYPE_DISTANCE_DELTA, FitnessOptions.ACCESS_READ)
+            .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
+            .build()
+
+        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+        Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_STEP_COUNT_DELTA)
+        Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_DISTANCE_DELTA)
+        Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_CALORIES_EXPENDED)
+
+        // Firebase 초기화
+        db = FirebaseFirestore.getInstance()
+        auth = FirebaseAuth.getInstance()
 
         startLocationTracking()
         return view
@@ -132,7 +160,6 @@ class ExploreTrackingFragment : Fragment() {
                     lastLoggedDistanceLevel = currentLevel50m
                 }
 
-                // 🔥 도착 시 다이얼로그 호출 부분 수정
                 if (distance < 50 && !arrivalDialogShown) {
                     arrivalDialogShown = true
                     onArriveAtPlace()
@@ -150,13 +177,107 @@ class ExploreTrackingFragment : Fragment() {
         fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
     }
 
-    // 🔥 장소 도착 시 호출되는 메서드 추가
     private fun onArriveAtPlace() {
-        targetImageUrl?.let { imageUrl ->
-            ExploreResultDialogFragment
-                .newInstance("confirm", imageUrl, placeId ?: "")
-                .show(parentFragmentManager, "explore_confirm")
+        val endTime = System.currentTimeMillis()
+        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+
+        val readRequest = DataReadRequest.Builder()
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+            .aggregate(DataType.TYPE_DISTANCE_DELTA)
+            .aggregate(DataType.TYPE_CALORIES_EXPENDED)
+            .setTimeRange(exploreStartTime, endTime, TimeUnit.MILLISECONDS)
+            .bucketByTime(1, TimeUnit.MINUTES)
+            .build()
+
+        Fitness.getHistoryClient(requireContext(), account)
+            .readData(readRequest)
+            .addOnSuccessListener { response ->
+                var totalSteps = 0
+                var totalDistance = 0.0
+                var totalCalories = 0.0
+
+                for (bucket in response.buckets) {
+                    for (dataSet in bucket.dataSets) {
+                        for (dp in dataSet.dataPoints) {
+                            when (dp.dataType) {
+                                DataType.TYPE_STEP_COUNT_DELTA -> totalSteps += dp.getValue(Field.FIELD_STEPS).asInt()
+                                DataType.TYPE_DISTANCE_DELTA -> totalDistance += dp.getValue(Field.FIELD_DISTANCE).asFloat()
+                                DataType.TYPE_CALORIES_EXPENDED -> totalCalories += dp.getValue(Field.FIELD_CALORIES).asFloat()
+                            }
+                        }
+                    }
+                }
+
+                Log.d("GoogleFit", "탐색 중 측정 결과 - 거리: ${"%.2f".format(totalDistance / 1000)}km, 걸음: $totalSteps, 칼로리: ${"%.1f".format(totalCalories)}kcal")
+
+                // Firebase에 저장
+                saveExploreDataToFirebase(
+                    totalSteps,
+                    totalDistance,
+                    totalCalories,
+                    exploreStartTime,
+                    endTime
+                )
+
+                targetImageUrl?.let { imageUrl ->
+                    // 🚀 변경사항: 새로운 newInstance 함수 호출
+                    ExploreResultDialogFragment
+                        .newInstance("confirm", imageUrl, placeId ?: "", totalSteps, totalDistance, totalCalories)
+                        .show(parentFragmentManager, "explore_confirm")
+                }
+            }
+            .addOnFailureListener {
+                Log.e("GoogleFit", "탐색 GoogleFit 데이터 로딩 실패", it)
+            }
+    }
+
+    // Firebase에 탐색 데이터를 저장하는 함수 (경로 수정됨)
+    private fun saveExploreDataToFirebase(
+        steps: Int,
+        distance: Double,
+        calories: Double,
+        startTime: Long,
+        endTime: Long
+    ) {
+        val userId = auth.currentUser?.uid // 현재 로그인된 사용자의 UID 가져오기
+        if (userId == null) {
+            Log.e("Firebase", "사용자가 로그인되어 있지 않습니다. 탐색 데이터를 저장할 수 없습니다.")
+            Toast.makeText(requireContext(), "사용자 로그인 정보가 없습니다. 데이터 저장 불가.", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        if (placeId == null) {
+            Log.e("Firebase", "Place ID가 null입니다. 탐색 데이터를 저장할 수 없습니다.")
+            Toast.makeText(requireContext(), "대상 장소 정보가 없습니다. 데이터 저장 불가.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val visitedPlaceData = hashMapOf(
+            "calo" to calories,
+            "geo" to mapOf("latitude" to targetLat, "longitude" to targetLng),
+            "placeId" to placeId,
+            "stepNum" to steps,
+            "walkDistance" to distance,
+            "walkEndTime" to endTime,
+            "walkStartTime" to startTime
+        )
+
+        // 🔥 경로 수정: Users > {userId} > walk > visitedPlace > {placeId}
+        db.collection("Users") // 'Users' 컬렉션
+            .document(userId) // 사용자 UID 문서
+            .collection("walk") // 'walk' 컬렉션
+            .document("visitedPlace") // 'visitedPlace' 문서 (이 부분이 컬렉션이라면 다음처럼 변경)
+            .collection(placeId!!) // 'placeId'를 문서가 아닌 컬렉션으로 사용
+            .document("data") // 'placeId' 하위에 데이터를 저장할 문서 이름 (원하는 이름으로 변경 가능)
+            .set(visitedPlaceData)
+            .addOnSuccessListener {
+                Log.d("Firebase", "탐색 데이터 Firebase 저장 성공!")
+                Toast.makeText(requireContext(), "탐색 기록이 성공적으로 저장되었습니다!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firebase", "탐색 데이터 Firebase 저장 실패", e)
+                Toast.makeText(requireContext(), "탐색 기록 저장 실패: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
     }
 
     private fun calculateDistance(currentLat: Double, currentLng: Double): Float {
@@ -189,6 +310,7 @@ class ExploreTrackingFragment : Fragment() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
         } else {
+            @Suppress("DEPRECATION")
             vibrator.vibrate(500)
         }
     }
@@ -198,25 +320,26 @@ class ExploreTrackingFragment : Fragment() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
-    fun onPhotoTaken(photoUri: Uri) {
+    fun onPhotoTaken(photoUri: android.net.Uri) {
         Log.d("Explore", "onPhotoTaken 호출됨! URI: $photoUri")
 
         targetImageUrl?.let { url ->
             Log.d("Explore", "imageUrl 전달됨: $url")
 
-            // 🔥 placeId도 함께 전달
+            // Note: This call might be redundant if comparison handles showing appropriate dialogs.
+            // Consider if "fail" dialog should be handled here or only after image comparison.
+            // For now, it remains as per original code.
             ExploreResultDialogFragment
-                .newInstance("fail", url, placeId ?: "")
+                .newInstance("fail", url, placeId ?: "") // You might want to pass the stats here too if "fail" uses them
                 .show(parentFragmentManager, "explore_result")
 
             Log.d("Explore", "팝업 show() 호출 완료!")
         } ?: run {
-            Log.e("Explore", "targetImageUrl 가 null이야!!")
+            Log.e("Explore", "targetImageUrl 이 null이야!!")
         }
     }
 
     companion object {
-        // 🔥 placeId 매개변수 추가
         fun newInstance(placeId: String, lat: Double, lng: Double, imageUrl: String): ExploreTrackingFragment {
             return ExploreTrackingFragment().apply {
                 arguments = Bundle().apply {

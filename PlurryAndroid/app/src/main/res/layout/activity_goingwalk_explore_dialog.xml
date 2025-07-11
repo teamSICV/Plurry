@@ -11,7 +11,6 @@
         android:orientation="vertical"
         android:gravity="center_horizontal">
 
-        <!-- 안내 문구 -->
         <TextView
             android:id="@+id/tvDialogTitle"
             android:layout_width="wrap_content"
@@ -23,7 +22,6 @@
             android:padding="12dp"
             android:textColor="#000000" />
 
-        <!-- 포인트 장소 이미지 -->
         <ImageView
             android:id="@+id/ivPlaceImage"
             android:layout_width="200dp"
@@ -44,8 +42,19 @@
             android:visibility="gone"
             />
 
+        <TextView
+            android:id="@+id/tvStatsInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="걸음: 0 걸음\n거리: 0.00 km\n칼로리: 0.0 kcal"
+            android:textColor="#666666"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:visibility="gone"
+            />
 
-        <!-- 촬영하기 / 다시 촬영하기 버튼 -->
+
         <Button
             android:id="@+id/btnMainAction"
             android:layout_width="match_parent"
@@ -53,7 +62,6 @@
             android:text="촬영하기"
             android:layout_marginTop="20dp" />
 
-        <!-- 탐색 종료 버튼 (성공 시에만 보여짐) -->
         <Button
             android:id="@+id/btnSecondaryAction"
             android:layout_width="match_parent"
@@ -64,4 +72,3 @@
 
     </LinearLayout>
 </ScrollView>
-
