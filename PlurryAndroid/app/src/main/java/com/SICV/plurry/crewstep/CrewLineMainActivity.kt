@@ -84,6 +84,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         currentCrewId = crewId
         val rankingButton = findViewById<ImageView>(R.id.rankingButton)
         val crewBackBtn = findViewById<ImageView>(R.id.crewBackButton)
+        val exitCrewMemberTextView = findViewById<TextView>(R.id.ExitCrewMember)
 
         handler = Handler(Looper.getMainLooper())
         timeRunnable = object : Runnable {
@@ -97,6 +98,10 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
         }
         handler.post(timeRunnable)
+
+        exitCrewMemberTextView.setOnClickListener {
+            exitCrewMember(crewId, db)
+        }
 
         rankingButton.setOnClickListener {
             val intent = Intent(this, RankingMainActivity::class.java)
@@ -126,6 +131,8 @@ class CrewLineMainActivity : AppCompatActivity() {
                 val crewName = document.getString("name") ?: "크루"
                 crewNameTextView.text = crewName
                 Log.d("CrewLineMain", "크루 이름 설정: $crewName")
+                checkCrewMemberStatus(crewId, db, joinCrewMemberTextView, exitCrewMemberTextView)
+
             }
             .addOnFailureListener { e ->
                 Log.e("Firestore", "크루 이름 가져오기 실패", e)
@@ -271,8 +278,17 @@ class CrewLineMainActivity : AppCompatActivity() {
                     .set(memberData)
                     .addOnSuccessListener {
                         Toast.makeText(this, "크루에 성공적으로 가입했습니다!", Toast.LENGTH_SHORT).show()
-
-                        loadCrewWalkRecords(crewId, db)
+                        db.collection("Users").document(uid).update("crewAt", crewId)
+                            .addOnSuccessListener {
+                                Log.d("CrewLineMain", "사용자 crewAt 필드 업데이트 완료")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("CrewLineMain", "사용자 crewAt 필드 업데이트 실패", e)
+                            }
+                        val joinTextView = findViewById<TextView>(R.id.joinCrewMember)
+                        val exitTextView = findViewById<TextView>(R.id.ExitCrewMember)
+                        joinTextView.visibility = android.view.View.GONE
+                        exitTextView.visibility = android.view.View.VISIBLE
                     }
                     .addOnFailureListener { e ->
                         Toast.makeText(this, "크루 가입에 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -280,6 +296,131 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun checkCrewMemberStatus(crewId: String, db: FirebaseFirestore,
+                                      joinTextView: TextView, exitTextView: TextView) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            joinTextView.visibility = android.view.View.VISIBLE
+            exitTextView.visibility = android.view.View.GONE
+            return
+        }
+
+        val uid = currentUser.uid
+
+        db.collection("Users").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                if (userDoc.exists()) {
+                    val crewAt = userDoc.getString("crewAt")
+
+                    if (crewAt == crewId) {
+                        joinTextView.visibility = android.view.View.GONE
+                        exitTextView.visibility = android.view.View.VISIBLE
+                    } else {
+                        joinTextView.visibility = android.view.View.VISIBLE
+                        exitTextView.visibility = android.view.View.GONE
+                    }
+                } else {
+                    joinTextView.visibility = android.view.View.VISIBLE
+                    exitTextView.visibility = android.view.View.GONE
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "사용자 정보 확인 실패", e)
+                joinTextView.visibility = android.view.View.VISIBLE
+                exitTextView.visibility = android.view.View.GONE
+            }
+    }
+
+    private fun exitCrewMember(crewId: String, db: FirebaseFirestore) {
+        val exitDialog = CrewExit(this) {
+            performExitCrew(crewId, db)
+        }
+        exitDialog.show()
+    }
+
+    private fun performExitCrew(crewId: String, db: FirebaseFirestore) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (crewId.isEmpty()) {
+            Toast.makeText(this, "크루 ID가 유효하지 않습니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val uid = currentUser.uid
+
+        db.collection("Crew").document(crewId).collection("member").document("members").get()
+            .addOnSuccessListener { document ->
+                val memberData = document.data?.toMutableMap() ?: mutableMapOf<String, Any>()
+
+                if (!memberData.containsKey(uid)) {
+                    Toast.makeText(this, "크루 멤버가 아닙니다.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+
+                memberData.remove(uid)
+
+                db.collection("Crew").document(crewId).collection("member").document("members")
+                    .set(memberData)
+                    .addOnSuccessListener {
+                        removeFromCrewReward(crewId, uid, db)
+
+                        Toast.makeText(this, "크루에서 성공적으로 탈퇴했습니다.", Toast.LENGTH_SHORT).show()
+                        db.collection("Users").document(uid).update("crewAt", null)
+                            .addOnSuccessListener {
+                                Log.d("CrewLineMain", "사용자 crewAt 필드 제거 완료")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("CrewLineMain", "사용자 crewAt 필드 제거 실패", e)
+                            }
+
+                        val joinTextView = findViewById<TextView>(R.id.joinCrewMember)
+                        val exitTextView = findViewById<TextView>(R.id.ExitCrewMember)
+                        joinTextView.visibility = android.view.View.VISIBLE
+                        exitTextView.visibility = android.view.View.GONE
+
+                        loadCrewWalkRecords(crewId, db)
+                        loadVisitedPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("CrewLineMain", "크루 탈퇴 실패", e)
+                        Toast.makeText(this, "크루 탈퇴에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "멤버 정보 확인 실패", e)
+                Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun removeFromCrewReward(crewId: String, uid: String, db: FirebaseFirestore) {
+        db.collection("Game").document("crew").collection("crewReward").document(crewId).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val rewardData = document.data?.toMutableMap() ?: mutableMapOf<String, Any>()
+
+                    if (rewardData.containsKey(uid)) {
+                        rewardData.remove(uid)
+
+                        db.collection("Game").document("crew").collection("crewReward").document(crewId)
+                            .set(rewardData)
+                            .addOnSuccessListener {
+                                Log.d("CrewLineMain", "crewReward에서 유저 제거 완료")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("CrewLineMain", "crewReward에서 유저 제거 실패", e)
+                            }
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "crewReward 문서 확인 실패", e)
             }
     }
 
