@@ -450,28 +450,23 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
     }
 
+
     private fun removeFromCrewReward(crewId: String, uid: String, db: FirebaseFirestore) {
-        db.collection("Game").document("crew").collection("crewReward").document(crewId).get()
+        db.collection("Game").document("users").collection("userReward").document(uid).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    val rewardData = document.data?.toMutableMap() ?: mutableMapOf<String, Any>()
-
-                    if (rewardData.containsKey(uid)) {
-                        rewardData.remove(uid)
-
-                        db.collection("Game").document("crew").collection("crewReward").document(crewId)
-                            .set(rewardData)
-                            .addOnSuccessListener {
-                                Log.d("CrewLineMain", "crewReward에서 유저 제거 완료")
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("CrewLineMain", "crewReward에서 유저 제거 실패", e)
-                            }
-                    }
+                    db.collection("Game").document("users").collection("userReward").document(uid)
+                        .update("crewRewardItem", null)
+                        .addOnSuccessListener {
+                            Log.d("CrewLineMain", "userReward에서 crewRewardItem 제거 완료")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("CrewLineMain", "userReward에서 crewRewardItem 제거 실패", e)
+                        }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("CrewLineMain", "crewReward 문서 확인 실패", e)
+                Log.e("CrewLineMain", "userReward 문서 확인 실패", e)
             }
     }
 
