@@ -43,6 +43,8 @@ class LoginMainActivity : ComponentActivity() {
         auth = FirebaseAuth.getInstance()
         credentialManager = CredentialManager.create(this)
 
+        checkCurrentUser()
+
         val skipLogin = findViewById<TextView>(R.id.SkipLogin)
 
         skipLogin.setOnClickListener{
@@ -71,6 +73,13 @@ class LoginMainActivity : ComponentActivity() {
             btnOtherLogin.setOnClickListener {
                 val intent = Intent(this, LoginOtherJoinActivity::class.java)
                 startActivity(intent)}
+        }
+    }
+
+    private fun checkCurrentUser() {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            checkUserExistsAndRedirect(currentUser.uid)
         }
     }
 

@@ -491,7 +491,6 @@ class RankingMainActivity : AppCompatActivity() {
     }
 
     private fun updateTopThreeRanking(rankingData: List<RankingRecord>) {
-        // 초기화 - 이미지를 기본값으로 설정하고 뷰를 숨김
         rankingImg1.setImageResource(R.drawable.basicprofile)
         rankingImg2.setImageResource(R.drawable.basicprofile)
         rankingImg3.setImageResource(R.drawable.basicprofile)

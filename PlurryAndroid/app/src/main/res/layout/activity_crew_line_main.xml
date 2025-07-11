@@ -56,6 +56,19 @@
                     android:textSize="14sp"
                     android:padding="15dp"/>
 
+                <TextView
+                    android:id="@+id/ExitCrewMember"
+                    android:layout_width="100dp"
+                    android:layout_height="50dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:textAlignment="center"
+                    android:clickable="true"
+                    android:text="크루 탈퇴"
+                    android:textSize="14sp"
+                    android:padding="15dp"/>
+
+
             </RelativeLayout>
 
             <com.google.android.material.tabs.TabLayout
