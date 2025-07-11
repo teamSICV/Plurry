@@ -39,8 +39,7 @@
             android:textSize="16sp"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:visibility="gone"
-            />
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/tvStatsInfo"
@@ -51,9 +50,106 @@
             android:textSize="14sp"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:visibility="gone"
-            />
+            android:visibility="gone" />
 
+        <!-- 🆕 이미지 비교 레이아웃 (success 모드에서만 표시) -->
+        <LinearLayout
+            android:id="@+id/layoutImageComparison"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:padding="12dp"
+            android:background="#F8F9FA"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📸 이미지 비교 결과"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:textColor="#333333"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <!-- 🎯 기준 이미지 (목표 장소) -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="6dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🎯 목표 장소"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:textColor="#555555"
+                        android:layout_marginBottom="4dp" />
+
+                    <ImageView
+                        android:id="@+id/ivReferenceImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="100dp"
+                        android:scaleType="centerCrop"
+                        android:background="#DDDDDD" />
+
+                </LinearLayout>
+
+                <!-- 📷 사용자 촬영 이미지 (모자이크 처리됨) -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="6dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="📷 촬영한 사진"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:textColor="#555555"
+                        android:layout_marginBottom="4dp" />
+
+                    <ImageView
+                        android:id="@+id/ivUserImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="100dp"
+                        android:scaleType="centerCrop"
+                        android:background="#DDDDDD" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ✅ 유사도 표시 -->
+            <TextView
+                android:id="@+id/tvSimilarity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="유사도: 85%"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginTop="12dp"
+                android:padding="8dp"
+                android:background="#E8F5E8"
+                android:textColor="#2E7D32" />
+
+        </LinearLayout>
 
         <Button
             android:id="@+id/btnMainAction"

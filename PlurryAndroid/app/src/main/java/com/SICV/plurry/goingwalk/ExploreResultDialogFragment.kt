@@ -5,6 +5,7 @@ import android.app.Dialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -17,6 +18,7 @@ import androidx.fragment.app.DialogFragment
 import com.SICV.plurry.R
 import com.SICV.plurry.onnx.OnnxComparator
 import com.SICV.plurry.onnx.OnnxHelper
+import com.SICV.plurry.onnx.FaceMosaicHelper  // 새로 추가
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -26,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
@@ -40,7 +43,14 @@ class ExploreResultDialogFragment : DialogFragment() {
     private lateinit var secondaryButton: Button
     private lateinit var statsTextView: TextView
 
+    // 이미지 비교용 뷰들 추가
+    private lateinit var referenceImageView: ImageView
+    private lateinit var userImageView: ImageView
+    private lateinit var similarityTextView: TextView
+    private lateinit var imageComparisonLayout: LinearLayout
+
     private lateinit var onnxHelper: OnnxHelper
+    private lateinit var faceMosaicHelper: FaceMosaicHelper  // 새로 추가
 
     private var mode: String = "confirm"
     private var imageUrl: String? = null
@@ -48,6 +58,10 @@ class ExploreResultDialogFragment : DialogFragment() {
     private var totalSteps: Int = 0
     private var totalDistance: Double = 0.0
     private var totalCalories: Double = 0.0
+
+    // 이미지 비교용 데이터 추가
+    private var userImagePath: String? = null
+    private var similarity: Float = 0f
 
     private val REQUEST_IMAGE_CAPTURE = 2020
     private var imageFile: File? = null
@@ -64,7 +78,19 @@ class ExploreResultDialogFragment : DialogFragment() {
         secondaryButton = view.findViewById(R.id.btnSecondaryAction)
         statsTextView = view.findViewById(R.id.tvStatsInfo)
 
+        // 이미지 비교용 뷰들 초기화 (없으면 null로 처리)
+        try {
+            referenceImageView = view.findViewById(R.id.ivReferenceImage)
+            userImageView = view.findViewById(R.id.ivUserImage)
+            similarityTextView = view.findViewById(R.id.tvSimilarity)
+            imageComparisonLayout = view.findViewById(R.id.layoutImageComparison)
+        } catch (e: Exception) {
+            Log.d("ExploreDialog", "이미지 비교 뷰를 찾을 수 없습니다 (레이아웃 업데이트 필요)")
+        }
+
+        // Helper 클래스 초기화
         onnxHelper = OnnxHelper(requireContext())
+        faceMosaicHelper = FaceMosaicHelper(requireContext())  // 새로 추가
 
         mode = arguments?.getString("mode") ?: "confirm"
         imageUrl = arguments?.getString("imageUrl")
@@ -72,6 +98,10 @@ class ExploreResultDialogFragment : DialogFragment() {
         totalSteps = arguments?.getInt("totalSteps", 0) ?: 0
         totalDistance = arguments?.getDouble("totalDistance", 0.0) ?: 0.0
         totalCalories = arguments?.getDouble("totalCalories", 0.0) ?: 0.0
+
+        // 이미지 비교용 데이터 가져오기
+        userImagePath = arguments?.getString("userImagePath")
+        similarity = arguments?.getFloat("similarity", 0f) ?: 0f
 
         imageUrl?.let {
             Glide.with(this).load(it).into(placeImageView)
@@ -115,6 +145,9 @@ class ExploreResultDialogFragment : DialogFragment() {
                 statsTextView.text = "걸음: ${totalSteps} 걸음\n거리: %.2f km\n칼로리: %.1f kcal".format(totalDistance / 1000, totalCalories)
                 statsTextView.visibility = View.VISIBLE
 
+                // 이미지 비교 표시 (새로 추가)
+                setupImageComparison()
+
                 secondaryButton.setOnClickListener {
                     dismiss()
                     activity?.supportFragmentManager?.popBackStack()
@@ -156,7 +189,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val userBitmap = loadImageFromFile(imageFile)
+                val userBitmap = loadImageFromFile(imageFile)  // 회전 보정 포함된 메서드 사용
                 val referenceBitmap = loadImageFromUrl(imageUrl)
 
                 if (userBitmap == null || referenceBitmap == null) {
@@ -166,6 +199,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                     return@launch
                 }
 
+                // 1단계: 유사도 비교 (기존 코드)
                 val userFeatures = onnxHelper.runInference(userBitmap)
                 val referenceFeatures = onnxHelper.runInference(referenceBitmap)
 
@@ -177,12 +211,13 @@ class ExploreResultDialogFragment : DialogFragment() {
                 }
 
                 val similarity = OnnxComparator.cosineSimilarity(userFeatures, referenceFeatures)
-                val threshold = 0.8f
+                val threshold = 0.5f
                 val isMatch = similarity >= threshold
 
                 withContext(Dispatchers.Main) {
                     if (isMatch) {
-                        uploadToFirebase()
+                        // 2단계: 얼굴 모자이크 처리 (새로 추가)
+                        processFaceMosaicAndUpload(userBitmap, similarity)
                     } else {
                         showComparisonResult(false, similarity, null)
                     }
@@ -196,8 +231,193 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
+    // 새로 추가된 메서드: 얼굴 모자이크 처리 후 업로드
+    private fun processFaceMosaicAndUpload(originalBitmap: Bitmap, similarity: Float) {
+        titleTextView.text = "🎭 얼굴을 모자이크 처리하고 있어요..."
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 얼굴 모자이크 적용
+                val mosaicBitmap = faceMosaicHelper.applyFaceMosaic(originalBitmap, mosaicSize = 15)
+
+                // 처리된 이미지를 임시 파일로 저장
+                val processedFile = if (mosaicBitmap != null) {
+                    Log.d("ExploreDialog", "✅ 얼굴 모자이크 처리 성공")
+                    saveBitmapToFile(mosaicBitmap, "processed_")
+                } else {
+                    Log.d("ExploreDialog", "❌ 얼굴 모자이크 처리 실패, 원본 사용")
+                    saveBitmapToFile(originalBitmap, "original_")
+                }
+
+                if (processedFile != null) {
+                    // 🔍 디버깅: 파일 교체 전후 비교
+                    Log.d("ExploreDialog", "📁 기존 imageFile: ${imageFile?.absolutePath}")
+                    Log.d("ExploreDialog", "📁 새로운 processedFile: ${processedFile.absolutePath}")
+
+                    // 기존 imageFile을 처리된 파일로 교체
+                    val oldFile = imageFile
+                    imageFile = processedFile
+
+                    Log.d("ExploreDialog", "🔄 imageFile 교체 완료: ${imageFile?.absolutePath}")
+                    Log.d("ExploreDialog", "📏 처리된 파일 크기: ${processedFile.length() / 1024}KB")
+
+                    withContext(Dispatchers.Main) {
+                        // 3단계: Firebase 업로드 및 성공 다이얼로그에 이미지 전달
+                        uploadToFirebaseWithImageComparison(processedFile, mosaicBitmap ?: originalBitmap, similarity)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        titleTextView.text = "이미지 처리 실패\n다시 시도해주세요"
+                        mainActionButton.isEnabled = true
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("ExploreDialog", "얼굴 모자이크 처리 중 오류: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    // 오류 발생시 원본 이미지로 업로드 진행
+                    uploadToFirebase()
+                }
+            }
+        }
+    }
+
+    // 새로 추가된 메서드: 이미지 비교 표시
+    private fun setupImageComparison() {
+        try {
+            if (::imageComparisonLayout.isInitialized && ::referenceImageView.isInitialized &&
+                ::userImageView.isInitialized && ::similarityTextView.isInitialized) {
+
+                imageComparisonLayout.visibility = View.VISIBLE
+
+                // 기준 이미지 로드 (목표 장소)
+                imageUrl?.let {
+                    Glide.with(this).load(it).into(referenceImageView)
+                }
+
+                // 사용자 촬영 이미지 로드 (모자이크된 이미지)
+                userImagePath?.let { path ->
+                    val file = File(path)
+                    if (file.exists()) {
+                        Glide.with(this).load(file).into(userImageView)
+                    }
+                }
+
+                // 유사도 표시
+                val similarityPercent = (similarity * 100).toInt()
+                similarityTextView.text = "유사도: ${similarityPercent}%"
+                similarityTextView.setTextColor(
+                    if (similarityPercent >= 50)
+                        android.graphics.Color.GREEN
+                    else
+                        android.graphics.Color.RED
+                )
+
+                Log.d("ExploreDialog", "이미지 비교 표시 완료 - 유사도: ${similarityPercent}%")
+            } else {
+                Log.d("ExploreDialog", "이미지 비교 뷰가 초기화되지 않음 - 레이아웃 업데이트 필요")
+            }
+        } catch (e: Exception) {
+            Log.e("ExploreDialog", "이미지 비교 표시 실패: ${e.message}")
+        }
+    }
+    private fun saveBitmapToFile(bitmap: Bitmap, prefix: String): File? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir = requireActivity().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            val file = File.createTempFile("${prefix}${timeStamp}_", ".jpg", storageDir!!)
+
+            FileOutputStream(file).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos)
+            }
+
+            Log.d("ExploreDialog", "이미지 저장 완료: ${file.absolutePath}")
+            file
+        } catch (e: Exception) {
+            Log.e("ExploreDialog", "이미지 저장 실패: ${e.message}")
+            null
+        }
+    }
+
     private fun loadImageFromFile(file: File?): Bitmap? {
-        return try { file?.let { BitmapFactory.decodeFile(it.absolutePath) } } catch (e: Exception) { null }
+        return try {
+            file?.let {
+                val bitmap = BitmapFactory.decodeFile(it.absolutePath)
+
+                // EXIF 회전 보정 포함
+                try {
+                    val exif = androidx.exifinterface.media.ExifInterface(it.absolutePath)
+                    val orientation = exif.getAttributeInt(
+                        androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_UNDEFINED
+                    )
+
+                    val rotationDegrees = when (orientation) {
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                        else -> 0f
+                    }
+
+                    if (rotationDegrees != 0f) {
+                        Log.d("ExploreDialog", "📸 이미지 회전 보정: ${rotationDegrees}도")
+                        val matrix = Matrix()
+                        matrix.postRotate(rotationDegrees)
+                        val rotatedBitmap = Bitmap.createBitmap(
+                            bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                        )
+                        bitmap.recycle()
+                        rotatedBitmap
+                    } else {
+                        bitmap
+                    }
+                } catch (e: Exception) {
+                    Log.d("ExploreDialog", "회전 보정 실패, 원본 사용: ${e.message}")
+                    bitmap
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("ExploreDialog", "이미지 로딩 실패: ${e.message}")
+            null
+        }
+    }
+    private fun loadImageFromFileWithRotation(file: File?): Bitmap? {
+        return try {
+            file?.let {
+                val bitmap = BitmapFactory.decodeFile(it.absolutePath)
+
+                // EXIF 정보로 회전 각도 확인
+                val exif = androidx.exifinterface.media.ExifInterface(it.absolutePath)
+                val orientation = exif.getAttributeInt(
+                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_UNDEFINED
+                )
+
+                // 회전 각도 계산
+                val rotationDegrees = when (orientation) {
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                    else -> 0f
+                }
+
+                if (rotationDegrees != 0f) {
+                    Log.d("ExploreDialog", "📸 이미지 회전 보정: ${rotationDegrees}도")
+                    val matrix = Matrix()
+                    matrix.postRotate(rotationDegrees)
+                    val rotatedBitmap = Bitmap.createBitmap(
+                        bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                    )
+                    bitmap.recycle() // 원본 메모리 해제
+                    rotatedBitmap
+                } else {
+                    bitmap
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("ExploreDialog", "이미지 로딩 실패: ${e.message}")
+            null
+        }
     }
 
     private fun loadImageFromUrl(url: String?): Bitmap? {
@@ -220,6 +440,7 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
+    // 기존 uploadToFirebase 메서드 (오류 처리용)
     private fun uploadToFirebase() {
         val file = imageFile ?: return
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -232,7 +453,7 @@ class ExploreResultDialogFragment : DialogFragment() {
         storageRef.putFile(Uri.fromFile(file))
             .addOnSuccessListener {
                 storageRef.downloadUrl.addOnSuccessListener { uri ->
-                    saveImageUrlToFirestore(uri.toString())  // ✅ Firestore에 저장
+                    saveImageUrlToFirestore(uri.toString())
                     val successDialog = newInstance("success", imageUrl ?: "", placeId ?: "", totalSteps, totalDistance, totalCalories)
                     successDialog.show(parentFragmentManager, "explore_success")
                     dismiss()
@@ -243,56 +464,76 @@ class ExploreResultDialogFragment : DialogFragment() {
                 mainActionButton.isEnabled = true
             }
     }
+    private fun uploadToFirebaseWithImageComparison(processedFile: File, mosaicBitmap: Bitmap, similarity: Float) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val fileName = "${userId}_${processedFile.name}"
+        val storageRef = FirebaseStorage.getInstance().reference
+            .child("exploreTempImages/$fileName")
 
-    // 🚀 수정: 이미지 URL을 운동 데이터와 같은 경로에 저장하도록 변경
+        titleTextView.text = "📤 업로드 중..."
+
+        storageRef.putFile(Uri.fromFile(processedFile))
+            .addOnSuccessListener {
+                storageRef.downloadUrl.addOnSuccessListener { uri ->
+                    Log.d("ExploreDialog", "🔥 Firebase Storage 업로드 성공!")
+                    Log.d("ExploreDialog", "📍 Firebase URL: ${uri.toString()}")
+                    saveImageUrlToFirestore(uri.toString())
+
+                    // 이미지 비교를 위한 임시 파일 생성 (성공 다이얼로그용)
+                    val tempMosaicFile = saveBitmapToFile(mosaicBitmap, "temp_mosaic_")
+
+                    // 성공 다이얼로그에 이미지 비교 정보 전달
+                    val successDialog = newInstanceWithImages(
+                        mode = "success",
+                        imageUrl = imageUrl ?: "",
+                        placeId = placeId ?: "",
+                        totalSteps = totalSteps,
+                        totalDistance = totalDistance,
+                        totalCalories = totalCalories,
+                        userImagePath = tempMosaicFile?.absolutePath ?: "",
+                        similarity = similarity
+                    )
+                    successDialog.show(parentFragmentManager, "explore_success")
+                    dismiss()
+                }
+            }
+            .addOnFailureListener {
+                Log.e("ExploreDialog", "🔥 Firebase Storage 업로드 실패: ${it.message}")
+                titleTextView.text = "업로드 실패\n다시 시도해주세요"
+                mainActionButton.isEnabled = true
+            }
+    }
+
     private fun saveImageUrlToFirestore(imageDownloadUrl: String) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val firestore = FirebaseFirestore.getInstance()
 
-        // placeId가 null이 아닌지 확인
         if (placeId == null) {
             Log.e("Firebase", "Place ID가 null입니다. 이미지 URL을 저장할 수 없습니다.")
             return
         }
 
-        // 운동 데이터가 저장되는 경로와 동일하게 설정
-        // Users > {userId} > walk > visitedPlace > {placeId} > data
         val visitedPlaceDataRef = firestore
             .collection("Users")
             .document(userId)
             .collection("walk")
-            .document("visitedPlace") // 이 부분이 컬렉션인지 문서인지에 따라 다음 줄이 달라짐.
-            .collection(placeId!!) // placeId를 컬렉션 이름으로 사용
-            .document("data") // 운동 데이터가 저장되는 문서
+            .document("visitedPlace")
+            .collection(placeId!!)
+            .document("data")
 
-        // 해당 문서에 imgUrl 필드만 업데이트 (또는 추가)
         visitedPlaceDataRef.update("imgUrl", imageDownloadUrl)
             .addOnSuccessListener {
                 Log.d("Firebase", "이미지 URL Firebase 저장 성공 (운동 데이터와 함께)")
             }
             .addOnFailureListener { e ->
-                // 만약 'data' 문서가 아직 존재하지 않는다면 update는 실패할 수 있으므로,
-                // set(merge=true)를 사용하여 문서를 생성하거나 업데이트할 수 있습니다.
-                // 그러나 ExploreTrackingFragment에서 운동 데이터가 먼저 저장되므로,
-                // 대부분의 경우 'data' 문서는 이미 존재할 것입니다.
                 Log.e("Firebase", "이미지 URL Firebase 저장 실패 (운동 데이터와 함께)", e)
-                // 필요하다면 여기서 set(merge:true) 로직을 추가할 수 있습니다.
-                // 예를 들어:
-                /*
-                visitedPlaceDataRef.set(hashMapOf("imgUrl" to imageDownloadUrl), SetOptions.merge())
-                    .addOnSuccessListener {
-                        Log.d("Firebase", "이미지 URL Firebase 저장 성공 (머지 방식)")
-                    }
-                    .addOnFailureListener { e2 ->
-                        Log.e("Firebase", "이미지 URL Firebase 저장 최종 실패 (머지 방식)", e2)
-                    }
-                */
             }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (::onnxHelper.isInitialized) onnxHelper.close()
+        if (::faceMosaicHelper.isInitialized) faceMosaicHelper.close()  // 새로 추가
     }
 
     companion object {
@@ -305,6 +546,31 @@ class ExploreResultDialogFragment : DialogFragment() {
                     putInt("totalSteps", totalSteps)
                     putDouble("totalDistance", totalDistance)
                     putDouble("totalCalories", totalCalories)
+                }
+            }
+        }
+
+        // 새로 추가된 메서드: 이미지 비교 정보 포함
+        fun newInstanceWithImages(
+            mode: String,
+            imageUrl: String,
+            placeId: String,
+            totalSteps: Int,
+            totalDistance: Double,
+            totalCalories: Double,
+            userImagePath: String,
+            similarity: Float
+        ): ExploreResultDialogFragment {
+            return ExploreResultDialogFragment().apply {
+                arguments = Bundle().apply {
+                    putString("mode", mode)
+                    putString("imageUrl", imageUrl)
+                    putString("placeId", placeId)
+                    putInt("totalSteps", totalSteps)
+                    putDouble("totalDistance", totalDistance)
+                    putDouble("totalCalories", totalCalories)
+                    putString("userImagePath", userImagePath)
+                    putFloat("similarity", similarity)
                 }
             }
         }
