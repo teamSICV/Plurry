@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
+import android.util.Log // Log 임포트 추가
 import android.view.*
 import android.widget.*
 import androidx.core.app.ActivityCompat
@@ -16,6 +17,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.SICV.plurry.R
+import com.google.firebase.auth.FirebaseAuth
 
 class PointSelectFragment : DialogFragment() {
 
@@ -24,11 +26,14 @@ class PointSelectFragment : DialogFragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ExploreAdapter
     private val placeList = mutableListOf<PlaceData>()
+    private val visitedPlaceIds = mutableSetOf<String>()
 
     private val radiusValues = listOf(1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)
 
     private var userLat = 0.0
     private var userLng = 0.0
+
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.activity_goingwalk_point_select, container, false)
@@ -36,6 +41,8 @@ class PointSelectFragment : DialogFragment() {
         spinner = view.findViewById(R.id.spinnerRadius)
         confirmBtn = view.findViewById(R.id.btnConfirmRadius)
         recyclerView = view.findViewById(R.id.recyclerViewPlaces)
+
+        auth = FirebaseAuth.getInstance()
 
         val spinnerOptions = listOf("1km", "1.5km", "2km", "2.5km", "3km", "3.5km", "4km", "4.5km", "5km")
         val spinnerAdapter = object : ArrayAdapter<String>(requireContext(), android.R.layout.simple_spinner_item, spinnerOptions) {
@@ -50,7 +57,7 @@ class PointSelectFragment : DialogFragment() {
 
         confirmBtn.setOnClickListener {
             val selectedRadius = radiusValues.getOrNull(spinner.selectedItemPosition) ?: 1.0
-            updateUserLocationThenLoad(selectedRadius)
+            loadVisitedPlacesThenUpdateLocation(selectedRadius)
         }
 
         adapter = ExploreAdapter(placeList) { place ->
@@ -60,6 +67,61 @@ class PointSelectFragment : DialogFragment() {
         recyclerView.layoutManager = GridLayoutManager(context, 3)
 
         return view
+    }
+
+    private fun loadVisitedPlacesThenUpdateLocation(radiusKm: Double) {
+        val userId = auth.currentUser?.uid
+        Log.d("PointSelectFragment", "현재 로그인된 사용자 ID: $userId")
+
+        if (userId == null) {
+            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            updateUserLocationThenLoad(radiusKm)
+            return
+        }
+
+        // 🚀 수정: collectionGroup 쿼리 대신 사용자별 visitedPlaces 컬렉션을 직접 쿼리합니다.
+        Firebase.firestore.collection("Users")
+            .document(userId)
+            .collection("visitedPlaces") // 새로운 컬렉션 이름
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                visitedPlaceIds.clear()
+                Log.d("PointSelectFragment", "visitedPlaces 쿼리 결과 문서 수: ${querySnapshot.documents.size}")
+
+                if (querySnapshot.documents.isEmpty()) {
+                    Log.d("PointSelectFragment", "방문 기록이 없습니다. (새 경로 쿼리 결과 0개)")
+                    Log.d("PointSelectFragment", "쿼리 대상 userId: $userId")
+                }
+
+                for (document in querySnapshot.documents) {
+                    val placeIdFromDoc = document.id // 문서 ID 자체가 placeId가 됩니다.
+                    val userIdFromDoc = document.getString("userId") // 문서 내 userId 필드 확인
+                    val docPath = document.reference.path
+
+                    Log.d("PointSelectFragment", "처리 중인 문서: $docPath")
+                    Log.d("PointSelectFragment", "  - 문서 ID (placeId): $placeIdFromDoc")
+                    Log.d("PointSelectFragment", "  - 문서 내 userId: $userIdFromDoc")
+                    Log.d("PointSelectFragment", "  - 현재 앱의 userId: $userId")
+
+                    // 이제 경로 유효성 검사는 간단해집니다.
+                    // 문서 ID(placeIdFromDoc)가 null이 아니고, 문서 내 userId가 현재 userId와 일치하는지 확인합니다.
+                    if (placeIdFromDoc != null && userIdFromDoc == userId) {
+                        visitedPlaceIds.add(placeIdFromDoc)
+                        Log.d("PointSelectFragment", "  -> 방문한 장소 ID 추가됨: $placeIdFromDoc (userId 일치)")
+                    } else {
+                        Log.d("PointSelectFragment", "  -> 문서 스킵됨:")
+                        if (placeIdFromDoc == null) Log.d("PointSelectFragment", "    - placeId 없음 (문서 ID가 null)")
+                        if (userIdFromDoc != userId) Log.d("PointSelectFragment", "    - userId 불일치: 문서 userId($userIdFromDoc) vs 현재 userId($userId)")
+                    }
+                }
+                Log.d("PointSelectFragment", "최종 visitedPlaceIds: $visitedPlaceIds")
+                updateUserLocationThenLoad(radiusKm)
+            }
+            .addOnFailureListener { e ->
+                Log.e("PointSelectFragment", "방문한 장소 로드 오류: ${e.message}", e)
+                Toast.makeText(context, "방문 기록 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                updateUserLocationThenLoad(radiusKm)
+            }
     }
 
     private fun updateUserLocationThenLoad(radiusKm: Double) {
@@ -90,8 +152,16 @@ class PointSelectFragment : DialogFragment() {
             }
 
             placeList.clear()
+            Log.d("PointSelectFragment", "주변 장소 로드 시작. 필터링 전 총 장소 수: ${docs.size()}")
 
             for (doc in docs) {
+                val placeId = doc.id
+                // 필터링: 이미 방문한 장소는 목록에서 제외
+                if (visitedPlaceIds.contains(placeId)) {
+                    Log.d("PointSelectFragment", "스킵된 방문 장소: $placeId")
+                    continue // 방문한 장소이므로 건너뜀
+                }
+
                 val geo = doc.getGeoPoint("geo") ?: continue
                 val placeLocation = Location("place").apply {
                     latitude = geo.latitude
@@ -100,16 +170,22 @@ class PointSelectFragment : DialogFragment() {
 
                 if (userLocation.distanceTo(placeLocation) <= radiusKm * 1000) {
                     val imgUrl = doc.getString("myImgUrl") ?: continue
-                    val placeId = doc.id // 🔥 문서 ID를 placeId로 사용
                     placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl))
+                    Log.d("PointSelectFragment", "추가된 장소: $placeId")
+                } else {
+                    Log.d("PointSelectFragment", "거리 초과로 스킵된 장소: $placeId (거리: ${userLocation.distanceTo(placeLocation)}m)")
                 }
             }
 
             adapter.notifyDataSetChanged()
+            Log.d("PointSelectFragment", "필터링 후 최종 표시될 장소 수: ${placeList.size}")
+
+            if (placeList.isEmpty()) {
+                Toast.makeText(context, "주변에 탐색 가능한 장소가 없습니다.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    // 🔥 placeId 추가
     data class PlaceData(val placeId: String, val lat: Double, val lng: Double, val imageUrl: String)
 
     inner class ExploreAdapter(
@@ -157,7 +233,6 @@ class PointSelectFragment : DialogFragment() {
             }
 
             btnStart.setOnClickListener {
-                // 🔥 placeId도 함께 전달
                 val fragment = ExploreTrackingFragment.newInstance(place.placeId, place.lat, place.lng, place.imageUrl)
                 val activity = activity as? AppCompatActivity ?: return@setOnClickListener
 
@@ -166,8 +241,8 @@ class PointSelectFragment : DialogFragment() {
                     .addToBackStack(null)
                     .commit()
 
-                parent.dismiss() // ✅ 거리 선택 다이얼로그 닫기
-                dismiss()        // ✅ 탐색 확인 다이얼로그 닫기
+                parent.dismiss()
+                dismiss()
             }
 
             return dialog
