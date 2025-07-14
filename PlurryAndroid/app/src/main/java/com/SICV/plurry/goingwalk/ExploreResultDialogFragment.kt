@@ -153,6 +153,10 @@ class ExploreResultDialogFragment : DialogFragment() {
                 giveGeneralRewardItem()
                 // ** 일반 보상 아이템 지급 로직 추가 끝 **
 
+                // ** 크루 보상 아이템 지급 로직 추가 시작 **
+                giveCrewRewardItemIfApplicable()
+                // ** 크루 보상 아이템 지급 로직 추가 끝 **
+
                 secondaryButton.setOnClickListener {
                     dismiss()
                     activity?.supportFragmentManager?.popBackStack()
@@ -161,7 +165,7 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
-    // 새로 추가된 메서드: 일반 보상 아이템 지급
+    // 일반 보상 아이템 지급 (이전과 동일)
     private fun giveGeneralRewardItem() {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val uid = currentUser?.uid
@@ -176,22 +180,19 @@ class ExploreResultDialogFragment : DialogFragment() {
             .collection("Game")
             .document("users")
             .collection("userReward")
-            .document(uid) // UID를 문서 ID로 사용
+            .document(uid)
 
         userRewardRef.update("userRewardItem", FieldValue.increment(1))
             .addOnSuccessListener {
                 Log.d("ExploreResultDialog", "✅ 일반 보상 아이템 1개 지급 완료!")
-                // 이미 화면에는 지급 메시지가 표시되므로 추가 UI 변경은 필요 없음.
             }
             .addOnFailureListener { e ->
                 Log.e("ExploreResultDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
-                // 토스트 메시지 제거됨: Toast.makeText(requireContext(), "❌ 일반 보상 아이템 지급 실패: ${e.message}", Toast.LENGTH_SHORT).show()
 
-                // 문서가 없어서 업데이트에 실패한 경우, 새로 생성하는 로직 (초기값 1로)
                 if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
                     val initialRewardData = hashMapOf(
                         "userRewardItem" to 1,
-                        "characterName" to "", // 필요에 따라 초기값 설정
+                        "characterName" to "",
                         "crewRewardItem" to null,
                         "level" to 0,
                         "storyLevel" to 0
@@ -202,13 +203,133 @@ class ExploreResultDialogFragment : DialogFragment() {
                         }
                         .addOnFailureListener { setE ->
                             Log.e("ExploreResultDialog", "❌ userReward 문서 생성 실패: ${setE.message}")
-                            // 문서 생성 실패 시에만 토스트 메시지 표시:
                             Toast.makeText(requireContext(), "❌ 보상 아이템 지급 최종 실패: ${setE.message}", Toast.LENGTH_SHORT).show()
                         }
-                } else { // 다른 종류의 업데이트 실패 오류인 경우
-                    // 예상치 못한 다른 실패 시에만 토스트 메시지 표시:
+                } else {
                     Toast.makeText(requireContext(), "❌ 보상 아이템 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
+            }
+    }
+
+    // 크루 보상 아이템 지급 (조건부)
+    private fun giveCrewRewardItemIfApplicable() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val currentUid = currentUser?.uid
+
+        if (currentUid == null || placeId == null) {
+            Log.e("ExploreResultDialog", "❌ 크루 보상 지급 오류: UID 또는 Place ID가 null입니다.")
+            return
+        }
+
+        val db = FirebaseFirestore.getInstance()
+
+        Log.d("ExploreResultDialog", "현재 사용자 UID: $currentUid, 탐색 장소 ID: $placeId")
+
+        // 1. 현재 사용자의 crewId (crewAt) 가져오기
+        db.collection("Users").document(currentUid).get()
+            .addOnSuccessListener { userDoc ->
+                if (!userDoc.exists()) {
+                    Log.d("ExploreResultDialog", "현재 사용자 문서가 존재하지 않습니다: $currentUid")
+                    return@addOnSuccessListener
+                }
+                val currentUserCharacterId = userDoc.getString("characterId")
+                val currentUserCrewId = userDoc.getString("crewAt") // crewAt 필드 사용
+                Log.d("ExploreResultDialog", "현재 사용자 characterId: $currentUserCharacterId, crewId (crewAt): $currentUserCrewId")
+
+                if (currentUserCrewId == null || currentUserCrewId.isEmpty()) {
+                    Log.d("ExploreResultDialog", "현재 사용자는 크루에 속해있지 않거나 crewAt(크루ID)가 비어있습니다. 크루 보상 지급 안함.")
+                    return@addOnSuccessListener
+                }
+
+                // 2. 탐색한 장소의 'addedBy' (장소를 추가한 크루원 ID) 가져오기
+                db.collection("Places").document(placeId!!).get()
+                    .addOnSuccessListener { placeDoc ->
+                        if (!placeDoc.exists()) {
+                            Log.d("ExploreResultDialog", "탐색 장소 문서가 존재하지 않습니다: $placeId")
+                            return@addOnSuccessListener
+                        }
+                        val addedByCharacterId = placeDoc.getString("addedBy")
+                        Log.d("ExploreResultDialog", "탐색 장소 추가자 (characterId): $addedByCharacterId")
+
+                        if (addedByCharacterId == null || addedByCharacterId.isEmpty()) {
+                            Log.d("ExploreResultDialog", "탐색 장소에 'addedBy' 정보가 없거나 비어있습니다. 크루 보상 지급 안함.")
+                            return@addOnSuccessListener
+                        }
+
+                        // 3. 'addedBy' CharacterId로 User 문서 찾아서 해당 User의 crewId (crewAt) 가져오기
+                        db.collection("Users")
+                            .whereEqualTo("characterId", addedByCharacterId)
+                            .limit(1)
+                            .get()
+                            .addOnSuccessListener { addedByUserQuery ->
+                                if (addedByUserQuery.isEmpty) {
+                                    Log.d("ExploreResultDialog", "'addedBy' characterId에 해당하는 사용자 문서를 찾을 수 없습니다 ($addedByCharacterId). 크루 보상 지급 안함.")
+                                    return@addOnSuccessListener
+                                }
+                                val addedByUserDoc = addedByUserQuery.documents.first()
+                                val addedByUserId = addedByUserDoc.id
+                                val addedByCrewId = addedByUserDoc.getString("crewAt") // crewAt 필드 사용
+                                Log.d("ExploreResultDialog", "탐색 장소 추가자의 UID: $addedByUserId, CrewId (crewAt): $addedByCrewId")
+
+                                // 4. 현재 사용자의 crewId와 장소를 추가한 사람의 crewId가 같은지 확인
+                                if (currentUserCrewId == addedByCrewId) {
+                                    Log.d("ExploreResultDialog", "✅ 같은 크루원(ID: $currentUserCrewId)이 추가한 장소입니다. 크루 보상 지급 시작!")
+                                    // 5. 같은 크루라면 해당 사용자의 userReward 문서를 찾아 crewRewardItem 증가
+                                    val userRewardRef = db.collection("Game")
+                                        .document("users")
+                                        .collection("userReward")
+                                        .document(currentUid) // 현재 사용자(탐색 성공자)의 보상을 증가
+
+                                    userRewardRef.update("crewRewardItem", FieldValue.increment(1))
+                                        .addOnSuccessListener {
+                                            Log.d("ExploreResultDialog", "✅ 크루 보상 아이템 1개 지급 완료!")
+                                            Toast.makeText(requireContext(), "크루원 장소 탐색 성공! 크루 보상 획득!", Toast.LENGTH_SHORT).show()
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.e("ExploreResultDialog", "❌ 크루 보상 아이템 지급 실패 (업데이트): ${e.message}")
+                                            // crewRewardItem 필드가 없거나 문서가 없을 경우 처리
+                                            if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true || e.message?.contains("FieldValue.increment() can only be used with numeric values") == true) {
+                                                // 기존 데이터를 가져와서 crewRewardItem만 업데이트
+                                                userRewardRef.get().addOnSuccessListener { doc ->
+                                                    val existingData = doc.data ?: hashMapOf()
+                                                    val updatedData = HashMap(existingData)
+                                                    // crewRewardItem이 null이거나 숫자가 아니면 0으로 시작
+                                                    updatedData["crewRewardItem"] = (doc.getLong("crewRewardItem") ?: 0L) + 1
+
+                                                    userRewardRef.set(updatedData) // 전체 문서를 덮어쓰기 (필드 추가/업데이트)
+                                                        .addOnSuccessListener {
+                                                            Log.d("ExploreResultDialog", "✅ 크루 보상 아이템 문서 업데이트/생성 후 1개 지급 완료!")
+                                                            Toast.makeText(requireContext(), "크루원 장소 탐색 성공! 크루 보상 획득!", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                        .addOnFailureListener { setE ->
+                                                            Log.e("ExploreResultDialog", "❌ 크루 보상 아이템 문서 생성/업데이트 최종 실패: ${setE.message}")
+                                                            Toast.makeText(requireContext(), "❌ 크루 보상 지급 최종 실패: ${setE.message}", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                }.addOnFailureListener { getE ->
+                                                    Log.e("ExploreResultDialog", "❌ 크루 보상 지급을 위한 문서 조회 실패: ${getE.message}")
+                                                    Toast.makeText(requireContext(), "❌ 크루 보상 지급 오류: ${getE.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else {
+                                                Toast.makeText(requireContext(), "❌ 크루 보상 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                } else {
+                                    Log.d("ExploreResultDialog", "탐색 장소 추가자와 크루가 다릅니다. (현재 크루: $currentUserCrewId, 추가자 크루: $addedByCrewId) 크루 보상 지급 안함.")
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("ExploreResultDialog", "❌ 'addedBy' 사용자 정보 쿼리 실패: ${e.message}")
+                                Toast.makeText(requireContext(), "❌ 'addedBy' 사용자 정보 조회 실패", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("ExploreResultDialog", "❌ 장소 정보(Places) 조회 실패: ${e.message}")
+                        Toast.makeText(requireContext(), "❌ 장소 정보 로드 실패", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ExploreResultDialog", "❌ 현재 사용자 정보(Users) 조회 실패: ${e.message}")
+                Toast.makeText(requireContext(), "❌ 현재 사용자 정보 로드 실패", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -288,7 +409,6 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
-    // 새로 추가된 메서드: 얼굴 모자이크 처리 후 업로드
     private fun processFaceMosaicAndUpload(originalBitmap: Bitmap, similarity: Float) {
         titleTextView.text = "🎭 얼굴을 모자이크 처리하고 있어요..."
 
@@ -338,7 +458,6 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
-    // 새로 추가된 메서드: 이미지 비교 표시
     private fun setupImageComparison() {
         try {
             if (::imageComparisonLayout.isInitialized && ::referenceImageView.isInitialized &&
@@ -496,7 +615,6 @@ class ExploreResultDialogFragment : DialogFragment() {
         }
     }
 
-    // 기존 uploadToFirebase 메서드 (오류 처리용)
     private fun uploadToFirebase() {
         val file = imageFile ?: return
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -520,6 +638,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                 mainActionButton.isEnabled = true
             }
     }
+
     private fun uploadToFirebaseWithImageComparison(processedFile: File, mosaicBitmap: Bitmap, similarity: Float) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val fileName = "${userId}_${processedFile.name}"
