@@ -33,6 +33,7 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 import android.util.Log
+import com.google.firebase.firestore.FieldValue // FieldValue를 가져옵니다.
 
 class ExploreResultDialogFragment : DialogFragment() {
 
@@ -148,6 +149,10 @@ class ExploreResultDialogFragment : DialogFragment() {
                 // 이미지 비교 표시 (새로 추가)
                 setupImageComparison()
 
+                // ** 일반 보상 아이템 지급 로직 추가 시작 **
+                giveGeneralRewardItem()
+                // ** 일반 보상 아이템 지급 로직 추가 끝 **
+
                 secondaryButton.setOnClickListener {
                     dismiss()
                     activity?.supportFragmentManager?.popBackStack()
@@ -155,6 +160,53 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
         }
     }
+
+    // 새로 추가된 메서드: 일반 보상 아이템 지급
+    private fun giveGeneralRewardItem() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val uid = currentUser?.uid
+
+        if (uid == null) {
+            Log.e("ExploreResultDialog", "❌ 사용자 인증 오류: UID가 null입니다.")
+            Toast.makeText(requireContext(), "❌ 사용자 인증 오류. 보상 지급 실패.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val userRewardRef = FirebaseFirestore.getInstance()
+            .collection("Game")
+            .document("users")
+            .collection("userReward")
+            .document(uid) // UID를 문서 ID로 사용
+
+        userRewardRef.update("userRewardItem", FieldValue.increment(1))
+            .addOnSuccessListener {
+                Log.d("ExploreResultDialog", "✅ 일반 보상 아이템 1개 지급 완료!")
+                // 이미 화면에는 지급 메시지가 표시되므로 추가 UI 변경은 필요 없음.
+            }
+            .addOnFailureListener { e ->
+                Log.e("ExploreResultDialog", "❌ 일반 보상 아이템 지급 실패: ${e.message}")
+                Toast.makeText(requireContext(), "❌ 일반 보상 아이템 지급 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                // 문서가 없어서 업데이트에 실패한 경우, 새로 생성하는 로직 (초기값 1로)
+                if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
+                    val initialRewardData = hashMapOf(
+                        "userRewardItem" to 1,
+                        "characterName" to "", // 필요에 따라 초기값 설정
+                        "crewRewardItem" to null,
+                        "level" to 0,
+                        "storyLevel" to 0
+                    )
+                    userRewardRef.set(initialRewardData)
+                        .addOnSuccessListener {
+                            Log.d("ExploreResultDialog", "✅ userReward 문서 새로 생성 및 일반 보상 아이템 1개 지급 완료!")
+                        }
+                        .addOnFailureListener { setE ->
+                            Log.e("ExploreResultDialog", "❌ userReward 문서 생성 실패: ${setE.message}")
+                        }
+                }
+            }
+    }
+
 
     private fun launchCamera() {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
