@@ -26,6 +26,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import com.google.firebase.firestore.FieldValue // FieldValue를 가져와서 증가시킵니다.
+import android.util.Log // Log 임포트 추가
 
 class AddPointDialogFragment : DialogFragment() {
 
@@ -149,7 +150,7 @@ class AddPointDialogFragment : DialogFragment() {
                                         .collection("Places")
                                         .add(placeData)
                                         .addOnSuccessListener {
-                                            // **보상 로직 시작**
+                                            // **보상 로직 시작 - 수정된 부분**
                                             val userRewardRef = FirebaseFirestore.getInstance()
                                                 .collection("Game")
                                                 .document("users")
@@ -158,6 +159,7 @@ class AddPointDialogFragment : DialogFragment() {
 
                                             userRewardRef.update("userRewardItem", FieldValue.increment(1))
                                                 .addOnSuccessListener {
+                                                    Log.d("AddPointDialog", "✅ 일반 보상 아이템 1개 지급 완료!")
                                                     completionLayout.visibility = View.VISIBLE
                                                     tvReward.text = "일반 보상 아이템 1개 지급"
 
@@ -173,10 +175,51 @@ class AddPointDialogFragment : DialogFragment() {
                                                     isUploading = false
                                                 }
                                                 .addOnFailureListener { e ->
-                                                    Toast.makeText(requireContext(), "❌ 보상 아이템 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-                                                    isUploading = false
-                                                    progressLayout.visibility = View.GONE
-                                                    btnConfirm.isEnabled = true
+                                                    Log.e("AddPointDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
+                                                    // 토스트 메시지 제거됨: Toast.makeText(requireContext(), "❌ 보상 아이템 지급 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                                                    // 문서가 없어서 업데이트에 실패한 경우, 새로 생성하는 로직 (초기값 1로)
+                                                    if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
+                                                        val initialRewardData = hashMapOf(
+                                                            "userRewardItem" to 1,
+                                                            "characterName" to "", // 필요에 따라 초기값 설정
+                                                            "crewRewardItem" to null,
+                                                            "level" to 0,
+                                                            "storyLevel" to 0
+                                                        )
+                                                        userRewardRef.set(initialRewardData)
+                                                            .addOnSuccessListener {
+                                                                Log.d("AddPointDialog", "✅ userReward 문서 새로 생성 및 일반 보상 아이템 1개 지급 완료!")
+                                                                // 문서 생성 성공 시에도 UI 업데이트
+                                                                completionLayout.visibility = View.VISIBLE
+                                                                tvReward.text = "일반 보상 아이템 1개 지급"
+
+                                                                nameInputLayout.visibility = View.GONE
+                                                                btnSubmitName.visibility = View.GONE
+                                                                btnTakePhoto.visibility = View.GONE
+                                                                btnRetake.visibility = View.GONE
+                                                                btnConfirm.visibility = View.GONE
+                                                                btnClose.visibility = View.GONE
+                                                                photoActions.visibility = View.GONE
+                                                                progressLayout.visibility = View.GONE
+
+                                                                isUploading = false
+                                                            }
+                                                            .addOnFailureListener { setE ->
+                                                                Log.e("AddPointDialog", "❌ userReward 문서 생성 실패: ${setE.message}")
+                                                                // 문서 생성 실패 시에만 토스트 메시지 표시:
+                                                                Toast.makeText(requireContext(), "❌ 보상 아이템 지급 최종 실패: ${setE.message}", Toast.LENGTH_SHORT).show()
+                                                                isUploading = false
+                                                                progressLayout.visibility = View.GONE
+                                                                btnConfirm.isEnabled = true
+                                                            }
+                                                    } else { // 다른 종류의 업데이트 실패 오류인 경우
+                                                        // 예상치 못한 다른 실패 시에만 토스트 메시지 표시:
+                                                        Toast.makeText(requireContext(), "❌ 보상 아이템 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        isUploading = false
+                                                        progressLayout.visibility = View.GONE
+                                                        btnConfirm.isEnabled = true
+                                                    }
                                                 }
                                             // **보상 로직 끝**
 

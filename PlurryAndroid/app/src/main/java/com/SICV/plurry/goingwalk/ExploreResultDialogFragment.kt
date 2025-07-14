@@ -18,7 +18,7 @@ import androidx.fragment.app.DialogFragment
 import com.SICV.plurry.R
 import com.SICV.plurry.onnx.OnnxComparator
 import com.SICV.plurry.onnx.OnnxHelper
-import com.SICV.plurry.onnx.FaceMosaicHelper  // 새로 추가
+import com.SICV.plurry.onnx.FaceMosaicHelper
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -33,7 +33,7 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 import android.util.Log
-import com.google.firebase.firestore.FieldValue // FieldValue를 가져옵니다.
+import com.google.firebase.firestore.FieldValue
 
 class ExploreResultDialogFragment : DialogFragment() {
 
@@ -51,7 +51,7 @@ class ExploreResultDialogFragment : DialogFragment() {
     private lateinit var imageComparisonLayout: LinearLayout
 
     private lateinit var onnxHelper: OnnxHelper
-    private lateinit var faceMosaicHelper: FaceMosaicHelper  // 새로 추가
+    private lateinit var faceMosaicHelper: FaceMosaicHelper
 
     private var mode: String = "confirm"
     private var imageUrl: String? = null
@@ -91,7 +91,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         // Helper 클래스 초기화
         onnxHelper = OnnxHelper(requireContext())
-        faceMosaicHelper = FaceMosaicHelper(requireContext())  // 새로 추가
+        faceMosaicHelper = FaceMosaicHelper(requireContext())
 
         mode = arguments?.getString("mode") ?: "confirm"
         imageUrl = arguments?.getString("imageUrl")
@@ -146,7 +146,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                 statsTextView.text = "걸음: ${totalSteps} 걸음\n거리: %.2f km\n칼로리: %.1f kcal".format(totalDistance / 1000, totalCalories)
                 statsTextView.visibility = View.VISIBLE
 
-                // 이미지 비교 표시 (새로 추가)
+                // 이미지 비교 표시
                 setupImageComparison()
 
                 // ** 일반 보상 아이템 지급 로직 추가 시작 **
@@ -184,8 +184,8 @@ class ExploreResultDialogFragment : DialogFragment() {
                 // 이미 화면에는 지급 메시지가 표시되므로 추가 UI 변경은 필요 없음.
             }
             .addOnFailureListener { e ->
-                Log.e("ExploreResultDialog", "❌ 일반 보상 아이템 지급 실패: ${e.message}")
-                Toast.makeText(requireContext(), "❌ 일반 보상 아이템 지급 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e("ExploreResultDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
+                // 토스트 메시지 제거됨: Toast.makeText(requireContext(), "❌ 일반 보상 아이템 지급 실패: ${e.message}", Toast.LENGTH_SHORT).show()
 
                 // 문서가 없어서 업데이트에 실패한 경우, 새로 생성하는 로직 (초기값 1로)
                 if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
@@ -202,7 +202,12 @@ class ExploreResultDialogFragment : DialogFragment() {
                         }
                         .addOnFailureListener { setE ->
                             Log.e("ExploreResultDialog", "❌ userReward 문서 생성 실패: ${setE.message}")
+                            // 문서 생성 실패 시에만 토스트 메시지 표시:
+                            Toast.makeText(requireContext(), "❌ 보상 아이템 지급 최종 실패: ${setE.message}", Toast.LENGTH_SHORT).show()
                         }
+                } else { // 다른 종류의 업데이트 실패 오류인 경우
+                    // 예상치 못한 다른 실패 시에만 토스트 메시지 표시:
+                    Toast.makeText(requireContext(), "❌ 보상 아이템 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
     }
@@ -241,7 +246,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val userBitmap = loadImageFromFile(imageFile)  // 회전 보정 포함된 메서드 사용
+                val userBitmap = loadImageFromFile(imageFile)
                 val referenceBitmap = loadImageFromUrl(imageUrl)
 
                 if (userBitmap == null || referenceBitmap == null) {
@@ -268,7 +273,7 @@ class ExploreResultDialogFragment : DialogFragment() {
 
                 withContext(Dispatchers.Main) {
                     if (isMatch) {
-                        // 2단계: 얼굴 모자이크 처리 (새로 추가)
+                        // 2단계: 얼굴 모자이크 처리
                         processFaceMosaicAndUpload(userBitmap, similarity)
                     } else {
                         showComparisonResult(false, similarity, null)
@@ -302,7 +307,6 @@ class ExploreResultDialogFragment : DialogFragment() {
                 }
 
                 if (processedFile != null) {
-                    // 🔍 디버깅: 파일 교체 전후 비교
                     Log.d("ExploreDialog", "📁 기존 imageFile: ${imageFile?.absolutePath}")
                     Log.d("ExploreDialog", "📁 새로운 processedFile: ${processedFile.absolutePath}")
 
@@ -585,7 +589,7 @@ class ExploreResultDialogFragment : DialogFragment() {
     override fun onDestroy() {
         super.onDestroy()
         if (::onnxHelper.isInitialized) onnxHelper.close()
-        if (::faceMosaicHelper.isInitialized) faceMosaicHelper.close()  // 새로 추가
+        if (::faceMosaicHelper.isInitialized) faceMosaicHelper.close()
     }
 
     companion object {
