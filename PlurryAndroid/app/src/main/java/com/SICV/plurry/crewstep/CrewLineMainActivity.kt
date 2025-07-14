@@ -57,6 +57,10 @@ class CrewLineMainActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
+    private lateinit var refreshHandler: Handler
+    private lateinit var refreshRunnable: Runnable
+    private val REFRESH_INTERVAL = 5000L
+
     private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val earthRadius = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
@@ -86,6 +90,7 @@ class CrewLineMainActivity : AppCompatActivity() {
         val rankingButton = findViewById<ImageView>(R.id.rankingButton)
         val crewBackBtn = findViewById<ImageView>(R.id.crewBackButton)
         val exitCrewMemberTextView = findViewById<TextView>(R.id.ExitCrewMember)
+        val morePointButton = findViewById<TextView>(R.id.morePointBtn)
 
         handler = Handler(Looper.getMainLooper())
         timeRunnable = object : Runnable {
@@ -99,6 +104,12 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
         }
         handler.post(timeRunnable)
+        setupRefreshTimer()
+
+        morePointButton.setOnClickListener{
+            val intent = Intent(this, PointRecordMainActivity::class.java)
+            startActivity(intent)
+        }
 
         exitCrewMemberTextView.setOnClickListener {
             exitCrewMember(crewId, db)
@@ -139,57 +150,6 @@ class CrewLineMainActivity : AppCompatActivity() {
                 Log.e("Firestore", "크루 이름 가져오기 실패", e)
             }
 
-        db.collection("Crew").document(crewId).collection("crewPlace").get()
-            .addOnSuccessListener { querySnapshot ->
-                pointButtonContainer.removeAllViews()
-
-                for (doc in querySnapshot.documents) {
-                    val placeId = doc.id
-                    val isActive = doc.getBoolean(placeId) ?: false
-                    if (!isActive) continue
-
-                    db.collection("Places").document(placeId).get()
-                        .addOnSuccessListener { placeDoc ->
-                            val imageUrl = placeDoc.getString("myImgUrl") ?: ""
-                            val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
-                            val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
-                            val geoPoint = placeDoc.getGeoPoint("geo")
-
-                            val distance = 0
-                            val detailInfo = "추가한 유저: $addedBy\n거리: $distance"
-
-                            val imageButton = ImageButton(this)
-                            val layoutParams = LinearLayout.LayoutParams(
-                                (100 * resources.displayMetrics.density).toInt(),
-                                (120 * resources.displayMetrics.density).toInt()
-                            )
-                            layoutParams.setMargins(0, 0, 16, 0)
-                            imageButton.layoutParams = layoutParams
-                            imageButton.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                            imageButton.background = null
-
-                            Glide.with(this)
-                                .load(imageUrl)
-                                .placeholder(R.drawable.placeholder)
-                                .error(R.drawable.basiccrewprofile)
-                                .into(imageButton)
-
-                            imageButton.setOnClickListener {
-                                Log.d("CrewLineMain", "장소 버튼 클릭: $placeId")
-                                showPlaceDetailDialog(imageUrl, "장소: $placeName", detailInfo)
-                            }
-
-                            pointButtonContainer.addView(imageButton)
-                        }
-                        .addOnFailureListener {
-                            Log.e("CrewLineMain", "Places/$placeId 문서 가져오기 실패", it)
-                        }
-                }
-            }
-            .addOnFailureListener {
-                Log.e("CrewLineMain", "crewPlace 컬렉션 가져오기 실패", it)
-            }
-
         barChart = findViewById(R.id.barChart)
         val tabLayout = findViewById<TabLayout>(R.id.tablayout)
 
@@ -210,7 +170,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
         if (crewId.isNotEmpty()) {
             loadCrewWalkRecords(crewId, db)
-            loadVisitedPlaces(crewId, db, pointButtonContainer)
+            loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
         } else {
             updateRecyclerView(emptyList())
         }
@@ -449,7 +409,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                         exitTextView.visibility = android.view.View.GONE
 
                         loadCrewWalkRecords(crewId, db)
-                        loadVisitedPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                        loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
                     }
                     .addOnFailureListener { e ->
                         Log.e("CrewLineMain", "크루 탈퇴 실패", e)
@@ -482,121 +442,83 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
     }
 
-    private fun loadVisitedPlaces(crewId: String, db: FirebaseFirestore, container: LinearLayout) {
+    private fun loadCrewPlaces(crewId: String, db: FirebaseFirestore, container: LinearLayout) {
+        db.collection("Crew").document(crewId).collection("crewPlace").get()
+            .addOnSuccessListener { querySnapshot ->
+                val activePlaces = mutableListOf<Pair<String, Long>>() // placeId와 imageTime을 함께 저장
 
-        val childCount = container.childCount
-        for (i in childCount - 1 downTo 1) {
-            container.removeViewAt(i)
-        }
+                for (doc in querySnapshot.documents) {
+                    val placeId = doc.id
+                    val isActive = doc.getBoolean(placeId) ?: false
 
-        db.collection("Crew").document(crewId).collection("member").document("members").get()
-            .addOnSuccessListener { memberDoc ->
-                if (memberDoc.exists()) {
-                    val memberData = memberDoc.data
-                    if (memberData != null && memberData.isNotEmpty()) {
-                        val memberUids = memberData.keys.toList()
-                        fetchVisitedPlacesForMembers(memberUids, db, container)
-                    } else {
-                        Log.w("CrewLineMain", "멤버 데이터가 빔")
+                    if (isActive) {
+                        val imageTime = doc.getLong("imageTime") ?: 0L
+                        activePlaces.add(Pair(placeId, imageTime))
                     }
-                } else {
-                    Log.w("CrewLineMain", "멤버 문서 존재x")
+                }
+
+                val sortedPlaces = activePlaces.sortedByDescending { it.second }
+
+                val recentPlaces = sortedPlaces.take(10)
+                val recentPlaceIds = recentPlaces.map { it.first }.toSet()
+
+                for (i in container.childCount - 1 downTo 0) {
+                    val child = container.getChildAt(i)
+                    val placeId = child.contentDescription?.toString()?.removePrefix("visited_place_")
+                    if (placeId != null && !recentPlaceIds.contains(placeId)) {
+                        container.removeViewAt(i)
+                    }
+                }
+
+                for (placePair in recentPlaces) {
+                    val placeId = placePair.first
+                    if (!isPlaceAlreadyInContainer(container, placeId)) {
+                        loadAndAddPlaceImage(placeId, db, container)
+                    }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("CrewLineMain", "멤버 정보 가져오기 실패", e)
+                Log.e("CrewLineMain", "crewPlace 컬렉션 가져오기 실패", e)
             }
     }
 
-    data class VisitedPlace(
-        val placeId: String,
-        val visitTime: Long,
-        val imageUrl: String,
-        val name: String = "",
-        val detailInfo: String = ""
-    )
-
-    private fun fetchVisitedPlacesForMembers(memberUids: List<String>, db: FirebaseFirestore, container: LinearLayout) {
-        val visitedPlaces = mutableListOf<VisitedPlace>()
-        var completedRequests = 0
-
-        for (uid in memberUids) {
-            db.collection("Users").document(uid).collection("walk").document("visitedPlace").get()
-                .addOnSuccessListener { visitedDoc ->
-                    if (visitedDoc.exists()) {
-                        val visitedData = visitedDoc.data
-
-                        visitedData?.forEach { (placeId, visitTimeData) ->
-                            if (placeId.isNotEmpty()) {
-                                val visitTime = try {
-                                    when (visitTimeData) {
-                                        is com.google.firebase.Timestamp -> visitTimeData.toDate().time
-                                        is Long -> visitTimeData
-                                        else -> System.currentTimeMillis()
-                                    }
-                                } catch (e: Exception) {
-                                    System.currentTimeMillis()
-                                }
-
-                                db.collection("Places").document(placeId).get()
-                                    .addOnSuccessListener { placeDoc ->
-                                        if (placeDoc.exists()) {
-                                            val imageUrl = placeDoc.getString("myImgUrl") ?: ""
-                                            val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
-                                            val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
-                                            val geoPoint = placeDoc.getGeoPoint("geo")
-
-                                            val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
-                                                val distance = calculateDistance(myLatitude!!, myLongitude!!, geoPoint.latitude, geoPoint.longitude)
-                                                String.format("%.2f", distance) + "km"
-                                            } else {
-                                                "거리 계산 불가"
-                                            }
-
-                                            val detailInfo = "추가한 유저: $addedBy\n거리: $distanceText"
-
-                                            if (imageUrl.isNotEmpty()) {
-                                                visitedPlaces.add(VisitedPlace(placeId, visitTime, imageUrl, "장소: $placeName", detailInfo))
-                                            }
-                                        }
-
-                                        updateVisitedPlacesUI(visitedPlaces, container)
-                                    }
-                                    .addOnFailureListener { e ->
-                                        Log.e("CrewLineMain", "장소 $placeId 정보 가져오기 실패", e)
-                                    }
-                            }
-                        }
-                    }
-                    completedRequests++
-                    if (completedRequests == memberUids.size) {
-                        updateVisitedPlacesUI(visitedPlaces, container)
-                    }
-                }
-                .addOnFailureListener { e ->
-                    completedRequests++
-                    if (completedRequests == memberUids.size) {
-                        updateVisitedPlacesUI(visitedPlaces, container)
-                    }
-                }
+    private fun isPlaceAlreadyInContainer(container: LinearLayout, placeId: String): Boolean {
+        for (i in 0 until container.childCount) {
+            val child = container.getChildAt(i)
+            val existingPlaceId = child.contentDescription?.toString()?.removePrefix("visited_place_")
+            if (existingPlaceId == placeId) {
+                return true
+            }
         }
+        return false
     }
 
+    private fun loadAndAddPlaceImage(placeId: String, db: FirebaseFirestore, container: LinearLayout) {
+        db.collection("Places").document(placeId).get()
+            .addOnSuccessListener { placeDoc ->
+                if (placeDoc.exists()) {
+                    val imageUrl = placeDoc.getString("myImgUrl") ?: ""
+                    val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
+                    val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
+                    val geoPoint = placeDoc.getGeoPoint("geo")
 
-    private fun updateVisitedPlacesUI(visitedPlaces: MutableList<VisitedPlace>, container: LinearLayout) {
-        val uniquePlaces = visitedPlaces
-            .groupBy { it.placeId }
-            .map { (_, places) -> places.maxByOrNull { it.visitTime }!! }
-            .sortedByDescending { it.visitTime }
+                    val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
+                        val distance = calculateDistance(myLatitude!!, myLongitude!!, geoPoint.latitude, geoPoint.longitude)
+                        String.format("%.2f", distance) + "km"
+                    } else {
+                        "거리 계산 불가"
+                    }
 
-        val childCount = container.childCount
-        for (i in childCount - 1 downTo 1) {
-            container.removeViewAt(i)
-        }
+                    val detailInfo = "추가한 유저: $addedBy\n거리: $distanceText"
 
-        for (place in uniquePlaces) {
-            addPlaceImageToContainer(place.imageUrl, place.placeId, place.name, place.detailInfo, container)
-        }
+                    if (imageUrl.isNotEmpty()) {
+                        addPlaceImageToContainer(imageUrl, placeId, "장소: $placeName", detailInfo, container)
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "Places/$placeId 문서 가져오기 실패", e)
+            }
     }
 
     private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout) {
@@ -794,29 +716,44 @@ class CrewLineMainActivity : AppCompatActivity() {
     }
 
     private fun addUserPlacesToCrew(crewId: String, uid: String, db: FirebaseFirestore) {
-        db.collection("Places")
-            .whereEqualTo("addedBy", uid)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val batch = db.batch()
+        db.collection("Crew").document(crewId).collection("crewPlace").get()
+            .addOnSuccessListener { existingPlaces ->
+                val existingPlaceIds = existingPlaces.documents.map { it.id }.toSet()
 
-                for (document in querySnapshot.documents) {
-                    val placeId = document.id
-                    val crewPlaceRef = db.collection("Crew").document(crewId)
-                        .collection("crewPlace").document(placeId)
-                    batch.set(crewPlaceRef, mapOf(placeId to true))
-                }
+                db.collection("Places")
+                    .whereEqualTo("addedBy", uid)
+                    .get()
+                    .addOnSuccessListener { querySnapshot ->
+                        val batch = db.batch()
+                        var newPlaceCount = 0
 
-                batch.commit()
-                    .addOnSuccessListener {
-                        Log.d("CrewLineMain", "사용자 장소들이 크루에 추가되었습니다.")
+                        for (document in querySnapshot.documents) {
+                            val placeId = document.id
+                            if (!existingPlaceIds.contains(placeId)) {
+                                val imageTime = document.getLong("imageTime") ?: 0L
+                                val crewPlaceRef = db.collection("Crew").document(crewId)
+                                    .collection("crewPlace").document(placeId)
+                                batch.set(crewPlaceRef, mapOf(placeId to true, "imageTime" to imageTime))
+                                newPlaceCount++
+                            }
+                        }
+
+                        if (newPlaceCount > 0) {
+                            batch.commit()
+                                .addOnSuccessListener {
+                                    Log.d("CrewLineMain", "사용자($uid) 새 장소 ${newPlaceCount}개가 크루에 추가되었습니다.")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("CrewLineMain", "사용자 장소 추가 실패", e)
+                                }
+                        }
                     }
                     .addOnFailureListener { e ->
-                        Log.e("CrewLineMain", "사용자 장소 추가 실패", e)
+                        Log.e("CrewLineMain", "사용자 장소 조회 실패", e)
                     }
             }
             .addOnFailureListener { e ->
-                Log.e("CrewLineMain", "사용자 장소 조회 실패", e)
+                Log.e("CrewLineMain", "기존 crewPlace 조회 실패", e)
             }
     }
 
@@ -1096,7 +1033,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                         val crewId = intent.getStringExtra("crewId") ?: ""
                         if (crewId.isNotEmpty()) {
                             loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
-                            loadVisitedPlaces(crewId, FirebaseFirestore.getInstance(), findViewById(R.id.pointButtonContainer))
+                            loadCrewPlaces(crewId, FirebaseFirestore.getInstance(), findViewById(R.id.pointButtonContainer))
                         }
                     }
                 }
@@ -1110,8 +1047,67 @@ class CrewLineMainActivity : AppCompatActivity() {
         }
     }
 
+    private fun syncAllMemberPlacesToCrew(crewId: String, db: FirebaseFirestore) {
+        db.collection("Crew").document(crewId).collection("member").document("members").get()
+            .addOnSuccessListener { memberDoc ->
+                if (memberDoc.exists()) {
+                    val memberData = memberDoc.data
+                    if (memberData != null && memberData.isNotEmpty()) {
+                        val memberUids = memberData.keys.toList()
+
+                        for (uid in memberUids) {
+                            addUserPlacesToCrew(crewId, uid, db)
+                        }
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "크루 멤버 동기화 실패", e)
+            }
+    }
+
+    private fun setupRefreshTimer() {
+        refreshHandler = Handler(Looper.getMainLooper())
+        refreshRunnable = object : Runnable {
+            override fun run() {
+                refreshCrewData()
+                refreshHandler.postDelayed(this, REFRESH_INTERVAL)
+            }
+        }
+        refreshHandler.postDelayed(refreshRunnable, REFRESH_INTERVAL)
+    }
+
+    private fun refreshCrewData() {
+        val crewId = intent.getStringExtra("crewId") ?: ""
+        if (crewId.isNotEmpty()) {
+            Log.d("CrewLineMain", "5초 새로고침 실행")
+            loadCrewWalkRecords(crewId, db)
+            syncAllMemberPlacesToCrew(crewId, db)
+            loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::refreshHandler.isInitialized) {
+            refreshHandler.removeCallbacks(refreshRunnable)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::refreshHandler.isInitialized) {
+            refreshHandler.removeCallbacks(refreshRunnable)
+            refreshHandler.postDelayed(refreshRunnable, REFRESH_INTERVAL)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(timeRunnable)
+
+        if (::refreshHandler.isInitialized) {
+            refreshHandler.removeCallbacks(refreshRunnable)
+        }
     }
 }
