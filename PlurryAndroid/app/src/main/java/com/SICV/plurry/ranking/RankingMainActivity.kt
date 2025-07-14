@@ -125,7 +125,7 @@ class RankingMainActivity : AppCompatActivity() {
             }
             TabType.CREW_PERSONAL -> {
                 rankingCrewMe.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-                partName.text = "크루 내 개인"
+                partName.text = "크루 기여도"
                 loadCrewPersonalRankingData()
             }
             TabType.CREW -> {

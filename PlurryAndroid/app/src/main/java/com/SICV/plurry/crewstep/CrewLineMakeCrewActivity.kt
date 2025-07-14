@@ -8,6 +8,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -121,14 +122,17 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
         )
 
         crewDocRef.set(crewData).addOnSuccessListener {
+            saveMemberData(crewDocRef, uid, createdTime)
+
+            updateCreatorCrewInfo(uid, crewId, createdTime)
+
+            addCreatorPlacesToCrew(crewId, uid)
 
             if (useDefaultImage) {
                 uploadDefaultImage(crewId) {
-                    saveMemberData(crewDocRef, uid, createdTime)
                 }
             } else {
                 uploadCrewImage(crewId) {
-                    saveMemberData(crewDocRef, uid, createdTime)
                 }
             }
 
@@ -148,6 +152,47 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
         val memberCollection = crewDocRef.collection("member")
         memberCollection.document("leader").set(mapOf("leader" to uid))
         memberCollection.document("members").set(mapOf(uid to createdTime))
+    }
+
+    private fun updateCreatorCrewInfo(uid: String, crewId: String, createdTime: Timestamp) {
+        val updates = hashMapOf<String, Any>(
+            "crewAt" to crewId,
+            "crewAtTime" to createdTime
+        )
+        firestore.collection("Users").document(uid).update(updates)
+            .addOnSuccessListener {
+                Log.d("CrewLineMake", "크루장 crewAt 필드 업데이트 완료")
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMake", "크루장 crewAt 필드 업데이트 실패", e)
+            }
+    }
+
+    private fun addCreatorPlacesToCrew(crewId: String, uid: String) {
+        firestore.collection("Places")
+            .whereEqualTo("addedBy", uid)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val batch = firestore.batch()
+
+                for (document in querySnapshot.documents) {
+                    val placeId = document.id
+                    val crewPlaceRef = firestore.collection("Crew").document(crewId)
+                        .collection("crewPlace").document(placeId)
+                    batch.set(crewPlaceRef, mapOf(placeId to true))
+                }
+
+                batch.commit()
+                    .addOnSuccessListener {
+                        Log.d("CrewLineMake", "크루장의 장소들이 크루에 추가되었습니다.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("CrewLineMake", "크루장 장소 추가 실패", e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMake", "크루장 장소 조회 실패", e)
+            }
     }
 
     private fun uploadCrewImage(crewId: String, onComplete: () -> Unit) {

@@ -124,7 +124,7 @@
                 android:layout_height="wrap_content"
                 android:clickable="true"
                 android:padding="14dp"
-                android:text="크루 내 개인"
+                android:text="크루 기여도"
                 android:textColor="@color/gray"
                 android:textSize="15dp" />
 

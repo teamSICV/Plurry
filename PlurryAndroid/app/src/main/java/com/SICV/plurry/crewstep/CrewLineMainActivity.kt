@@ -324,9 +324,15 @@ class CrewLineMainActivity : AppCompatActivity() {
                     .set(memberData)
                     .addOnSuccessListener {
                         Toast.makeText(this, "크루에 성공적으로 가입했습니다!", Toast.LENGTH_SHORT).show()
-                        db.collection("Users").document(uid).update("crewAt", crewId)
+                        val joinTime = com.google.firebase.Timestamp.now()
+                        val updates = hashMapOf<String, Any>(
+                            "crewAt" to crewId,
+                            "crewAtTime" to joinTime
+                        )
+                        db.collection("Users").document(uid).update(updates)
                             .addOnSuccessListener {
                                 Log.d("CrewLineMain", "사용자 crewAt 필드 업데이트 완료")
+                                addUserPlacesToCrew(crewId, uid, db)
                             }
                             .addOnFailureListener { e ->
                                 Log.e("CrewLineMain", "사용자 crewAt 필드 업데이트 실패", e)
@@ -416,9 +422,15 @@ class CrewLineMainActivity : AppCompatActivity() {
                     .set(memberData)
                     .addOnSuccessListener {
                         removeFromCrewReward(crewId, uid, db)
-
+                        removeUserPlacesFromCrew(crewId, uid, db)
                         Toast.makeText(this, "크루에서 성공적으로 탈퇴했습니다.", Toast.LENGTH_SHORT).show()
-                        db.collection("Users").document(uid).update("crewAt", null)
+
+                        val updates = hashMapOf<String, Any>(
+                            "crewAt" to com.google.firebase.firestore.FieldValue.delete(),
+                            "crewAtTime" to com.google.firebase.firestore.FieldValue.delete()
+                        )
+
+                        db.collection("Users").document(uid).update(updates)
                             .addOnSuccessListener {
                                 Log.d("CrewLineMain", "사용자 crewAt 필드 제거 완료")
 
@@ -660,6 +672,11 @@ class CrewLineMainActivity : AppCompatActivity() {
                     } else {
                         uid
                     }
+                    val crewAtTime = if (userDoc.exists()) {
+                        userDoc.getTimestamp("crewAtTime")?.toDate()?.time
+                    } else {
+                        null
+                    }
 
                     db.collection("Users").document(uid).collection("goWalk").get()
                         .addOnSuccessListener { walkDocs ->
@@ -682,27 +699,35 @@ class CrewLineMainActivity : AppCompatActivity() {
                                     }
 
                                     if (endTime > 0 && distance > 0) {
-                                        val distanceFormatted = String.format("%.1fkm", distance)
-                                        val walkDuration = if (endTime > startTime && startTime > 0) {
-                                            val durationMinutes = (endTime - startTime) / (1000 * 60)
-                                            "${durationMinutes}분"
+                                        val shouldInclude = if (crewAtTime != null) {
+                                            endTime >= crewAtTime
                                         } else {
-                                            "0분"
+                                            true
                                         }
 
-                                        val endTimeFormatted = SimpleDateFormat("yy-MM-dd HH:mm", koreaLocale).apply {
-                                            timeZone = koreaTimeZone
-                                        }.format(Date(endTime))
+                                        if (shouldInclude) {
+                                            val distanceFormatted = String.format("%.1fkm", distance)
+                                            val walkDuration = if (endTime > startTime && startTime > 0) {
+                                                val durationMinutes = (endTime - startTime) / (1000 * 60)
+                                                "${durationMinutes}분"
+                                            } else {
+                                                "0분"
+                                            }
 
-                                        val walkRecord = WalkRecord(
-                                            userName,
-                                            endTimeFormatted,
-                                            distanceFormatted,
-                                            walkDuration,
-                                            "${calories}kcal"
-                                        )
+                                            val endTimeFormatted = SimpleDateFormat("yy-MM-dd HH:mm", koreaLocale).apply {
+                                                timeZone = koreaTimeZone
+                                            }.format(Date(endTime))
 
-                                        walkRecords.add(walkRecord)
+                                            val walkRecord = WalkRecord(
+                                                userName,
+                                                endTimeFormatted,
+                                                distanceFormatted,
+                                                walkDuration,
+                                                "${calories}kcal"
+                                            )
+
+                                            walkRecords.add(walkRecord)
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     Log.e("CrewLineMain", "문서 파싱 오류: ${walkDoc.id}", e)
@@ -766,6 +791,60 @@ class CrewLineMainActivity : AppCompatActivity() {
                 recyclerView.adapter = walkRecordAdapter
             }
         }
+    }
+
+    private fun addUserPlacesToCrew(crewId: String, uid: String, db: FirebaseFirestore) {
+        db.collection("Places")
+            .whereEqualTo("addedBy", uid)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val batch = db.batch()
+
+                for (document in querySnapshot.documents) {
+                    val placeId = document.id
+                    val crewPlaceRef = db.collection("Crew").document(crewId)
+                        .collection("crewPlace").document(placeId)
+                    batch.set(crewPlaceRef, mapOf(placeId to true))
+                }
+
+                batch.commit()
+                    .addOnSuccessListener {
+                        Log.d("CrewLineMain", "사용자 장소들이 크루에 추가되었습니다.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("CrewLineMain", "사용자 장소 추가 실패", e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "사용자 장소 조회 실패", e)
+            }
+    }
+
+    private fun removeUserPlacesFromCrew(crewId: String, uid: String, db: FirebaseFirestore) {
+        db.collection("Places")
+            .whereEqualTo("addedBy", uid)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val batch = db.batch()
+
+                for (document in querySnapshot.documents) {
+                    val placeId = document.id
+                    val crewPlaceRef = db.collection("Crew").document(crewId)
+                        .collection("crewPlace").document(placeId)
+                    batch.delete(crewPlaceRef)
+                }
+
+                batch.commit()
+                    .addOnSuccessListener {
+                        Log.d("CrewLineMain", "사용자 장소들이 크루에서 제거되었습니다.")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("CrewLineMain", "사용자 장소 제거 실패", e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "사용자 장소 조회 실패", e)
+            }
     }
 
     private fun refreshCurrentChart() {
