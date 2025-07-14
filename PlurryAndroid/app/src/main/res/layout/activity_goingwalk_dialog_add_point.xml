@@ -33,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:text="일반 보상 아이템 지급"
+            android:text="일반 보상 아이템 1개 지급"
             android:textColor="#438cf3"
             android:textSize="16sp" />
 

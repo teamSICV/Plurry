@@ -25,6 +25,7 @@ import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.google.firebase.firestore.FieldValue // FieldValue를 가져와서 증가시킵니다.
 
 class AddPointDialogFragment : DialogFragment() {
 
@@ -148,19 +149,37 @@ class AddPointDialogFragment : DialogFragment() {
                                         .collection("Places")
                                         .add(placeData)
                                         .addOnSuccessListener {
-                                            completionLayout.visibility = View.VISIBLE
-                                            tvReward.text = "일반 보상 아이템 지급!"
+                                            // **보상 로직 시작**
+                                            val userRewardRef = FirebaseFirestore.getInstance()
+                                                .collection("Game")
+                                                .document("users")
+                                                .collection("userReward")
+                                                .document(uid) // UID를 문서 ID로 사용
 
-                                            nameInputLayout.visibility = View.GONE
-                                            btnSubmitName.visibility = View.GONE
-                                            btnTakePhoto.visibility = View.GONE
-                                            btnRetake.visibility = View.GONE
-                                            btnConfirm.visibility = View.GONE
-                                            btnClose.visibility = View.GONE
-                                            photoActions.visibility = View.GONE
-                                            progressLayout.visibility = View.GONE
+                                            userRewardRef.update("userRewardItem", FieldValue.increment(1))
+                                                .addOnSuccessListener {
+                                                    completionLayout.visibility = View.VISIBLE
+                                                    tvReward.text = "일반 보상 아이템 1개 지급"
 
-                                            isUploading = false
+                                                    nameInputLayout.visibility = View.GONE
+                                                    btnSubmitName.visibility = View.GONE
+                                                    btnTakePhoto.visibility = View.GONE
+                                                    btnRetake.visibility = View.GONE
+                                                    btnConfirm.visibility = View.GONE
+                                                    btnClose.visibility = View.GONE
+                                                    photoActions.visibility = View.GONE
+                                                    progressLayout.visibility = View.GONE
+
+                                                    isUploading = false
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    Toast.makeText(requireContext(), "❌ 보상 아이템 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    isUploading = false
+                                                    progressLayout.visibility = View.GONE
+                                                    btnConfirm.isEnabled = true
+                                                }
+                                            // **보상 로직 끝**
+
                                         }
                                         .addOnFailureListener {
                                             Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
