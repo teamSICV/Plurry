@@ -10,6 +10,7 @@ TagManager:
   - Story
   - Ranking
   - Item
+  - Roof
   layers:
   - Default
   - TransparentFX
