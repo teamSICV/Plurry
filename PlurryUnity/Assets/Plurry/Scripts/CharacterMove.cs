@@ -1,21 +1,26 @@
 using System;
 using System.Collections;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class CharacterMove : MonoBehaviour
 {
     [SerializeField]
     private GameObject player;
-    Coroutine coroutine;
-    bool isCo;
     [SerializeField]
     private GameObject pinPoint;
+    private Coroutine coroutine;
+    private bool isCo;
+    private PRAniminstance animintance;
+    private CharacterController characterController;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
+        characterController = player.GetComponent<CharacterController>();
+        animintance = GetComponent<PRAniminstance>();
+        isCo = false;
     }
 
     // Update is called once per frame
@@ -28,7 +33,16 @@ public class CharacterMove : MonoBehaviour
             if (touch.phase == TouchPhase.Began)
             {
                 TouchRay(touch.position);
-            }
+            } 
+        }
+
+        if (isCo)
+        {
+            animintance.bisIdle = false;
+        }
+        else
+        {
+            animintance.bisIdle = true;
         }
     }
 
@@ -59,11 +73,30 @@ public class CharacterMove : MonoBehaviour
     private IEnumerator MoveCharacter(Vector3 position)
     {
         isCo = true;
-        while (player.transform.position != position)
+        /*        while (player.transform.position != position)
+                {
+                    player.transform.LookAt(new Vector3(position.x, player.transform.position.y, position.z));
+                    player.transform.position = Vector3.MoveTowards(player.transform.position, new Vector3(position.x, player.transform.position.y, position.z), Time.deltaTime);
+                    yield return null;
+                }*/
+
+        Vector3 targetPosition = new Vector3(position.x, player.transform.position.y, position.z);
+        //Debug.Log(Vector3.Distance(new Vector3(player.transform.position.x, 0, player.transform.position.z), new Vector3(targetPosition.x, 0, targetPosition.z)));
+
+        while (Vector3.Distance(new Vector3(player.transform.position.x, 0, player.transform.position.z),
+                                 new Vector3(targetPosition.x, 0, targetPosition.z)) > 0.1f)
         {
-            player.transform.LookAt(new Vector3(position.x, player.transform.position.y, position.z));
-            player.transform.position = Vector3.MoveTowards(player.transform.position, new Vector3(position.x, player.transform.position.y, position.z), Time.deltaTime);
+            player.transform.LookAt(targetPosition);
+
+            Vector3 direction = (targetPosition - player.transform.position).normalized;
+            Vector3 moveVector = direction * Time.deltaTime;
+
+            characterController.Move(moveVector);
             yield return null;
         }
+
+        GameObject pinObject = GameObject.Find("Mark(Clone)");
+        Destroy(pinObject);
+        isCo = false;
     }
 }
