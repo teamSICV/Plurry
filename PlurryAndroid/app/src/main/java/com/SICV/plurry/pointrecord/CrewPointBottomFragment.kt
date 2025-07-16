@@ -223,6 +223,10 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             val name = doc.getString("name") ?: "이름 없음"
             val addedBy = doc.getString("addedBy") ?: ""
             val geoPoint = doc.getGeoPoint("geo")
+            val placeId = doc.id
+            val lat = geoPoint?.latitude ?: 0.0
+            val lng = geoPoint?.longitude ?: 0.0
+
             val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
                 val distance = calculateDistance(
                     myLatitude!!, myLongitude!!,
@@ -234,9 +238,10 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             }
 
             val description = "추가한 유저: $addedBy\n거리: $distanceText"
-            tempList.add(PlaceData(imageUrl, name, description))
 
-            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy)")
+            tempList.add(PlaceData(imageUrl, name, description, placeId, lat, lng))
+
+            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId, lat: $lat, lng: $lng)")
         }
 
         if (tempList.isEmpty()) {
@@ -250,7 +255,7 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                 val ref = storage.getReferenceFromUrl(place.imageUrl)
                 ref.downloadUrl
                     .addOnSuccessListener { uri ->
-                        finalList.add(PlaceData(uri.toString(), place.name, place.description))
+                        finalList.add(PlaceData(uri.toString(), place.name, place.description, place.placeId, place.lat, place.lng))
                         processedCount++
 
                         if (processedCount == tempList.size) {

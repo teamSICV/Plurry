@@ -13,7 +13,10 @@ import com.bumptech.glide.Glide
 data class PlaceData(
     val imageUrl : String,
     val name : String,
-    val description : String
+    val description : String,
+    val placeId: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0
 )
 
 class CrewPointBottomAdapter(
@@ -44,7 +47,10 @@ class CrewPointBottomAdapter(
             val dialog = PointRecordDialog.newInstance(
                 place.imageUrl,
                 "장소:  ${place.name}",
-                "${place.description}"
+                "${place.description}",
+                place.placeId,
+                place.lat,
+                place.lng
             )
             dialog.show((context as AppCompatActivity).supportFragmentManager, "CrewPointDialog")
         }
