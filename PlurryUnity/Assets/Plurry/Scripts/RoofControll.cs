@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,12 +8,29 @@ public class RoofControll : MonoBehaviour
     private GameObject player;
     [SerializeField]
     private Camera mainCamera;
+    private float checkInterval = 0.5f; // 체크 간격 (초)
 
-    private HashSet<MeshRenderer> hiddenRoofs = new HashSet<MeshRenderer>();
+    private bool bisRoof1Visible = true;
+    private bool bisRoof2Visible = true;
 
-    void Update()
+    [SerializeField]
+    private GameObject Roof1;
+
+    [SerializeField]
+    private GameObject Roof2;
+
+    void Start()
     {
-        CheckRoofVisibility();
+        StartCoroutine(CheckRoofVisibilityRoutine());
+    }
+
+    private IEnumerator CheckRoofVisibilityRoutine()
+    {
+        while (true)
+        {
+            CheckRoofVisibility();
+            yield return new WaitForSeconds(checkInterval);
+        }
     }
 
     private void CheckRoofVisibility()
@@ -25,45 +43,32 @@ public class RoofControll : MonoBehaviour
         float distance = Vector3.Distance(cameraPosition, playerPosition);
 
         // 카메라에서 플레이어까지 레이캐스트
-        RaycastHit[] hits = Physics.RaycastAll(cameraPosition, direction, distance);
+        int roofLayer = LayerMask.GetMask("Roof");
+        RaycastHit[] hits = Physics.RaycastAll(cameraPosition, direction, distance, roofLayer);
 
-        HashSet<MeshRenderer> currentlyHitRoofs = new HashSet<MeshRenderer>();
+        if (hits.Length == 0)
+        {
+            Roof1.SetActive(true);
+            bisRoof1Visible = true;
+            Roof2.SetActive(true);
+            bisRoof2Visible = true;
 
-        // 현재 맞은 Roof들을 찾아서 숨기기
+            return;
+        }
+
         foreach (RaycastHit hit in hits)
         {
-            if (hit.collider.gameObject.tag == "Roof")
+            if ((hit.collider.gameObject.name == "Roof1Colider") && bisRoof1Visible)
             {
-                Debug.Log("Roof Detected!");
-                MeshRenderer meshRenderer = hit.collider.GetComponent<MeshRenderer>();
-                if (meshRenderer != null)
-                {
-                    currentlyHitRoofs.Add(meshRenderer);
-
-                    if (!hiddenRoofs.Contains(meshRenderer))
-                    {
-                        meshRenderer.enabled = false;
-                        hiddenRoofs.Add(meshRenderer);
-                    }
-                }
+                Roof1.SetActive(false);
+                bisRoof1Visible = false;
+            }
+            else if ((hit.collider.gameObject.name == "Roof2Colider") && bisRoof2Visible)
+            {
+                Roof2.SetActive(false);
+                bisRoof2Visible = false;
             }
         }
 
-        // 더 이상 맞지 않는 Roof들을 다시 보이게 하기
-        HashSet<MeshRenderer> roofsToShow = new HashSet<MeshRenderer>();
-        foreach (MeshRenderer hiddenRoof in hiddenRoofs)
-        {
-            if (!currentlyHitRoofs.Contains(hiddenRoof))
-            {
-                hiddenRoof.enabled = true;
-                roofsToShow.Add(hiddenRoof);
-            }
-        }
-
-        // 다시 보이게 한 Roof들을 hiddenRoofs에서 제거
-        foreach (MeshRenderer roofToShow in roofsToShow)
-        {
-            hiddenRoofs.Remove(roofToShow);
-        }
     }
 }
