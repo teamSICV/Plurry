@@ -26,7 +26,8 @@ class PointSelectFragment : DialogFragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ExploreAdapter
     private val placeList = mutableListOf<PlaceData>()
-    private val visitedPlaceIds = mutableSetOf<String>()
+    // 🚀 수정: visitedPlaceIds를 Map으로 변경하여 imageUrl 존재 여부도 함께 저장
+    private val visitedPlaceInfo = mutableMapOf<String, Boolean>() // placeId to hasImageUrl
 
     private val radiusValues = listOf(1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)
 
@@ -79,13 +80,12 @@ class PointSelectFragment : DialogFragment() {
             return
         }
 
-        // 🚀 수정: collectionGroup 쿼리 대신 사용자별 visitedPlaces 컬렉션을 직접 쿼리합니다.
         Firebase.firestore.collection("Users")
             .document(userId)
-            .collection("visitedPlaces") // 새로운 컬렉션 이름
+            .collection("visitedPlaces")
             .get()
             .addOnSuccessListener { querySnapshot ->
-                visitedPlaceIds.clear()
+                visitedPlaceInfo.clear() // 🚀 수정: visitedPlaceIds 대신 visitedPlaceInfo 클리어
                 Log.d("PointSelectFragment", "visitedPlaces 쿼리 결과 문서 수: ${querySnapshot.documents.size}")
 
                 if (querySnapshot.documents.isEmpty()) {
@@ -94,27 +94,28 @@ class PointSelectFragment : DialogFragment() {
                 }
 
                 for (document in querySnapshot.documents) {
-                    val placeIdFromDoc = document.id // 문서 ID 자체가 placeId가 됩니다.
-                    val userIdFromDoc = document.getString("userId") // 문서 내 userId 필드 확인
+                    val placeIdFromDoc = document.id
+                    val userIdFromDoc = document.getString("userId")
+                    val imageUrlFromDoc = document.getString("imageUrl") // 🚀 추가: imageUrl 필드 가져오기
                     val docPath = document.reference.path
 
                     Log.d("PointSelectFragment", "처리 중인 문서: $docPath")
                     Log.d("PointSelectFragment", "  - 문서 ID (placeId): $placeIdFromDoc")
                     Log.d("PointSelectFragment", "  - 문서 내 userId: $userIdFromDoc")
+                    Log.d("PointSelectFragment", "  - 문서 내 imageUrl: $imageUrlFromDoc") // 🚀 추가 로그
                     Log.d("PointSelectFragment", "  - 현재 앱의 userId: $userId")
 
-                    // 이제 경로 유효성 검사는 간단해집니다.
-                    // 문서 ID(placeIdFromDoc)가 null이 아니고, 문서 내 userId가 현재 userId와 일치하는지 확인합니다.
                     if (placeIdFromDoc != null && userIdFromDoc == userId) {
-                        visitedPlaceIds.add(placeIdFromDoc)
-                        Log.d("PointSelectFragment", "  -> 방문한 장소 ID 추가됨: $placeIdFromDoc (userId 일치)")
+                        // 🚀 수정: imageUrl이 null이 아닌 경우에만 true로 저장
+                        visitedPlaceInfo[placeIdFromDoc] = !imageUrlFromDoc.isNullOrEmpty()
+                        Log.d("PointSelectFragment", "  -> 방문한 장소 ID 추가됨: $placeIdFromDoc (userId 일치, imageUrl 존재: ${!imageUrlFromDoc.isNullOrEmpty()})")
                     } else {
                         Log.d("PointSelectFragment", "  -> 문서 스킵됨:")
                         if (placeIdFromDoc == null) Log.d("PointSelectFragment", "    - placeId 없음 (문서 ID가 null)")
                         if (userIdFromDoc != userId) Log.d("PointSelectFragment", "    - userId 불일치: 문서 userId($userIdFromDoc) vs 현재 userId($userId)")
                     }
                 }
-                Log.d("PointSelectFragment", "최종 visitedPlaceIds: $visitedPlaceIds")
+                Log.d("PointSelectFragment", "최종 visitedPlaceInfo: $visitedPlaceInfo")
                 updateUserLocationThenLoad(radiusKm)
             }
             .addOnFailureListener { e ->
@@ -156,10 +157,11 @@ class PointSelectFragment : DialogFragment() {
 
             for (doc in docs) {
                 val placeId = doc.id
-                // 필터링: 이미 방문한 장소는 목록에서 제외
-                if (visitedPlaceIds.contains(placeId)) {
-                    Log.d("PointSelectFragment", "스킵된 방문 장소: $placeId")
-                    continue // 방문한 장소이므로 건너뜀
+                // 🚀 수정: visitedPlaceInfo 맵을 사용하여 placeId가 있고 imageUrl도 있는 경우에만 스킵
+                val hasVisitedAndImageUrl = visitedPlaceInfo[placeId] ?: false
+                if (hasVisitedAndImageUrl) {
+                    Log.d("PointSelectFragment", "스킵된 방문 장소 (imageUrl 있음): $placeId")
+                    continue // 방문한 장소이고 imageUrl이 있으므로 건너뜀
                 }
 
                 val geo = doc.getGeoPoint("geo") ?: continue

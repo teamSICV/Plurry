@@ -688,20 +688,61 @@ class ExploreResultDialogFragment : DialogFragment() {
             return
         }
 
-        val visitedPlaceDataRef = firestore
+        // 이전의 "walk/visitedPlace/<placeId>/data" 경로 저장을 제거합니다.
+        // val visitedPlaceDataRef = firestore
+        //     .collection("Users")
+        //     .document(userId)
+        //     .collection("walk")
+        //     .document("visitedPlace")
+        //     .collection(placeId!!)
+        //     .document("data")
+        //
+        // visitedPlaceDataRef.update("imgUrl", imageDownloadUrl)
+        //     .addOnSuccessListener {
+        //         Log.d("Firebase", "이미지 URL Firebase 저장 성공 (운동 데이터와 함께)")
+        //     }
+        //     .addOnFailureListener { e ->
+        //         Log.e("Firebase", "이미지 URL Firebase 저장 실패 (운동 데이터와 함께)", e)
+        //         // 문서가 없으면 새로 생성하며 imgUrl 포함
+        //         if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
+        //             val dataToSet = hashMapOf(
+        //                 "imgUrl" to imageDownloadUrl,
+        //                 // 필요한 경우 여기에 다른 필드도 초기화할 수 있습니다.
+        //                 "timestamp" to FieldValue.serverTimestamp() // 방문 시간 추가
+        //             )
+        //             visitedPlaceDataRef.set(dataToSet)
+        //                 .addOnSuccessListener {
+        //                     Log.d("Firebase", "새로운 visitedPlace/data 문서 생성 및 이미지 URL 저장 성공")
+        //                 }
+        //                 .addOnFailureListener { setE ->
+        //                     Log.e("Firebase", "새로운 visitedPlace/data 문서 생성 실패: ${setE.message}", setE)
+        //                 }
+        //         }
+        //     }
+
+
+        // ⭐ 수정: "Users/<userId>/visitedPlaces/<placeId>" 경로에 이미지 URL과 운동 데이터 저장 ⭐
+        val userVisitedPlacesRef = firestore
             .collection("Users")
             .document(userId)
-            .collection("walk")
-            .document("visitedPlace")
-            .collection(placeId!!)
-            .document("data")
+            .collection("visitedPlaces")
+            .document(placeId!!) // placeId를 문서 ID로 사용
 
-        visitedPlaceDataRef.update("imgUrl", imageDownloadUrl)
+        val visitedPlaceEntryData = hashMapOf(
+            "imageUrl" to imageDownloadUrl,
+            "userId" to userId, // PointSelectFragment에서 필터링을 위해 추가
+            "timestamp" to FieldValue.serverTimestamp(), // 방문 시간 추가
+            "calo" to totalCalories, // 칼로리 추가
+            "distance" to totalDistance, // 거리 추가
+            "stepNum" to totalSteps // 걸음수 추가
+        )
+
+        userVisitedPlacesRef.set(visitedPlaceEntryData)
             .addOnSuccessListener {
-                Log.d("Firebase", "이미지 URL Firebase 저장 성공 (운동 데이터와 함께)")
+                Log.d("Firebase", "✅ Users/<userId>/visitedPlaces/<placeId>에 이미지 URL 및 운동 데이터 저장 성공!")
             }
             .addOnFailureListener { e ->
-                Log.e("Firebase", "이미지 URL Firebase 저장 실패 (운동 데이터와 함께)", e)
+                Log.e("Firebase", "❌ Users/<userId>/visitedPlaces/<placeId>에 이미지 URL 및 운동 데이터 저장 실패: ${e.message}", e)
             }
     }
 
