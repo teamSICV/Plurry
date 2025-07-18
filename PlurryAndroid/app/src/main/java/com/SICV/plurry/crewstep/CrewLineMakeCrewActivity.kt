@@ -123,25 +123,43 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
 
         crewDocRef.set(crewData).addOnSuccessListener {
             saveMemberData(crewDocRef, uid, createdTime)
-
             updateCreatorCrewInfo(uid, crewId, createdTime)
-
             addCreatorPlacesToCrew(crewId, uid)
 
-            if (useDefaultImage) {
-                uploadDefaultImage(crewId) {
-                }
-            } else {
-                uploadCrewImage(crewId) {
-                }
-            }
+            CrewGameManager.initializeCrewGameData(
+                crewId = crewId,
+                onSuccess = {
+                    Log.d("CrewLineMake", "크루 게임 데이터 초기화 성공")
 
-            Toast.makeText(this, "크루 생성 완료", Toast.LENGTH_SHORT).show()
+                    if (useDefaultImage) {
+                        uploadDefaultImage(crewId) {
+                        }
+                    } else {
+                        uploadCrewImage(crewId) {
+                        }
+                    }
 
-            val intent = Intent(this, CrewLineMainActivity::class.java)
-            intent.putExtra("crewId", crewId)
-            startActivity(intent)
-            finish()
+                    Toast.makeText(this, "크루 생성 완료", Toast.LENGTH_SHORT).show()
+
+                    val intent = Intent(this, CrewLineMainActivity::class.java)
+                    intent.putExtra("crewId", crewId)
+                    startActivity(intent)
+                    finish()
+                },
+                onFailure = { e ->
+                    Log.e("CrewLineMake", "크루 게임 데이터 초기화 실패", e)
+
+                    crewDocRef.delete()
+                        .addOnSuccessListener {
+                            Log.d("CrewLineMake", "크루 문서 삭제 완료")
+                        }
+                        .addOnFailureListener { deleteError ->
+                            Log.e("CrewLineMake", "크루 문서 삭제 실패", deleteError)
+                        }
+
+                    Toast.makeText(this, "크루 생성 실패: 게임 데이터 초기화 오류", Toast.LENGTH_SHORT).show()
+                }
+            )
 
         }.addOnFailureListener {
             Toast.makeText(this, "크루 생성 실패", Toast.LENGTH_SHORT).show()
