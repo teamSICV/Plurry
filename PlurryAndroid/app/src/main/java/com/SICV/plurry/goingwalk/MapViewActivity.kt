@@ -9,6 +9,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -65,6 +66,16 @@ class MapViewActivity : AppCompatActivity() {
         val btnExplore = findViewById<Button>(R.id.btnExplore)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        if (intent.getBooleanExtra("startExplore", false)) {
+            val placeId = intent.getStringExtra("placeId") ?: ""
+            val lat = intent.getDoubleExtra("lat", 0.0)
+            val lng = intent.getDoubleExtra("lng", 0.0)
+            val imageUrl = intent.getStringExtra("imageUrl") ?: ""
+
+            Log.d("MapViewActivity", "탐색 모드 시작: placeId=$placeId, lat=$lat, lng=$lng")
+            startExploreMode(placeId, lat, lng, imageUrl)
+        }
 
         btnEndWalk.setOnClickListener {
             handler.removeCallbacks(updateRunnable)
@@ -242,5 +253,21 @@ class MapViewActivity : AppCompatActivity() {
             .addOnFailureListener {
                 Log.e("GoogleFit", "피트니스 데이터 읽기 실패", it)
             }
+    }
+
+    private fun startExploreMode(placeId: String, lat: Double, lng: Double, imageUrl: String) {
+        try {
+            val fragment = ExploreTrackingFragment.newInstance(placeId, lat, lng, imageUrl)
+
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainerExplore, fragment)
+                .addToBackStack(null)
+                .commit()
+
+            Log.d("MapViewActivity", "ExploreTrackingFragment 시작됨")
+        } catch (e: Exception) {
+            Log.e("MapViewActivity", "ExploreTrackingFragment 시작 실패", e)
+            Toast.makeText(this, "탐색 모드 시작 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+        }
     }
 }

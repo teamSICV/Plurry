@@ -238,9 +238,9 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
     }
 
-    private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String) {
+    private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String, placeId: String, lat: Double, lng: Double) {
         try {
-            val dialog = PointRecordDialog.newInstance(imageUrl, name, description)
+            val dialog = PointRecordDialog.newInstance(imageUrl, name, description, placeId, lat, lng)
             dialog.show(supportFragmentManager, "PlaceDetailDialog")
         } catch (e: Exception) {
             Log.e("CrewLineMain", "팝업 다이얼로그 표시 오류", e)
@@ -489,6 +489,8 @@ class CrewLineMainActivity : AppCompatActivity() {
                     val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
                     val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
                     val geoPoint = placeDoc.getGeoPoint("geo")
+                    val lat = geoPoint?.latitude ?: 0.0
+                    val lng = geoPoint?.longitude ?: 0.0
 
                     val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
                         val distance = calculateDistance(myLatitude!!, myLongitude!!, geoPoint.latitude, geoPoint.longitude)
@@ -500,7 +502,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                     val detailInfo = "추가한 유저: $addedBy\n거리: $distanceText"
 
                     if (imageUrl.isNotEmpty()) {
-                        addPlaceImageToContainer(imageUrl, placeId, "장소: $placeName", detailInfo, container)
+                        addPlaceImageToContainer(imageUrl, placeId, "장소: $placeName", detailInfo, container, lat, lng)
                     }
                 }
             }
@@ -509,7 +511,7 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
     }
 
-    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout) {
+    private fun addPlaceImageToContainer(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout, lat: Double, lng: Double) {
         val imageButton = ImageButton(this)
         val layoutParams = LinearLayout.LayoutParams(
             (100 * resources.displayMetrics.density).toInt(),
@@ -528,7 +530,7 @@ class CrewLineMainActivity : AppCompatActivity() {
             .into(imageButton)
 
         imageButton.setOnClickListener {
-            showPlaceDetailDialog(imageUrl, name, detailInfo)
+            showPlaceDetailDialog(imageUrl, name, detailInfo, placeId, lat, lng)
         }
         container.addView(imageButton)
     }
@@ -1113,6 +1115,8 @@ class CrewLineMainActivity : AppCompatActivity() {
                     val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
                     val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
                     val geoPoint = placeDoc.getGeoPoint("geo")
+                    val lat = geoPoint?.latitude ?: 0.0
+                    val lng = geoPoint?.longitude ?: 0.0
 
                     val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
                         val distance = calculateDistance(myLatitude!!, myLongitude!!, geoPoint.latitude, geoPoint.longitude)
@@ -1124,7 +1128,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                     val detailInfo = "추가한 유저: $addedBy\n거리: $distanceText"
 
                     if (imageUrl.isNotEmpty()) {
-                        addPlaceImageToContainerAtPosition(imageUrl, placeId, "장소: $placeName", detailInfo, container, position)
+                        addPlaceImageToContainerAtPosition(imageUrl, placeId, "장소: $placeName", detailInfo, container, position, lat, lng)
                     }
                 }
             }
@@ -1133,7 +1137,7 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
     }
 
-    private fun addPlaceImageToContainerAtPosition(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout, position: Int) {
+    private fun addPlaceImageToContainerAtPosition(imageUrl: String, placeId: String, name: String, detailInfo: String, container: LinearLayout, position: Int, lat: Double, lng: Double) {
         val imageButton = ImageButton(this)
         val layoutParams = LinearLayout.LayoutParams(
             (100 * resources.displayMetrics.density).toInt(),
@@ -1152,7 +1156,7 @@ class CrewLineMainActivity : AppCompatActivity() {
             .into(imageButton)
 
         imageButton.setOnClickListener {
-            showPlaceDetailDialog(imageUrl, name, detailInfo)
+            showPlaceDetailDialog(imageUrl, name, detailInfo, placeId, lat, lng)
         }
 
         if (position < container.childCount) {
