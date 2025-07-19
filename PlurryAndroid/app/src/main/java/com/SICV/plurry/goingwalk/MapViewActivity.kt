@@ -3,9 +3,12 @@ package com.SICV.plurry.goingwalk
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
@@ -14,6 +17,7 @@ import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.annotation.NonNull // <-- 이 import 문을 추가합니다.
 import com.SICV.plurry.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
@@ -40,6 +44,7 @@ class MapViewActivity : AppCompatActivity() {
     private val updateInterval = 5000L
 
     private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1003
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1002
 
     private val fitnessOptions: FitnessOptions by lazy {
         FitnessOptions.builder()
@@ -113,6 +118,8 @@ class MapViewActivity : AppCompatActivity() {
                     val distanceKm = String.format("%.2f", totalDistance / 1000)
                     val calorieText = String.format("%.1f", totalCalories)
 
+                    // WalkEndDialogFragment는 이 코드에 포함되어 있지 않으므로,
+                    // 해당 Fragment가 프로젝트에 정의되어 있어야 합니다.
                     val dialog = WalkEndDialogFragment.newInstance(distanceKm, totalSteps, calorieText, startTime)
                     dialog.show(supportFragmentManager, "WalkEndDialog")
                 }
@@ -124,31 +131,39 @@ class MapViewActivity : AppCompatActivity() {
         btnRefreshLocation.setOnClickListener { refreshLocation() }
 
         btnAddPoint.setOnClickListener {
+            // AddPointDialogFragment는 이 코드에 포함되어 있지 않으므로,
+            // 해당 Fragment가 프로젝트에 정의되어 있어야 합니다.
             AddPointDialogFragment().show(supportFragmentManager, "AddPointDialog")
         }
 
         btnExplore.setOnClickListener {
+            // PointSelectFragment는 이 코드에 포함되어 있지 않으므로,
+            // 해당 Fragment가 프로젝트에 정의되어 있어야 합니다.
             PointSelectFragment().show(supportFragmentManager, "PointSelectDialog")
         }
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync { map ->
             googleMap = map
+            // 권한 체크 후 내 위치 활성화 및 초기 위치 설정
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED
             ) {
                 googleMap?.isMyLocationEnabled = true
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     location?.let {
+                        // 🚨 지도 초기화 시점의 위치에 대한 모의 위치 감지
+                        checkAndWarnIfMockLocation(it, "지도 초기화")
                         val currentLatLng = LatLng(it.latitude, it.longitude)
                         googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
                     }
                 }
             } else {
+                // 권한이 없으면 사용자에게 요청
                 ActivityCompat.requestPermissions(
                     this,
                     arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                    1002
+                    LOCATION_PERMISSION_REQUEST_CODE
                 )
             }
         }
@@ -165,17 +180,41 @@ class MapViewActivity : AppCompatActivity() {
         }
     }
 
+    // 🚨 Location 객체가 모의 위치인지 확인하고 경고하는 메서드
+    private fun checkAndWarnIfMockLocation(location: Location, source: String) {
+        val isMock: Boolean
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12 (API 31) 이상
+            isMock = location.isMock
+        } else { // Android 12 미만 버전
+            @Suppress("DEPRECATION") // deprecated 경고 무시
+            isMock = location.isFromMockProvider
+        }
+
+        if (isMock) {
+            Log.w("MockLocation", "$source: 모의 위치 감지됨: ${location.latitude}, ${location.longitude}")
+            Toast.makeText(this, "경고: 모의 위치가 감지되었습니다! ($source)", Toast.LENGTH_SHORT).show()
+        } else {
+            Log.i("MockLocation", "$source: 실제 위치: ${location.latitude}, ${location.longitude}")
+        }
+    }
+
     private fun refreshLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        // 권한 체크 추가: lastLocation을 호출하기 전에 권한이 있는지 확인
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
+            Toast.makeText(this, "위치 권한이 없습니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             location?.let {
+                // 🚨 수동 새로고침 시점의 위치에 대한 모의 위치 감지
+                checkAndWarnIfMockLocation(it, "수동 새로고침")
                 val currentLatLng = LatLng(it.latitude, it.longitude)
                 googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
+            } ?: run {
+                Toast.makeText(this, "현재 위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -206,6 +245,20 @@ class MapViewActivity : AppCompatActivity() {
     private val updateRunnable = object : Runnable {
         override fun run() {
             readFitnessData()
+            // 🚨 주기적인 위치 업데이트를 위한 로직 추가
+            if (ContextCompat.checkSelfPermission(this@MapViewActivity, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    location?.let {
+                        checkAndWarnIfMockLocation(it, "주기적 업데이트")
+                        // 주기적 업데이트 시 지도 이동은 선택 사항 (너무 자주 움직이면 불편할 수 있음)
+                        // val currentLatLng = LatLng(it.latitude, it.longitude)
+                        // googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
+                    }
+                }
+            }
+
             handler.postDelayed(this, updateInterval)
         }
     }
@@ -257,6 +310,8 @@ class MapViewActivity : AppCompatActivity() {
 
     private fun startExploreMode(placeId: String, lat: Double, lng: Double, imageUrl: String) {
         try {
+            // ExploreTrackingFragment 클래스가 정의되어 있어야 합니다.
+            // 이 코드를 실행하기 전에 해당 Fragment가 프로젝트에 있는지 확인해주세요.
             val fragment = ExploreTrackingFragment.newInstance(placeId, lat, lng, imageUrl)
 
             supportFragmentManager.beginTransaction()
@@ -268,6 +323,42 @@ class MapViewActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("MapViewActivity", "ExploreTrackingFragment 시작 실패", e)
             Toast.makeText(this, "탐색 모드 시작 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 권한 요청 결과 처리
+    override fun onRequestPermissionsResult(requestCode: Int, @NonNull permissions: Array<String>, @NonNull grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 권한이 부여되면 지도에 내 위치 표시 활성화
+                // isMyLocationEnabled를 true로 설정하기 전에 권한이 있는지 다시 확인
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    googleMap?.isMyLocationEnabled = true
+                }
+
+                // 초기 위치 설정 및 모의 위치 감지
+                // lastLocation은 권한이 부여된 후에만 안전하게 호출될 수 있습니다.
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                        location?.let {
+                            checkAndWarnIfMockLocation(it, "권한 부여 후 초기 위치")
+                            val currentLatLng = LatLng(it.latitude, it.longitude)
+                            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
+                        }
+                    }
+                }
+            } else {
+                Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_LONG).show()
+            }
+        }
+        // Google Fit 권한 요청 결과도 여기에 처리할 수 있습니다.
+        if (requestCode == GOOGLE_FIT_PERMISSIONS_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startWalk()
+            } else {
+                Toast.makeText(this, "Google Fit 권한이 없어 일부 기능을 사용할 수 없습니다.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }
