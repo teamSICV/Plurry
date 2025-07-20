@@ -17,7 +17,7 @@ import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.annotation.NonNull // <-- 이 import 문을 추가합니다.
+import androidx.annotation.NonNull
 import com.SICV.plurry.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
@@ -62,6 +62,12 @@ class MapViewActivity : AppCompatActivity() {
         // 🔒 뒤로가기 무시
         onBackPressedDispatcher.addCallback(this) {
             // 아무 동작도 하지 않음
+        }
+
+        // 앱 시작 시 개발자 옵션 활성화 여부만 먼저 확인 (위치 조작과 별개로 정보 제공)
+        if (isDeveloperOptionsEnabled()) {
+            Toast.makeText(this, "참고: 개발자 옵션이 활성화되어 있습니다.", Toast.LENGTH_LONG).show()
+            Log.i("DeveloperOptions", "개발자 옵션이 활성화되어 있습니다.")
         }
 
         walkInfoText = findViewById(R.id.walkIZnfo)
@@ -152,8 +158,8 @@ class MapViewActivity : AppCompatActivity() {
                 googleMap?.isMyLocationEnabled = true
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     location?.let {
-                        // 🚨 지도 초기화 시점의 위치에 대한 모의 위치 감지
-                        checkAndWarnIfMockLocation(it, "지도 초기화")
+                        // 🚨 지도 초기화 시점의 위치에 대한 무결성 검사
+                        checkLocationIntegrityAndHandleExit(it, "지도 초기화")
                         val currentLatLng = LatLng(it.latitude, it.longitude)
                         googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
                     }
@@ -180,26 +186,47 @@ class MapViewActivity : AppCompatActivity() {
         }
     }
 
-    // 🚨 Location 객체가 모의 위치인지 확인하고 경고하는 메서드
-    private fun checkAndWarnIfMockLocation(location: Location, source: String) {
-        val isMock: Boolean
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12 (API 31) 이상
-            isMock = location.isMock
-        } else { // Android 12 미만 버전
-            @Suppress("DEPRECATION") // deprecated 경고 무시
-            isMock = location.isFromMockProvider
+    // 🚨 Location 객체가 모의 위치인지 확인하는 메서드 (외부 호출용)
+    private fun isMockLocation(location: Location): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            location.isMock
+        } else {
+            @Suppress("DEPRECATION")
+            location.isFromMockProvider
         }
+    }
 
-        if (isMock) {
+    // 🚨 위치 무결성을 확인하고, 모의 위치 + 개발자 옵션 감지 시 GoingWalkMainActivity로 이동
+    private fun checkLocationIntegrityAndHandleExit(location: Location, source: String) {
+        val mockDetected = isMockLocation(location)
+        val devOptionsEnabled = isDeveloperOptionsEnabled()
+
+        if (mockDetected) {
             Log.w("MockLocation", "$source: 모의 위치 감지됨: ${location.latitude}, ${location.longitude}")
             Toast.makeText(this, "경고: 모의 위치가 감지되었습니다! ($source)", Toast.LENGTH_SHORT).show()
+
+            // 모의 위치와 개발자 옵션이 모두 활성화된 경우 GoingWalkMainActivity로 이동
+            if (devOptionsEnabled) {
+                Log.e("Security", "보안 위협 감지: 모의 위치 및 개발자 옵션 동시 활성화. GoingWalkMainActivity로 이동.")
+                Toast.makeText(this, "비정상적인 환경이 감지되어 초기 화면으로 돌아갑니다.", Toast.LENGTH_LONG).show()
+
+                // GoingWalkMainActivity로 이동
+                val intent = Intent(this, GoingWalkMainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
+                finish() // 현재 MapViewActivity 종료
+            }
         } else {
             Log.i("MockLocation", "$source: 실제 위치: ${location.latitude}, ${location.longitude}")
         }
     }
 
+    // 🚨 개발자 옵션 활성화 여부를 확인하는 함수
+    private fun isDeveloperOptionsEnabled(): Boolean {
+        return Settings.Global.getInt(contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
+    }
+
     private fun refreshLocation() {
-        // 권한 체크 추가: lastLocation을 호출하기 전에 권한이 있는지 확인
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -209,8 +236,8 @@ class MapViewActivity : AppCompatActivity() {
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             location?.let {
-                // 🚨 수동 새로고침 시점의 위치에 대한 모의 위치 감지
-                checkAndWarnIfMockLocation(it, "수동 새로고침")
+                // 🚨 수동 새로고침 시점의 위치에 대한 무결성 검사
+                checkLocationIntegrityAndHandleExit(it, "수동 새로고침")
                 val currentLatLng = LatLng(it.latitude, it.longitude)
                 googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
             } ?: run {
@@ -251,7 +278,7 @@ class MapViewActivity : AppCompatActivity() {
             ) {
                 fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                     location?.let {
-                        checkAndWarnIfMockLocation(it, "주기적 업데이트")
+                        checkLocationIntegrityAndHandleExit(it, "주기적 업데이트") // 🚨 주기적 업데이트 시 무결성 검사
                         // 주기적 업데이트 시 지도 이동은 선택 사항 (너무 자주 움직이면 불편할 수 있음)
                         // val currentLatLng = LatLng(it.latitude, it.longitude)
                         // googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
@@ -311,7 +338,7 @@ class MapViewActivity : AppCompatActivity() {
     private fun startExploreMode(placeId: String, lat: Double, lng: Double, imageUrl: String) {
         try {
             // ExploreTrackingFragment 클래스가 정의되어 있어야 합니다.
-            // 이 코드를 실행하기 전에 해당 Fragment가 프로젝트에 있는지 확인해주세요.
+            // 이 코드를 실행하기 전에 해당 Fragment가 프로젝트에 정의되어 있는지 확인해주세요.
             val fragment = ExploreTrackingFragment.newInstance(placeId, lat, lng, imageUrl)
 
             supportFragmentManager.beginTransaction()
@@ -331,18 +358,14 @@ class MapViewActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 권한이 부여되면 지도에 내 위치 표시 활성화
-                // isMyLocationEnabled를 true로 설정하기 전에 권한이 있는지 다시 확인
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     googleMap?.isMyLocationEnabled = true
                 }
 
-                // 초기 위치 설정 및 모의 위치 감지
-                // lastLocation은 권한이 부여된 후에만 안전하게 호출될 수 있습니다.
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                         location?.let {
-                            checkAndWarnIfMockLocation(it, "권한 부여 후 초기 위치")
+                            checkLocationIntegrityAndHandleExit(it, "권한 부여 후 초기 위치") // 🚨 권한 부여 후 초기 위치 무결성 검사
                             val currentLatLng = LatLng(it.latitude, it.longitude)
                             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
                         }
@@ -352,7 +375,6 @@ class MapViewActivity : AppCompatActivity() {
                 Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_LONG).show()
             }
         }
-        // Google Fit 권한 요청 결과도 여기에 처리할 수 있습니다.
         if (requestCode == GOOGLE_FIT_PERMISSIONS_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startWalk()
