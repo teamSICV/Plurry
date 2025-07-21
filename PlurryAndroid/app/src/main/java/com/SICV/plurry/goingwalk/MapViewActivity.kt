@@ -46,6 +46,11 @@ class MapViewActivity : AppCompatActivity() {
     private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1003
     private val LOCATION_PERMISSION_REQUEST_CODE = 1002
 
+    // 🚨 정확도 불일치 감지를 위한 상수 추가
+    // 실제 GPS는 일반적으로 3~10m의 정확도를 보이지만, 모의 위치는 0~1m의 비정상적인 값을 보일 수 있음.
+    private val SUSPICIOUS_ACCURACY_THRESHOLD_METERS = 2f // 2미터 이하의 지나치게 완벽한 정확도
+    private val MIN_ACCURACY_CONSIDERED_VALID = 0.5f // 0에 너무 가까운 값은 비정상으로 간주
+
     private val fitnessOptions: FitnessOptions by lazy {
         FitnessOptions.builder()
             .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
@@ -196,28 +201,49 @@ class MapViewActivity : AppCompatActivity() {
         }
     }
 
+    // 🚨 위치 정확도 불일치를 확인하는 함수
+    private fun checkAccuracyDiscrepancy(location: Location): Boolean {
+        val accuracy = location.accuracy // 미터 단위
+
+        // 정확도가 비정상적으로 낮거나(매우 정확) 0에 가까운 경우를 의심
+        if (accuracy < SUSPICIOUS_ACCURACY_THRESHOLD_METERS || accuracy < MIN_ACCURACY_CONSIDERED_VALID) {
+            Log.w("AccuracyDetection", "비정상적인 위치 정확도 감지됨: ${accuracy}m")
+            Toast.makeText(this, "경고: 비정상적인 위치 정확도 감지! (${accuracy}m)", Toast.LENGTH_SHORT).show()
+            return true
+        }
+        return false
+    }
+
     // 🚨 위치 무결성을 확인하고, 모의 위치 + 개발자 옵션 감지 시 GoingWalkMainActivity로 이동
+    // 🚨 정확도 불일치 감지도 포함
     private fun checkLocationIntegrityAndHandleExit(location: Location, source: String) {
         val mockDetected = isMockLocation(location)
         val devOptionsEnabled = isDeveloperOptionsEnabled()
+        val accuracyDiscrepancyDetected = checkAccuracyDiscrepancy(location) // 정확도 불일치 감지
 
+        // 모의 위치 감지 시 사용자에게 먼저 알림
         if (mockDetected) {
             Log.w("MockLocation", "$source: 모의 위치 감지됨: ${location.latitude}, ${location.longitude}")
             Toast.makeText(this, "경고: 모의 위치가 감지되었습니다! ($source)", Toast.LENGTH_SHORT).show()
+        }
 
-            // 모의 위치와 개발자 옵션이 모두 활성화된 경우 GoingWalkMainActivity로 이동
-            if (devOptionsEnabled) {
-                Log.e("Security", "보안 위협 감지: 모의 위치 및 개발자 옵션 동시 활성화. GoingWalkMainActivity로 이동.")
-                Toast.makeText(this, "비정상적인 환경이 감지되어 초기 화면으로 돌아갑니다.", Toast.LENGTH_LONG).show()
+        // 비정상적인 환경 조건:
+        // 1. 모의 위치가 감지되었고 (필수)
+        // 2. 개발자 옵션이 활성화되어 있거나 (강력한 조합)
+        // 3. 비정상적인 정확도가 감지된 경우 (또 다른 강력한 지표)
+        if (mockDetected && (devOptionsEnabled || accuracyDiscrepancyDetected)) {
+            Log.e("Security", "보안 위협 감지: 비정상적인 위치 환경. GoingWalkMainActivity로 이동.")
+            Toast.makeText(this, "비정상적인 환경이 감지되어 초기 화면으로 돌아갑니다.", Toast.LENGTH_LONG).show()
 
-                // GoingWalkMainActivity로 이동
-                val intent = Intent(this, GoingWalkMainActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(intent)
-                finish() // 현재 MapViewActivity 종료
-            }
+            val intent = Intent(this, GoingWalkMainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+            finish() // 현재 MapViewActivity 종료
         } else {
-            Log.i("MockLocation", "$source: 실제 위치: ${location.latitude}, ${location.longitude}")
+            // 정상적인 위치 또는 단일 경고만 발생한 경우 (예: 개발자 옵션만 켜진 경우)
+            if (!mockDetected) { // 모의 위치가 감지되지 않았을 때만 실제 위치 로그를 남김
+                Log.i("Location", "$source: 현재 위치: ${location.latitude}, ${location.longitude}")
+            }
         }
     }
 
