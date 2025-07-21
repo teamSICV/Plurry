@@ -1,6 +1,7 @@
 package com.SICV.plurry
 
 import android.util.Log
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.unity3d.player.a.e
@@ -24,7 +25,8 @@ class UserRewardInitializer {
                 "crewRewardItem" to null,
                 "level" to 0,
                 "storyLevel" to 0,
-                "userRewardItem" to 0
+                "userRewardItem" to 0,
+                "lastUpdated" to Timestamp.now()
             )
 
             db.collection("Game")
