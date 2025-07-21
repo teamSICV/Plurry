@@ -57,7 +57,8 @@ class ExploreTrackingFragment : Fragment() {
     private lateinit var fitnessOptions: FitnessOptions
     private var exploreStartTime: Long = 0L
 
-    // Firebase Firestore 인스턴스
+    // Firebase Firestore 인스턴스 (더 이상 여기서 직접 저장하지 않으므로, 이 인스턴스는 필요 없을 수 있습니다.
+    // 하지만 다른 용도로 사용될 가능성이 있어 일단 유지합니다.)
     private lateinit var db: FirebaseFirestore
     // Firebase Auth 인스턴스 (사용자별 데이터 저장 시 필요)
     private lateinit var auth: FirebaseAuth
@@ -114,7 +115,7 @@ class ExploreTrackingFragment : Fragment() {
         Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_DISTANCE_DELTA)
         Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_CALORIES_EXPENDED)
 
-        // Firebase 초기화
+        // Firebase 초기화 (다른 용도로 사용될 가능성 있어 유지)
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
@@ -210,16 +211,12 @@ class ExploreTrackingFragment : Fragment() {
 
                 Log.d("GoogleFit", "탐색 중 측정 결과 - 거리: ${"%.2f".format(totalDistance / 1000)}km, 걸음: $totalSteps, 칼로리: ${"%.1f".format(totalCalories)}kcal")
 
-                // Firebase에 저장
-                saveExploreDataToFirebase(
-                    totalSteps,
-                    totalDistance,
-                    totalCalories,
-                    exploreStartTime,
-                    endTime
-                )
+                // Firebase에 저장하는 로직을 ExploreResultDialogFragment로 이동했으므로 여기서는 제거합니다.
+                // saveExploreDataToFirebase(totalSteps, totalDistance, totalCalories, exploreStartTime, endTime)
 
                 targetImageUrl?.let { imageUrl ->
+                    // 탐색 결과 다이얼로그를 띄울 때 운동 데이터를 함께 전달합니다.
+                    // 이 데이터는 사진 비교 성공 시 Firebase에 저장될 것입니다.
                     ExploreResultDialogFragment
                         .newInstance("confirm", imageUrl, placeId ?: "", totalSteps, totalDistance, totalCalories)
                         .show(parentFragmentManager, "explore_confirm")
@@ -230,7 +227,8 @@ class ExploreTrackingFragment : Fragment() {
             }
     }
 
-    // Firebase에 탐색 데이터를 저장하는 함수 (경로 수정됨)
+    // saveExploreDataToFirebase 함수는 더 이상 ExploreTrackingFragment에서 사용되지 않으므로 제거합니다.
+    /*
     private fun saveExploreDataToFirebase(
         steps: Int,
         distance: Double,
@@ -277,6 +275,7 @@ class ExploreTrackingFragment : Fragment() {
                 Toast.makeText(requireContext(), "탐색 기록 저장 실패: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
     }
+    */
 
     private fun calculateDistance(currentLat: Double, currentLng: Double): Float {
         val curLoc = Location("cur").apply {

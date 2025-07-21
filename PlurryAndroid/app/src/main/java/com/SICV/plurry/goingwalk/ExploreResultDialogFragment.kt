@@ -96,6 +96,7 @@ class ExploreResultDialogFragment : DialogFragment() {
         mode = arguments?.getString("mode") ?: "confirm"
         imageUrl = arguments?.getString("imageUrl")
         placeId = arguments?.getString("placeId")
+        // ExploreTrackingFragment에서 전달받은 운동 데이터를 초기화합니다.
         totalSteps = arguments?.getInt("totalSteps", 0) ?: 0
         totalDistance = arguments?.getDouble("totalDistance", 0.0) ?: 0.0
         totalCalories = arguments?.getDouble("totalCalories", 0.0) ?: 0.0
@@ -439,7 +440,8 @@ class ExploreResultDialogFragment : DialogFragment() {
 
                     withContext(Dispatchers.Main) {
                         // 3단계: Firebase 업로드 및 성공 다이얼로그에 이미지 전달
-                        uploadToFirebaseWithImageComparison(processedFile, mosaicBitmap ?: originalBitmap, similarity)
+                        // 이미지 업로드 후 운동 데이터도 함께 저장하도록 함수 호출을 변경합니다.
+                        uploadToFirebaseWithImageComparisonAndFitnessData(processedFile, mosaicBitmap ?: originalBitmap, similarity)
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -451,8 +453,10 @@ class ExploreResultDialogFragment : DialogFragment() {
             } catch (e: Exception) {
                 Log.e("ExploreDialog", "얼굴 모자이크 처리 중 오류: ${e.message}")
                 withContext(Dispatchers.Main) {
-                    // 오류 발생시 원본 이미지로 업로드 진행
-                    uploadToFirebase()
+                    // 오류 발생시 원본 이미지로 업로드 진행 (이 경우 운동 데이터는 저장되지 않음)
+                    // 이 부분은 기존 uploadToFirebase() 대신, 실패 다이얼로그를 띄우는 것이 더 적절할 수 있습니다.
+                    // 현재는 기존 로직을 따르지만, 실제 앱에서는 사용자에게 명확한 피드백을 주는 것이 좋습니다.
+                    showComparisonResult(false, 0f, "얼굴 모자이크 처리 실패")
                 }
             }
         }
@@ -609,12 +613,16 @@ class ExploreResultDialogFragment : DialogFragment() {
 
     private fun showComparisonResult(isSuccess: Boolean, similarity: Float, errorMessage: String?) {
         if (!isSuccess) {
+            // 실패 시에는 운동 데이터를 포함하여 fail 모드로 다이얼로그를 다시 띄웁니다.
+            // 이렇게 하면 실패 다이얼로그에서도 운동 데이터를 참조할 수 있습니다.
             val failDialog = newInstance("fail", imageUrl ?: "", placeId ?: "", totalSteps, totalDistance, totalCalories)
             failDialog.show(parentFragmentManager, "explore_fail")
             dismiss()
         }
     }
 
+    // 이 함수는 더 이상 직접 호출되지 않으므로 제거하거나, 필요에 따라 uploadToFirebaseWithImageComparisonAndFitnessData로 통합합니다.
+    /*
     private fun uploadToFirebase() {
         val file = imageFile ?: return
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -638,8 +646,10 @@ class ExploreResultDialogFragment : DialogFragment() {
                 mainActionButton.isEnabled = true
             }
     }
+    */
 
-    private fun uploadToFirebaseWithImageComparison(processedFile: File, mosaicBitmap: Bitmap, similarity: Float) {
+    // 함수 이름 변경 및 운동 데이터 저장 로직 추가
+    private fun uploadToFirebaseWithImageComparisonAndFitnessData(processedFile: File, mosaicBitmap: Bitmap, similarity: Float) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val fileName = "${userId}_${processedFile.name}"
         val storageRef = FirebaseStorage.getInstance().reference
@@ -652,12 +662,14 @@ class ExploreResultDialogFragment : DialogFragment() {
                 storageRef.downloadUrl.addOnSuccessListener { uri ->
                     Log.d("ExploreDialog", "🔥 Firebase Storage 업로드 성공!")
                     Log.d("ExploreDialog", "📍 Firebase URL: ${uri.toString()}")
-                    saveImageUrlToFirestore(uri.toString())
+
+                    // 이미지 URL과 함께 운동 데이터를 Firestore에 저장합니다.
+                    saveImageUrlAndFitnessDataToFirestore(uri.toString())
 
                     // 이미지 비교를 위한 임시 파일 생성 (성공 다이얼로그용)
                     val tempMosaicFile = saveBitmapToFile(mosaicBitmap, "temp_mosaic_")
 
-                    // 성공 다이얼로그에 이미지 비교 정보 전달
+                    // 성공 다이얼로그에 이미지 비교 정보와 운동 데이터를 전달합니다.
                     val successDialog = newInstanceWithImages(
                         mode = "success",
                         imageUrl = imageUrl ?: "",
@@ -679,29 +691,38 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
     }
 
-    private fun saveImageUrlToFirestore(imageDownloadUrl: String) {
+    // 함수 이름 변경 및 운동 데이터 필드 추가
+    private fun saveImageUrlAndFitnessDataToFirestore(imageDownloadUrl: String) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val firestore = FirebaseFirestore.getInstance()
 
         if (placeId == null) {
-            Log.e("Firebase", "Place ID가 null입니다. 이미지 URL을 저장할 수 없습니다.")
+            Log.e("Firebase", "Place ID가 null입니다. 이미지 URL 및 운동 데이터를 저장할 수 없습니다.")
             return
         }
 
-        val visitedPlaceDataRef = firestore
+        // ⭐ 수정: "Users/<userId>/visitedPlaces/<placeId>" 경로에 이미지 URL과 운동 데이터 저장 ⭐
+        val userVisitedPlacesRef = firestore
             .collection("Users")
             .document(userId)
-            .collection("walk")
-            .document("visitedPlace")
-            .collection(placeId!!)
-            .document("data")
+            .collection("visitedPlaces")
+            .document(placeId!!) // placeId를 문서 ID로 사용
 
-        visitedPlaceDataRef.update("imgUrl", imageDownloadUrl)
+        val visitedPlaceEntryData = hashMapOf(
+            "imageUrl" to imageDownloadUrl,
+            "userId" to userId, // PointSelectFragment에서 필터링을 위해 추가
+            "timestamp" to FieldValue.serverTimestamp(), // 방문 시간 추가
+            "calo" to totalCalories, // 칼로리 추가
+            "distance" to totalDistance, // 거리 추가
+            "stepNum" to totalSteps // 걸음수 추가
+        )
+
+        userVisitedPlacesRef.set(visitedPlaceEntryData)
             .addOnSuccessListener {
-                Log.d("Firebase", "이미지 URL Firebase 저장 성공 (운동 데이터와 함께)")
+                Log.d("Firebase", "✅ Users/<userId>/visitedPlaces/<placeId>에 이미지 URL 및 운동 데이터 저장 성공!")
             }
             .addOnFailureListener { e ->
-                Log.e("Firebase", "이미지 URL Firebase 저장 실패 (운동 데이터와 함께)", e)
+                Log.e("Firebase", "❌ Users/<userId>/visitedPlaces/<placeId>에 이미지 URL 및 운동 데이터 저장 실패: ${e.message}", e)
             }
     }
 
@@ -712,6 +733,7 @@ class ExploreResultDialogFragment : DialogFragment() {
     }
 
     companion object {
+        // 기존 newInstance 함수는 그대로 유지하여 이전 호출과의 호환성을 유지합니다.
         fun newInstance(mode: String, imageUrl: String, placeId: String, totalSteps: Int, totalDistance: Double, totalCalories: Double): ExploreResultDialogFragment {
             return ExploreResultDialogFragment().apply {
                 arguments = Bundle().apply {
@@ -750,6 +772,7 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
         }
 
+        // 편의를 위한 오버로드된 newInstance 함수들
         fun newInstance(mode: String, imageUrl: String, placeId: String): ExploreResultDialogFragment {
             return newInstance(mode, imageUrl, placeId, 0, 0.0, 0.0)
         }

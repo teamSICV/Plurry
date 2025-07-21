@@ -13,13 +13,45 @@
         android:scaleType="centerCrop"
         android:layout_marginBottom="16dp"/>
 
+    <!-- 🚀 NEW: 내가 첨부한 사진 (visited image)을 표시할 ImageView -->
+    <ImageView
+        android:id="@+id/dialogVisitedImage"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:scaleType="centerCrop"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone"/> <!-- 초기에는 숨김 -->
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="이 장소로 탐색을 시작하시겠습니까?"
         android:textSize="16sp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="8dp" />
+
+    <!-- 🚀 NEW: 상태 메시지를 표시할 TextView -->
+    <TextView
+        android:id="@+id/tvStatusMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="@android:color/holo_red_dark"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone" /> <!-- 초기에는 숨김 -->
+
+    <!-- 🚀 NEW: 운동 데이터 표시할 TextView -->
+    <TextView
+        android:id="@+id/tvExerciseData"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="@android:color/black"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone" /> <!-- 초기에는 숨김 -->
 
     <LinearLayout
         android:layout_width="match_parent"
