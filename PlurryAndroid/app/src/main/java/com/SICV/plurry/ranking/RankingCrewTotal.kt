@@ -69,16 +69,20 @@ class RankingCrewTotal {
         val lockKey = "crew_update_lock_$crewId"
         val lockValue = System.currentTimeMillis().toString() + "_" + Random.nextInt(1000)
 
+        Log.d(TAG, "Starting crew score update for: $crewId")
+
         var retryCount = 0
         while (retryCount < MAX_RETRY_ATTEMPTS) {
             try {
                 val lockAcquired = acquireDistributedLock(lockKey, lockValue)
                 if (!lockAcquired) {
-                    Log.d(TAG, "Failed to acquire lock for crew $crewId, attempt ${retryCount + 1}")
+                    Log.d(TAG, "Failed to acquire lock for crew $crewId, attempt ${retryCount + 1}/$MAX_RETRY_ATTEMPTS")
                     delay(RETRY_DELAY_MS + Random.nextLong(500)) // 지터 추가
                     retryCount++
                     continue
                 }
+
+                Log.d(TAG, "Lock acquired! Processing crew $crewId score update...")
 
                 try {
                     val crewMembers = getCrewMembers(crewId)
@@ -91,29 +95,37 @@ class RankingCrewTotal {
 
                 } finally {
                     releaseDistributedLock(lockKey, lockValue)
+                    Log.d(TAG, "Completed processing for crew: $crewId")
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error updating crew total score for $crewId, attempt ${retryCount + 1}", e)
+                Log.e(TAG, "Error updating crew total score for $crewId, attempt ${retryCount + 1}/$MAX_RETRY_ATTEMPTS", e)
                 retryCount++
                 if (retryCount < MAX_RETRY_ATTEMPTS) {
                     delay(RETRY_DELAY_MS * retryCount)
                 }
             }
         }
+
+        if (retryCount >= MAX_RETRY_ATTEMPTS) {
+            Log.e(TAG, "Failed to update crew $crewId after $MAX_RETRY_ATTEMPTS attempts")
+        }
     }
 
     private suspend fun acquireDistributedLock(lockKey: String, lockValue: String): Boolean {
         return try {
+            Log.d(TAG, "Attempting to acquire lock: $lockKey with value: $lockValue")
+
             val lockRef = firestore.collection("Game")
-                .document("locks")
-                .collection("updateLocks")
+                .document("crew")
+                .collection("updateLock")
                 .document(lockKey)
 
             val result = firestore.runTransaction { transaction ->
                 val lockDoc = transaction.get(lockRef)
 
                 if (!lockDoc.exists()) {
+                    Log.d(TAG, "Lock document doesn't exist, creating new lock: $lockKey")
                     transaction.set(lockRef, mapOf(
                         "value" to lockValue,
                         "timestamp" to FieldValue.serverTimestamp(),
@@ -123,10 +135,15 @@ class RankingCrewTotal {
                 } else {
                     val existingValue = lockDoc.getString("value")
                     val expiresAt = lockDoc.getLong("expiresAt") ?: 0
+                    val currentTime = System.currentTimeMillis()
+
+                    Log.d(TAG, "Existing lock found - Key: $lockKey, ExistingValue: $existingValue, ExpiresAt: $expiresAt, CurrentTime: $currentTime")
 
                     if (existingValue == lockValue) {
+                        Log.d(TAG, "Same process already owns the lock: $lockKey")
                         true
-                    } else if (System.currentTimeMillis() > expiresAt) {
+                    } else if (currentTime > expiresAt) {
+                        Log.d(TAG, "Lock expired, taking over: $lockKey")
                         transaction.set(lockRef, mapOf(
                             "value" to lockValue,
                             "timestamp" to FieldValue.serverTimestamp(),
@@ -134,10 +151,17 @@ class RankingCrewTotal {
                         ))
                         true
                     } else {
+                        Log.d(TAG, "Lock is held by another process: $lockKey (remaining: ${expiresAt - currentTime}ms)")
                         false
                     }
                 }
             }.await()
+
+            if (result) {
+                Log.d(TAG, "Successfully acquired lock: $lockKey")
+            } else {
+                Log.d(TAG, "Failed to acquire lock: $lockKey")
+            }
 
             result
         } catch (e: Exception) {
@@ -148,9 +172,11 @@ class RankingCrewTotal {
 
     private suspend fun releaseDistributedLock(lockKey: String, lockValue: String) {
         try {
+            Log.d(TAG, "Attempting to release lock: $lockKey with value: $lockValue")
+
             val lockRef = firestore.collection("Game")
-                .document("locks")
-                .collection("updateLocks")
+                .document("crew")
+                .collection("updateLock")
                 .document(lockKey)
 
             firestore.runTransaction { transaction ->
@@ -158,9 +184,16 @@ class RankingCrewTotal {
 
                 if (lockDoc.exists()) {
                     val existingValue = lockDoc.getString("value")
+                    Log.d(TAG, "Lock release check - Key: $lockKey, ExistingValue: $existingValue, MyValue: $lockValue")
+
                     if (existingValue == lockValue) {
                         transaction.delete(lockRef)
+                        Log.d(TAG, "Successfully released and deleted lock: $lockKey")
+                    } else {
+                        Log.w(TAG, "Cannot release lock - not owned by this process: $lockKey")
                     }
+                } else {
+                    Log.w(TAG, "Lock document not found during release: $lockKey")
                 }
             }.await()
 
