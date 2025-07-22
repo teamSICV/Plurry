@@ -17,6 +17,7 @@ import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import com.SICV.plurry.MainActivity
 import com.SICV.plurry.R
+import com.SICV.plurry.UserRewardInitializer
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -109,25 +110,8 @@ class LoginJoinActivity : ComponentActivity() {
                     "email" to (auth.currentUser?.email ?: "")
                 )
 
-                firestore.collection("Users").document(uid)
-                    .update(userData.toMap())
-                    .addOnSuccessListener {
-                        Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
-                        goToMain()
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("LoginJoin", "Firestore 업데이트 실패", e)
-                        firestore.collection("Users").document(uid)
-                            .set(userData)
-                            .addOnSuccessListener {
-                                Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
-                                goToMain()
-                            }
-                            .addOnFailureListener { e2 ->
-                                Log.e("LoginJoin", "Firestore 저장 실패", e2)
-                                Toast.makeText(this, "프로필 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
-                            }
-                    }
+                // 사용자 프로필 저장 후 리워드 초기화
+                saveUserProfileAndInitializeReward(uid, userData)
             }
         }.addOnFailureListener { e ->
             Log.e("LoginJoin", "이미지 업로드 실패", e)
@@ -157,30 +141,55 @@ class LoginJoinActivity : ComponentActivity() {
                     "email" to (auth.currentUser?.email ?: "")
                 )
 
-                firestore.collection("Users").document(uid)
-                    .update(userData.toMap())
-                    .addOnSuccessListener {
-                        Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
-                        goToMain()
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("LoginJoin", "Firestore 업데이트 실패", e)
-                        firestore.collection("Users").document(uid)
-                            .set(userData)
-                            .addOnSuccessListener {
-                                Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
-                                goToMain()
-                            }
-                            .addOnFailureListener { e2 ->
-                                Log.e("LoginJoin", "Firestore 저장 실패", e2)
-                                Toast.makeText(this, "프로필 저장 실패했습니다.", Toast.LENGTH_SHORT).show()
-                            }
-                    }
+                // 사용자 프로필 저장 후 리워드 초기화
+                saveUserProfileAndInitializeReward(uid, userData)
             }
         }.addOnFailureListener { e ->
             Log.e("LoginJoin", "기본 이미지 업로드 실패", e)
             Toast.makeText(this, "이미지 업로드 실패했습니다.", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun saveUserProfileAndInitializeReward(uid: String, userData: HashMap<String, String>) {
+        firestore.collection("Users").document(uid)
+            .update(userData.toMap())
+            .addOnSuccessListener {
+                // 사용자 프로필 저장 성공 후 리워드 초기화
+                UserRewardInitializer.intializeUserReward(
+                    onSucces = {
+                        Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
+                        goToMain()
+                    },
+                    onFailure = { e ->
+                        Log.e("LoginJoin", "사용자 리워드 초기화 실패", e)
+                        Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
+                        goToMain()
+                    }
+                )
+            }
+            .addOnFailureListener { e ->
+                Log.e("LoginJoin", "Firestore 업데이트 실패", e)
+                firestore.collection("Users").document(uid)
+                    .set(userData)
+                    .addOnSuccessListener {
+                        // 사용자 프로필 저장 성공 후 리워드 초기화
+                        UserRewardInitializer.intializeUserReward(
+                            onSucces = {
+                                Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
+                                goToMain()
+                            },
+                            onFailure = { e2 ->
+                                Log.e("LoginJoin", "사용자 리워드 초기화 실패", e2)
+                                Toast.makeText(this, "프로필 생성 완료", Toast.LENGTH_SHORT).show()
+                                goToMain()
+                            }
+                        )
+                    }
+                    .addOnFailureListener { e2 ->
+                        Log.e("LoginJoin", "Firestore 저장 실패", e2)
+                        Toast.makeText(this, "프로필 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
+            }
     }
 
     private fun goToMain() {

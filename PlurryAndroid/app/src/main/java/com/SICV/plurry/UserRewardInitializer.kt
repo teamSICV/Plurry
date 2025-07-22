@@ -24,7 +24,8 @@ class UserRewardInitializer {
                 "characterName" to "",
                 "crewRewardItem" to null,
                 "level" to 0,
-                "storyLevel" to 0,
+                "currentRaisingPoint" to 0,
+                "currentRaisingAmount" to 0,
                 "userRewardItem" to 0,
                 "lastUpdated" to Timestamp.now()
             )
