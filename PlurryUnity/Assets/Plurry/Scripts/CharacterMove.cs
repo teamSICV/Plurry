@@ -1,14 +1,16 @@
 using System;
 using System.Collections;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+
+# if UNITY_EDITOR
+using UnityEditor.Experimental.GraphView;
+# endif
 
 public class CharacterMove : MonoBehaviour
 {
     [SerializeField]
-    private GameObject player;
-    [SerializeField]
     private GameObject pinPoint;
+    private GameObject player;
     private Coroutine coroutine;
     private bool isCo;
     private PRAniminstance animintance;
@@ -18,7 +20,8 @@ public class CharacterMove : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        characterController = player.GetComponent<CharacterController>();
+        player = this.gameObject;
+        characterController = GetComponent<CharacterController>();
         animintance = GetComponent<PRAniminstance>();
         isCo = false;
     }
@@ -50,9 +53,10 @@ public class CharacterMove : MonoBehaviour
     {
         Ray ray = Camera.main.ScreenPointToRay(position);
         RaycastHit hit;
+        int floorLayer = LayerMask.GetMask("Floor");
 
         //if (Physics.Raycast(ray, out hit))
-        if(Physics.Raycast(ray, out hit, Mathf.Infinity, ~(1 << LayerMask.NameToLayer("Wall"))))
+        if (Physics.Raycast(ray, out hit, Mathf.Infinity, floorLayer))
         {
             //Debug.Log("Raycast Hitted : " + hit.transform.tag);
             if (hit.transform.tag == "Floor")
@@ -61,9 +65,10 @@ public class CharacterMove : MonoBehaviour
                 {
                     isCo = false;
                     StopCoroutine(coroutine);
+                    GameObject pinObject = GameObject.Find("Mark(Clone)");
+                    Destroy(pinObject);
                 }
-                GameObject pinObject = GameObject.Find("Mark(Clone)");
-                Destroy(pinObject);
+
                 coroutine = StartCoroutine(MoveCharacter(hit.point));
                 GameObject.Instantiate(pinPoint, hit.point, Quaternion.Euler(0f, 0f, 0f));
             }
@@ -86,7 +91,10 @@ public class CharacterMove : MonoBehaviour
         while (Vector3.Distance(new Vector3(player.transform.position.x, 0, player.transform.position.z),
                                  new Vector3(targetPosition.x, 0, targetPosition.z)) > 0.1f)
         {
-            player.transform.LookAt(targetPosition);
+            //player.transform.LookAt(targetPosition);
+            Vector3 lookDirection = (targetPosition - player.transform.position).normalized;
+            lookDirection.y = 0; // y축 회전만 허용
+            player.transform.rotation = Quaternion.LookRotation(lookDirection);
 
             Vector3 direction = (targetPosition - player.transform.position).normalized;
             Vector3 moveVector = direction * Time.deltaTime;
@@ -95,8 +103,8 @@ public class CharacterMove : MonoBehaviour
             yield return null;
         }
 
-        GameObject pinObject = GameObject.Find("Mark(Clone)");
-        Destroy(pinObject);
+        //GameObject pinObject = GameObject.Find("Mark(Clone)");
+        //Destroy(pinObject);
         isCo = false;
     }
 }
