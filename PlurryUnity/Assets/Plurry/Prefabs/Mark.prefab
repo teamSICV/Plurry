@@ -12,7 +12,8 @@ GameObject:
   - component: {fileID: 510426627796593056}
   - component: {fileID: 2546557719237594057}
   - component: {fileID: 8296846135409826871}
-  m_Layer: 7
+  - component: {fileID: 8623990967663706464}
+  m_Layer: 0
   m_Name: Mark
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -102,9 +103,21 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &8623990967663706464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8655526200648104801}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11935d808efe39d45ad585d7e9395cfc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
