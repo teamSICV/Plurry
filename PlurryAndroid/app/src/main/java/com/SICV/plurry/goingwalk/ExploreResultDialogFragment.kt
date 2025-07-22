@@ -377,18 +377,15 @@ class ExploreResultDialogFragment : DialogFragment() {
                     return@launch
                 }
 
-                // 1단계: 유사도 비교 (기존 코드)
-                val userFeatures = onnxHelper.runInference(userBitmap)
-                val referenceFeatures = onnxHelper.runInference(referenceBitmap)
+                // 스마트 이미지 비교 (모자이크 자동 탐지 + 유사도 계산)
+                val similarity = onnxHelper.compareImagesImproved(userBitmap, referenceBitmap)
 
-                if (userFeatures == null || referenceFeatures == null) {
+                if (similarity == null) {
                     withContext(Dispatchers.Main) {
                         showComparisonResult(false, 0f, "이미지 처리 실패")
                     }
                     return@launch
                 }
-
-                val similarity = OnnxComparator.cosineSimilarity(userFeatures, referenceFeatures)
                 val threshold = 0.5f
                 val isMatch = similarity >= threshold
 
@@ -415,8 +412,29 @@ class ExploreResultDialogFragment : DialogFragment() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // 얼굴 모자이크 적용
-                val mosaicBitmap = faceMosaicHelper.applyFaceMosaic(originalBitmap, mosaicSize = 15)
+                //val mosaicBitmap = faceMosaicHelper.applyFaceMosaic(originalBitmap, mosaicSize = 15)
 
+                // 🎯 간단한 해결책: 이미지를 작게 만들어서 처리
+                val smallBitmap = makeImageSmaller(originalBitmap)
+                Log.d("FaceMosaicDebug", "작은 이미지 크기: ${smallBitmap.width} x ${smallBitmap.height}")
+
+                // 작은 이미지로 얼굴 모자이크 처리
+                var mosaicBitmap = faceMosaicHelper.applyFaceMosaic(smallBitmap, mosaicSize = 10)
+
+                if (mosaicBitmap != null && !smallBitmap.sameAs(mosaicBitmap)) {
+                    Log.d("FaceMosaicDebug", "✅ 얼굴 탐지 성공!")
+                    // 결과를 원본 크기로 확대
+                    mosaicBitmap = Bitmap.createScaledBitmap(
+                        mosaicBitmap,
+                        originalBitmap.width,
+                        originalBitmap.height,
+                        true
+                    )
+                } else {
+                    Log.w("FaceMosaicDebug", "⚠️ 얼굴 탐지 실패, 간단한 모자이크 적용")
+                    // 간단한 대안: 이미지 중앙에 모자이크
+                    mosaicBitmap = applySimpleBlur(originalBitmap)
+                }
                 // 처리된 이미지를 임시 파일로 저장
                 val processedFile = if (mosaicBitmap != null) {
                     Log.d("ExploreDialog", "✅ 얼굴 모자이크 처리 성공")
@@ -457,6 +475,65 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
         }
     }
+
+    // 🎯 필요한 함수 1: 이미지 작게 만들기
+    private fun makeImageSmaller(bitmap: Bitmap): Bitmap {
+        val maxSize = 1000 // 최대 1000px
+        val width = bitmap.width
+        val height = bitmap.height
+
+        if (width <= maxSize && height <= maxSize) {
+            return bitmap
+        }
+
+        val scale = if (width > height) {
+            maxSize.toFloat() / width
+        } else {
+            maxSize.toFloat() / height
+        }
+
+        val newWidth = (width * scale).toInt()
+        val newHeight = (height * scale).toInt()
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    // 🎯 필요한 함수 2: 간단한 모자이크 (대안책)
+    private fun applySimpleBlur(bitmap: Bitmap): Bitmap {
+        val result = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
+        val canvas = android.graphics.Canvas(result)
+        val paint = android.graphics.Paint()
+
+        // 이미지 중앙 상단에 간단한 사각형 모자이크
+        val centerX = bitmap.width / 2
+        val centerY = bitmap.height / 4 // 상단 1/4 지점
+        val blurWidth = bitmap.width / 3
+        val blurHeight = bitmap.height / 5
+
+        val left = centerX - blurWidth / 2
+        val top = centerY - blurHeight / 2
+        val right = centerX + blurWidth / 2
+        val bottom = centerY + blurHeight / 2
+
+        // 해당 영역을 흐림 처리 (간단한 픽셀화)
+        val blockSize = 20
+        for (y in top until bottom step blockSize) {
+            for (x in left until right step blockSize) {
+                val endX = minOf(x + blockSize, right)
+                val endY = minOf(y + blockSize, bottom)
+
+                if (x < bitmap.width && y < bitmap.height) {
+                    val avgColor = bitmap.getPixel(x, y) // 간단하게 첫 픽셀 색상 사용
+                    paint.color = avgColor
+                    canvas.drawRect(x.toFloat(), y.toFloat(), endX.toFloat(), endY.toFloat(), paint)
+                }
+            }
+        }
+
+        Log.d("SimpleMosaic", "간단한 모자이크 적용 완료: ($left, $top) ~ ($right, $bottom)")
+        return result
+    }
+
 
     private fun setupImageComparison() {
         try {

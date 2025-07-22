@@ -13,6 +13,7 @@ import android.graphics.RectF
 class FaceMosaicHelper(private val context: Context) {
 
     private var faceDetector: FaceDetector? = null
+    private var backupDetector: FaceDetector? = null
 
     init {
         initializeFaceDetector()
@@ -20,21 +21,41 @@ class FaceMosaicHelper(private val context: Context) {
 
     private fun initializeFaceDetector() {
         try {
-            val baseOptions = BaseOptions.builder()
+            // 🎯 1차 검출기: 민감한 설정 (작은 얼굴, 화면 속 얼굴용)
+            val sensitiveOptions = BaseOptions.builder()
                 .setModelAssetPath("blaze_face_short_range.tflite")
                 .build()
 
-            val options = FaceDetectorOptions.builder()
-                .setBaseOptions(baseOptions)
-                .setMinDetectionConfidence(0.5f)
+            val sensitiveDetectorOptions = FaceDetectorOptions.builder()
+                .setBaseOptions(sensitiveOptions)
+                .setMinDetectionConfidence(0.2f)  // 🔥 20%로 대폭 낮춤
+                .setMinSuppressionThreshold(0.3f) // 중복 제거 임계값도 낮춤
                 .setRunningMode(RunningMode.IMAGE)
                 .build()
 
-            faceDetector = FaceDetector.createFromOptions(context, options)
-            Log.d("FaceMosaicHelper", "MediaPipe 얼굴 검출기 초기화 성공")
+            faceDetector = FaceDetector.createFromOptions(context, sensitiveDetectorOptions)
+            Log.d("FaceMosaicHelper", "✅ 민감한 얼굴 검출기 초기화 성공 (confidence: 0.2)")
+
+            // 🎯 2차 검출기: 일반 설정 (백업용)
+            try {
+                val normalOptions = BaseOptions.builder()
+                    .setModelAssetPath("blaze_face_short_range.tflite")
+                    .build()
+
+                val normalDetectorOptions = FaceDetectorOptions.builder()
+                    .setBaseOptions(normalOptions)
+                    .setMinDetectionConfidence(0.4f)
+                    .setRunningMode(RunningMode.IMAGE)
+                    .build()
+
+                backupDetector = FaceDetector.createFromOptions(context, normalDetectorOptions)
+                Log.d("FaceMosaicHelper", "✅ 백업 얼굴 검출기 초기화 성공 (confidence: 0.4)")
+            } catch (e: Exception) {
+                Log.w("FaceMosaicHelper", "백업 검출기 초기화 실패: ${e.message}")
+            }
 
         } catch (e: Exception) {
-            Log.e("FaceMosaicHelper", "얼굴 검출기 초기화 실패: ${e.message}", e)
+            Log.e("FaceMosaicHelper", "❌ 얼굴 검출기 초기화 실패: ${e.message}", e)
         }
     }
 
@@ -42,83 +63,41 @@ class FaceMosaicHelper(private val context: Context) {
         return try {
             val startTime = System.currentTimeMillis()
 
-            Log.d("FaceMosaicHelper", "🎭 모자이크 처리 시작 - 이미지 크기: ${inputBitmap.width}x${inputBitmap.height}")
+            Log.d("FaceMosaicHelper", "🎭 개선된 모자이크 처리 시작 - 이미지 크기: ${inputBitmap.width}x${inputBitmap.height}")
 
-            // MediaPipe 이미지 형식으로 변환
-            val mpImage = BitmapImageBuilder(inputBitmap).build()
+            // 🎯 여러 가지 방법으로 얼굴 검출 시도
+            val detectedFaces = detectFacesMultipleWays(inputBitmap)
 
-            // 얼굴 검출 실행
-            val detectionResult = faceDetector?.detect(mpImage)
-
-            Log.d("FaceMosaicHelper", "🔍 얼굴 검출 완료")
-
-            if (detectionResult?.detections()?.isEmpty() == true) {
-                Log.d("FaceMosaicHelper", "❌ 검출된 얼굴이 없습니다")
+            if (detectedFaces.isEmpty()) {
+                Log.d("FaceMosaicHelper", "❌ 모든 방법으로 얼굴 검출 실패")
                 return inputBitmap
             }
 
-            val detectedFaces = detectionResult?.detections()?.size ?: 0
-            Log.d("FaceMosaicHelper", "✅ ${detectedFaces}개 얼굴 검출됨")
+            Log.d("FaceMosaicHelper", "✅ ${detectedFaces.size}개 얼굴 검출됨!")
 
             val mutableBitmap = inputBitmap.copy(Bitmap.Config.ARGB_8888, true)
             val canvas = Canvas(mutableBitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-            detectionResult?.detections()?.forEachIndexed { index, detection ->
+            detectedFaces.forEachIndexed { index, faceRect ->
                 try {
-                    val boundingBox = detection.boundingBox()
+                    Log.d("FaceMosaicHelper", "🎯 얼굴 ${index + 1}: (${faceRect.left.toInt()}, ${faceRect.top.toInt()}) 크기: ${faceRect.width().toInt()}x${faceRect.height().toInt()}")
 
-                    // 🔧 MediaPipe boundingBox 값 직접 로깅
-                    Log.d("FaceMosaicHelper", "🔍 원본 boundingBox ${index + 1}:")
-                    Log.d("FaceMosaicHelper", "   - left: ${boundingBox.left}")
-                    Log.d("FaceMosaicHelper", "   - top: ${boundingBox.top}")
-                    Log.d("FaceMosaicHelper", "   - width(): ${boundingBox.width()}")
-                    Log.d("FaceMosaicHelper", "   - height(): ${boundingBox.height()}")
-                    Log.d("FaceMosaicHelper", "   - right: ${boundingBox.right}")
-                    Log.d("FaceMosaicHelper", "   - bottom: ${boundingBox.bottom}")
+                    // 얼굴 영역 확장 (더 확실한 모자이크)
+                    val expandedRect = expandFaceRect(faceRect, inputBitmap.width, inputBitmap.height)
 
-                    val imageWidth = inputBitmap.width
-                    val imageHeight = inputBitmap.height
+                    val mosaicBitmap = createMosaicBitmap(
+                        inputBitmap,
+                        expandedRect.left.toInt(),
+                        expandedRect.top.toInt(),
+                        expandedRect.width().toInt(),
+                        expandedRect.height().toInt(),
+                        mosaicSize
+                    )
 
-                    // 🔧 좌표 변환 방식 수정
-                    val left: Int
-                    val top: Int
-                    val width: Int
-                    val height: Int
+                    canvas.drawBitmap(mosaicBitmap, expandedRect.left, expandedRect.top, paint)
 
-                    // MediaPipe가 정규화된 좌표를 반환하는지 확인
-                    if (boundingBox.left <= 1.0f && boundingBox.top <= 1.0f &&
-                        boundingBox.width() <= 1.0f && boundingBox.height() <= 1.0f) {
-                        // 정규화된 좌표 (0.0-1.0)
-                        left = (boundingBox.left * imageWidth).toInt()
-                        top = (boundingBox.top * imageHeight).toInt()
-                        width = (boundingBox.width() * imageWidth).toInt()
-                        height = (boundingBox.height() * imageHeight).toInt()
-                        Log.d("FaceMosaicHelper", "✅ 정규화된 좌표로 처리")
-                    } else {
-                        // 이미 픽셀 좌표
-                        left = boundingBox.left.toInt()
-                        top = boundingBox.top.toInt()
-                        width = boundingBox.width().toInt()
-                        height = boundingBox.height().toInt()
-                        Log.d("FaceMosaicHelper", "✅ 픽셀 좌표로 처리")
-                    }
-
-                    Log.d("FaceMosaicHelper", "🎯 최종 얼굴 ${index + 1}: ($left, $top) 크기: ${width}x${height}")
-
-                    // 좌표 유효성 검사
-                    if (left >= 0 && top >= 0 && width > 0 && height > 0 &&
-                        left < imageWidth && top < imageHeight &&
-                        left + width <= imageWidth && top + height <= imageHeight) {
-
-                        val mosaicBitmap = createMosaicBitmap(inputBitmap, left, top, width, height, mosaicSize)
-                        canvas.drawBitmap(mosaicBitmap, left.toFloat(), top.toFloat(), paint)
-
-                        Log.d("FaceMosaicHelper", "🎨 얼굴 ${index + 1} 모자이크 적용 완료")
-                    } else {
-                        Log.w("FaceMosaicHelper", "⚠️ 얼굴 ${index + 1} 좌표가 유효하지 않음 - 스킵")
-                        Log.w("FaceMosaicHelper", "   좌표: ($left, $top), 크기: ${width}x${height}, 이미지: ${imageWidth}x${imageHeight}")
-                    }
+                    Log.d("FaceMosaicHelper", "🎨 얼굴 ${index + 1} 모자이크 적용 완료")
 
                 } catch (e: Exception) {
                     Log.e("FaceMosaicHelper", "얼굴 ${index + 1} 처리 중 오류: ${e.message}")
@@ -126,7 +105,7 @@ class FaceMosaicHelper(private val context: Context) {
             }
 
             val endTime = System.currentTimeMillis()
-            Log.d("FaceMosaicHelper", "✅ 모자이크 처리 완료: ${endTime - startTime}ms, ${detectedFaces}개 얼굴 처리")
+            Log.d("FaceMosaicHelper", "✅ 개선된 모자이크 처리 완료: ${endTime - startTime}ms, ${detectedFaces.size}개 얼굴 처리")
             mutableBitmap
 
         } catch (e: Exception) {
@@ -135,6 +114,211 @@ class FaceMosaicHelper(private val context: Context) {
         }
     }
 
+    // 🎯 다양한 방법으로 얼굴 검출 시도
+    private fun detectFacesMultipleWays(inputBitmap: Bitmap): List<RectF> {
+        val allFaces = mutableListOf<RectF>()
+
+        // 🎯 방법 1: 원본 이미지로 민감한 검출
+        Log.d("FaceMosaicHelper", "🔍 방법 1: 원본 이미지 민감한 검출")
+        val faces1 = detectFacesWithDetector(inputBitmap, faceDetector, "민감한검출기")
+        allFaces.addAll(faces1)
+
+        // 🎯 방법 2: 이미지 향상 후 검출
+        if (allFaces.isEmpty()) {
+            Log.d("FaceMosaicHelper", "🔍 방법 2: 이미지 향상 후 검출")
+            val enhancedBitmap = enhanceImageForFaceDetection(inputBitmap)
+            val faces2 = detectFacesWithDetector(enhancedBitmap, faceDetector, "향상된이미지")
+            // 좌표를 원본 크기로 변환
+            val scaleFactor = inputBitmap.width.toFloat() / enhancedBitmap.width.toFloat()
+            faces2.forEach { rect ->
+                allFaces.add(RectF(
+                    rect.left * scaleFactor,
+                    rect.top * scaleFactor,
+                    rect.right * scaleFactor,
+                    rect.bottom * scaleFactor
+                ))
+            }
+        }
+
+        // 🎯 방법 3: 작은 크기로 검출
+        if (allFaces.isEmpty()) {
+            Log.d("FaceMosaicHelper", "🔍 방법 3: 작은 크기로 검출")
+            val smallBitmap = resizeBitmapForDetection(inputBitmap, 600)
+            val faces3 = detectFacesWithDetector(smallBitmap, faceDetector, "작은크기")
+            // 좌표를 원본 크기로 변환
+            val scaleFactor = inputBitmap.width.toFloat() / smallBitmap.width.toFloat()
+            faces3.forEach { rect ->
+                allFaces.add(RectF(
+                    rect.left * scaleFactor,
+                    rect.top * scaleFactor,
+                    rect.right * scaleFactor,
+                    rect.bottom * scaleFactor
+                ))
+            }
+        }
+
+        // 🎯 방법 4: 백업 검출기 사용
+        if (allFaces.isEmpty() && backupDetector != null) {
+            Log.d("FaceMosaicHelper", "🔍 방법 4: 백업 검출기 사용")
+            val faces4 = detectFacesWithDetector(inputBitmap, backupDetector, "백업검출기")
+            allFaces.addAll(faces4)
+        }
+
+        // 중복 제거
+        val uniqueFaces = removeDuplicateFaces(allFaces)
+        Log.d("FaceMosaicHelper", "🎯 최종 검출된 얼굴: ${uniqueFaces.size}개")
+
+        return uniqueFaces
+    }
+
+    // 🎯 특정 검출기로 얼굴 검출
+    private fun detectFacesWithDetector(bitmap: Bitmap, detector: FaceDetector?, detectorName: String): List<RectF> {
+        return try {
+            if (detector == null) {
+                Log.w("FaceMosaicHelper", "$detectorName: 검출기가 null")
+                return emptyList()
+            }
+
+            val mpImage = BitmapImageBuilder(bitmap).build()
+            val detectionResult = detector.detect(mpImage)
+
+            val detectedCount = detectionResult?.detections()?.size ?: 0
+            Log.d("FaceMosaicHelper", "$detectorName: ${detectedCount}개 얼굴 검출")
+
+            detectionResult?.detections()?.mapNotNull { detection ->
+                try {
+                    val box = detection.boundingBox()
+                    val confidence = detection.categories().firstOrNull()?.score() ?: 0f
+
+                    Log.d("FaceMosaicHelper", "$detectorName: 얼굴 신뢰도 ${(confidence * 100).toInt()}%")
+
+                    val imageWidth = bitmap.width.toFloat()
+                    val imageHeight = bitmap.height.toFloat()
+
+                    val faceRect = if (box.left <= 1.0f && box.top <= 1.0f) {
+                        // 정규화된 좌표
+                        RectF(
+                            box.left * imageWidth,
+                            box.top * imageHeight,
+                            (box.left + box.width()) * imageWidth,
+                            (box.top + box.height()) * imageHeight
+                        )
+                    } else {
+                        // 픽셀 좌표
+                        RectF(box.left, box.top, box.left + box.width(), box.top + box.height())
+                    }
+
+                    // 유효성 검사
+                    if (faceRect.width() > 10 && faceRect.height() > 10 &&
+                        faceRect.left >= 0 && faceRect.top >= 0 &&
+                        faceRect.right <= imageWidth && faceRect.bottom <= imageHeight) {
+                        faceRect
+                    } else {
+                        Log.w("FaceMosaicHelper", "$detectorName: 유효하지 않은 얼굴 좌표")
+                        null
+                    }
+                } catch (e: Exception) {
+                    Log.e("FaceMosaicHelper", "$detectorName: 얼굴 처리 오류: ${e.message}")
+                    null
+                }
+            } ?: emptyList()
+
+        } catch (e: Exception) {
+            Log.e("FaceMosaicHelper", "$detectorName: 검출 실패: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // 🎯 이미지 향상 (얼굴 검출률 높이기)
+    private fun enhanceImageForFaceDetection(bitmap: Bitmap): Bitmap {
+        val enhanced = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(enhanced)
+        val paint = Paint()
+
+        // 대비 향상
+        val colorMatrix = ColorMatrix()
+        colorMatrix.setSaturation(1.2f) // 채도 약간 증가
+        colorMatrix.set(floatArrayOf(
+            1.1f, 0f, 0f, 0f, 20f,    // R 채널 증가
+            0f, 1.1f, 0f, 0f, 20f,    // G 채널 증가
+            0f, 0f, 1.1f, 0f, 20f,    // B 채널 증가
+            0f, 0f, 0f, 1f, 0f        // A 채널 유지
+        ))
+
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        Log.d("FaceMosaicHelper", "🎨 이미지 향상 완료")
+        return enhanced
+    }
+
+    // 🎯 검출용 이미지 리사이즈
+    private fun resizeBitmapForDetection(bitmap: Bitmap, maxSize: Int): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        if (width <= maxSize && height <= maxSize) {
+            return bitmap
+        }
+
+        val scale = if (width > height) {
+            maxSize.toFloat() / width
+        } else {
+            maxSize.toFloat() / height
+        }
+
+        val newWidth = (width * scale).toInt()
+        val newHeight = (height * scale).toInt()
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    // 🎯 얼굴 영역 확장 (더 확실한 모자이크)
+    private fun expandFaceRect(rect: RectF, imageWidth: Int, imageHeight: Int): RectF {
+        val expandRatio = 0.3f // 30% 확장
+        val expandWidth = rect.width() * expandRatio
+        val expandHeight = rect.height() * expandRatio
+
+        return RectF(
+            maxOf(0f, rect.left - expandWidth / 2),
+            maxOf(0f, rect.top - expandHeight / 2),
+            minOf(imageWidth.toFloat(), rect.right + expandWidth / 2),
+            minOf(imageHeight.toFloat(), rect.bottom + expandHeight / 2)
+        )
+    }
+
+    // 🎯 중복 얼굴 제거
+    private fun removeDuplicateFaces(faces: List<RectF>): List<RectF> {
+        if (faces.size <= 1) return faces
+
+        val uniqueFaces = mutableListOf<RectF>()
+
+        for (face in faces) {
+            var isDuplicate = false
+            for (existing in uniqueFaces) {
+                // 두 얼굴이 50% 이상 겹치면 중복으로 판단
+                val intersection = RectF()
+                if (intersection.setIntersect(face, existing)) {
+                    val intersectionArea = intersection.width() * intersection.height()
+                    val faceArea = face.width() * face.height()
+                    val overlapRatio = intersectionArea / faceArea
+
+                    if (overlapRatio > 0.5f) {
+                        isDuplicate = true
+                        break
+                    }
+                }
+            }
+
+            if (!isDuplicate) {
+                uniqueFaces.add(face)
+            }
+        }
+
+        return uniqueFaces
+    }
+
+    // 🎯 기존 함수들 유지
     private fun createMosaicBitmap(
         originalBitmap: Bitmap,
         x: Int, y: Int, width: Int, height: Int,
@@ -157,12 +341,8 @@ class FaceMosaicHelper(private val context: Context) {
         val smallWidth = maxOf(1, safeWidth / mosaicSize)
         val smallHeight = maxOf(1, safeHeight / mosaicSize)
 
-        Log.d("FaceMosaicHelper", "🔍 축소 크기: ${smallWidth}x${smallHeight}")
-
         val smallBitmap = Bitmap.createScaledBitmap(faceBitmap, smallWidth, smallHeight, false)
         val mosaicBitmap = Bitmap.createScaledBitmap(smallBitmap, safeWidth, safeHeight, false)
-
-        Log.d("FaceMosaicHelper", "✅ 모자이크 비트맵 생성 완료: ${mosaicBitmap.width}x${mosaicBitmap.height}")
 
         faceBitmap.recycle()
         smallBitmap.recycle()
@@ -171,42 +351,13 @@ class FaceMosaicHelper(private val context: Context) {
     }
 
     fun detectFaces(inputBitmap: Bitmap): List<RectF> {
-        return try {
-            val mpImage = BitmapImageBuilder(inputBitmap).build()
-            val detectionResult = faceDetector?.detect(mpImage)
-
-            detectionResult?.detections()?.map { detection ->
-                val box = detection.boundingBox()
-                val imageWidth = inputBitmap.width.toFloat()
-                val imageHeight = inputBitmap.height.toFloat()
-
-                if (box.left <= 1.0f && box.top <= 1.0f) {
-                    // 정규화된 좌표
-                    RectF(
-                        box.left * imageWidth,
-                        box.top * imageHeight,
-                        (box.left + box.width()) * imageWidth,
-                        (box.top + box.height()) * imageHeight
-                    )
-                } else {
-                    // 픽셀 좌표
-                    RectF(
-                        box.left,
-                        box.top,
-                        box.left + box.width(),
-                        box.top + box.height()
-                    )
-                }
-            } ?: emptyList()
-        } catch (e: Exception) {
-            Log.e("FaceMosaicHelper", "얼굴 검출 실패: ${e.message}", e)
-            emptyList()
-        }
+        return detectFacesMultipleWays(inputBitmap)
     }
 
     fun close() {
         try {
             faceDetector?.close()
+            backupDetector?.close()
             Log.d("FaceMosaicHelper", "FaceMosaicHelper 리소스 정리 완료")
         } catch (e: Exception) {
             Log.e("FaceMosaicHelper", "리소스 정리 실패: ${e.message}")
