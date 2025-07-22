@@ -165,7 +165,7 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
         googleMap.setOnMarkerClickListener { marker ->
             val tag = marker.tag as? PlaceData
             if (tag != null) {
-                showPointRecordDialog(tag.imageUrl, tag.name, tag.description)
+                showPointRecordDialog(tag.imageUrl, tag.name, tag.description, tag.placeId, tag.lat, tag.lng)
             }
             true
         }
@@ -208,6 +208,7 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
                     val name = document.getString("name") ?: "이름 없음"
                     val myImgUrl = document.getString("myImgUrl") ?: ""
                     val geoPoint = document.getGeoPoint("geo")
+                    val placeId = document.id
 
                     if (geoPoint != null) {
                         val latitude = geoPoint.latitude
@@ -228,7 +229,7 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
                                 .snippet(description)
                         )
 
-                        marker?.tag = PlaceData(myImgUrl, name, description)
+                        marker?.tag = PlaceData(myImgUrl, name, description, placeId, latitude, longitude)
 
                         Log.d("PointRecord", "마커 추가: $name at ($latitude, $longitude), 거리: ${distance}km")
                     }
@@ -257,8 +258,8 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
         return earthRadius * c
     }
 
-    private fun showPointRecordDialog(imageUrl: String, name: String, description: String) {
-        val dialog = PointRecordDialog.newInstance(imageUrl, name, description)
+    private fun showPointRecordDialog(imageUrl: String, name: String, description: String, placeId: String, lat: Double, lng: Double) {
+        val dialog = PointRecordDialog.newInstance(imageUrl, name, description, placeId, lat, lng)
         dialog.show(supportFragmentManager, "PointRecordDialog")
     }
 
@@ -276,6 +277,9 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
     data class PlaceData(
         val imageUrl: String,
         val name: String,
-        val description: String
+        val description: String,
+        val placeId: String = "",
+        val lat: Double = 0.0,
+        val lng: Double = 0.0
     )
 }

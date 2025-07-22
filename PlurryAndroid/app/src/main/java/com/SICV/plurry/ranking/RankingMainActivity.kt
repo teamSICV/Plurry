@@ -14,6 +14,7 @@ import com.SICV.plurry.R
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import de.hdodenhof.circleimageview.CircleImageView
 
 class RankingMainActivity : AppCompatActivity() {
@@ -44,12 +45,17 @@ class RankingMainActivity : AppCompatActivity() {
     private var currentUserCrewId: String? = null
     private var currentTabType: TabType = TabType.PERSONAL
 
+    private lateinit var crewTotalManager: RankingCrewTotal
+    private var crewMemberListener: ListenerRegistration? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ranking_main)
 
         firestore = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
+
+        crewTotalManager = RankingCrewTotal()
 
         val rankingBackBtn = findViewById<ImageView>(R.id.rankingBackBtn)
 
@@ -62,6 +68,8 @@ class RankingMainActivity : AppCompatActivity() {
         rankingBackBtn.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
+
+        startCrewMemberChangeListener()
     }
 
     private fun initViews() {
@@ -105,7 +113,19 @@ class RankingMainActivity : AppCompatActivity() {
             .get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    currentUserCrewId = document.getString("crewAt")
+                    val newCrewId = document.getString("crewAt")
+
+                    if (currentUserCrewId != newCrewId) {
+                        crewMemberListener?.remove()
+                        crewTotalManager.stopAllListeners()
+                    }
+
+                    currentUserCrewId = newCrewId
+
+                    currentUserCrewId?.let { crewId ->
+                        crewTotalManager.startCrewScoreListener(crewId)
+                        startCrewMemberChangeListener()
+                    }
                 }
             }
             .addOnFailureListener { exception ->
@@ -550,6 +570,55 @@ class RankingMainActivity : AppCompatActivity() {
         rankingList.clear()
         rankingList.addAll(newData)
         rankingAdapter.updateData(rankingList)
+    }
+
+    private fun startCrewMemberChangeListener() {
+        currentUserCrewId?.let { crewId ->
+            crewMemberListener = firestore.collection("Crew")
+                .document(crewId)
+                .collection("member")
+                .document("members")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("RankingActivity", "Error listening to crew members", error)
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null) {
+                        refreshCurrentTab()
+                    }
+                }
+        }
+    }
+
+    private fun refreshCurrentTab() {
+        when (currentTabType) {
+            TabType.PERSONAL -> {
+            }
+            TabType.CREW_PERSONAL -> {
+                loadCrewPersonalRankingData()
+            }
+            TabType.CREW -> {
+                currentUserCrewId?.let { crewId ->
+                    crewTotalManager.manualRecalculateCrewScore(crewId)
+                }
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    loadCrewRankingData()
+                }, 1000)
+            }
+        }
+    }
+
+    private fun manualRefresh() {
+        getUserCrewInfo()
+
+        refreshCurrentTab()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        crewTotalManager.stopAllListeners()
+        crewMemberListener?.remove()
     }
 
     enum class TabType {
