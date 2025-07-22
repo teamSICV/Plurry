@@ -46,10 +46,15 @@ class MapViewActivity : AppCompatActivity() {
     private val GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 1003
     private val LOCATION_PERMISSION_REQUEST_CODE = 1002
 
-    // 🚨 정확도 불일치 감지를 위한 상수 추가
+    // 🚨 정확도 불일치 감지를 위한 상수
     // 실제 GPS는 일반적으로 3~10m의 정확도를 보이지만, 모의 위치는 0~1m의 비정상적인 값을 보일 수 있음.
     private val SUSPICIOUS_ACCURACY_THRESHOLD_METERS = 2f // 2미터 이하의 지나치게 완벽한 정확도
     private val MIN_ACCURACY_CONSIDERED_VALID = 0.5f // 0에 너무 가까운 값은 비정상으로 간주
+
+    // 🚀 순간이동 감지를 위한 변수 추가
+    private var lastLocation: Location? = null
+    private var lastLocationTime: Long = 0L
+    private val MAX_SPEED_KMH = 300.0 // 허용 가능한 최대 속도 임계값 (km/h)
 
     private val fitnessOptions: FitnessOptions by lazy {
         FitnessOptions.builder()
@@ -167,6 +172,9 @@ class MapViewActivity : AppCompatActivity() {
                         checkLocationIntegrityAndHandleExit(it, "지도 초기화")
                         val currentLatLng = LatLng(it.latitude, it.longitude)
                         googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
+                        // 🚀 초기 위치를 lastLocation으로 설정
+                        lastLocation = it
+                        lastLocationTime = System.currentTimeMillis()
                     }
                 }
             } else {
@@ -191,7 +199,7 @@ class MapViewActivity : AppCompatActivity() {
         }
     }
 
-    // 🚨 Location 객체가 모의 위치인지 확인하는 메서드 (외부 호출용)
+    // 🚨 Location 객체가 모의 위치인지 확인하는 메서드
     private fun isMockLocation(location: Location): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             location.isMock
@@ -214,14 +222,43 @@ class MapViewActivity : AppCompatActivity() {
         return false
     }
 
-    // 🚨 위치 무결성을 확인하고, 모의 위치 + 개발자 옵션 감지 시 GoingWalkMainActivity로 이동
-    // 🚨 정확도 불일치 감지도 포함
+    // 🚀 순간이동을 감지하는 함수
+    private fun isTeleporting(currentLocation: Location): Boolean {
+        lastLocation?.let { prevLocation ->
+            val timeElapsedSeconds = (System.currentTimeMillis() - lastLocationTime) / 1000.0 // 초 단위
+            if (timeElapsedSeconds <= 0) { // 시간이 흐르지 않았거나 음수일 경우 (이상 케이스)
+                Log.w("Teleportation", "시간 간격이 0 또는 음수입니다. 이전 위치 정보를 업데이트합니다.")
+                lastLocation = currentLocation
+                lastLocationTime = System.currentTimeMillis()
+                return false
+            }
+
+            val distanceMeters = prevLocation.distanceTo(currentLocation) // 미터 단위
+            val speedMps = distanceMeters / timeElapsedSeconds // 미터/초
+            val speedKmh = speedMps * 3.6 // km/h (m/s를 km/h로 변환)
+
+            Log.d("Teleportation", "거리: ${String.format("%.2f", distanceMeters)}m, 시간: ${String.format("%.2f", timeElapsedSeconds)}s, 속도: ${String.format("%.2f", speedKmh)}km/h")
+
+            if (speedKmh > MAX_SPEED_KMH) {
+                Log.w("Teleportation", "순간이동 감지! 허용 속도 초과: ${String.format("%.2f", speedKmh)}km/h")
+                Toast.makeText(this, "경고: 비정상적인 속도 변화 감지 (순간이동 의심)!", Toast.LENGTH_LONG).show()
+                return true
+            }
+        }
+        // 현재 위치를 다음 비교를 위해 저장
+        lastLocation = currentLocation
+        lastLocationTime = System.currentTimeMillis()
+        return false
+    }
+
+    // 🚨 위치 무결성을 확인하고, 모의 위치 + (개발자 옵션 OR 정확도 불일치 OR 순간이동) 감지 시 GoingWalkMainActivity로 이동
     private fun checkLocationIntegrityAndHandleExit(location: Location, source: String) {
         val mockDetected = isMockLocation(location)
         val devOptionsEnabled = isDeveloperOptionsEnabled()
-        val accuracyDiscrepancyDetected = checkAccuracyDiscrepancy(location) // 정확도 불일치 감지
+        val accuracyDiscrepancyDetected = checkAccuracyDiscrepancy(location)
+        val teleportationDetected = isTeleporting(location) // 🚀 순간이동 감지
 
-        // 모의 위치 감지 시 사용자에게 먼저 알림
+        // 모의 위치 감지 시 사용자에게 먼저 알림 (단독 경고)
         if (mockDetected) {
             Log.w("MockLocation", "$source: 모의 위치 감지됨: ${location.latitude}, ${location.longitude}")
             Toast.makeText(this, "경고: 모의 위치가 감지되었습니다! ($source)", Toast.LENGTH_SHORT).show()
@@ -230,8 +267,9 @@ class MapViewActivity : AppCompatActivity() {
         // 비정상적인 환경 조건:
         // 1. 모의 위치가 감지되었고 (필수)
         // 2. 개발자 옵션이 활성화되어 있거나 (강력한 조합)
-        // 3. 비정상적인 정확도가 감지된 경우 (또 다른 강력한 지표)
-        if (mockDetected && (devOptionsEnabled || accuracyDiscrepancyDetected)) {
+        // 3. 비정상적인 정확도가 감지되었거나 (또 다른 강력한 지표)
+        // 4. 순간이동이 감지된 경우 (새로운 강력한 지표)
+        if (mockDetected && (devOptionsEnabled || accuracyDiscrepancyDetected || teleportationDetected)) {
             Log.e("Security", "보안 위협 감지: 비정상적인 위치 환경. GoingWalkMainActivity로 이동.")
             Toast.makeText(this, "비정상적인 환경이 감지되어 초기 화면으로 돌아갑니다.", Toast.LENGTH_LONG).show()
 
@@ -240,9 +278,11 @@ class MapViewActivity : AppCompatActivity() {
             startActivity(intent)
             finish() // 현재 MapViewActivity 종료
         } else {
-            // 정상적인 위치 또는 단일 경고만 발생한 경우 (예: 개발자 옵션만 켜진 경우)
-            if (!mockDetected) { // 모의 위치가 감지되지 않았을 때만 실제 위치 로그를 남김
-                Log.i("Location", "$source: 현재 위치: ${location.latitude}, ${location.longitude}")
+            // 정상적인 위치 또는 단일 경고만 발생한 경우
+            if (!mockDetected) {
+                Log.i("Location", "$source: 현재 위치: ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
+            } else {
+                Log.i("Location", "$source: 모의 위치 감지됨 (단독): ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
             }
         }
     }
@@ -394,6 +434,9 @@ class MapViewActivity : AppCompatActivity() {
                             checkLocationIntegrityAndHandleExit(it, "권한 부여 후 초기 위치") // 🚨 권한 부여 후 초기 위치 무결성 검사
                             val currentLatLng = LatLng(it.latitude, it.longitude)
                             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
+                            // 🚀 권한 부여 후 초기 위치 설정 시 lastLocation 초기화
+                            lastLocation = it
+                            lastLocationTime = System.currentTimeMillis()
                         }
                     }
                 }
