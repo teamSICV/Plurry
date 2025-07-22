@@ -79,6 +79,25 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
 /* ******************
 *
+* setData
+*
+* ******************/
+
+/*    private fun loadUserDataFromFirebase() {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("Game").document("users")
+            .collection("userReward").document("userID")
+            .get()
+            .addOnSuccessListener { document ->
+                currentRaisingPoint = document.getLong("raisingPoint")?.toInt() ?: -1
+                currentRaisingAmount = document.getLong("raisingAmount")?.toInt() ?: -1
+            }
+    }*/
+
+
+
+/* ******************
+*
 * setOnClickListener
 *
 * ******************/
