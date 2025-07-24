@@ -69,13 +69,7 @@
             android:textColorHint="#B0B0B0"
             tools:ignore="InefficientWeight" />
 
-        <Button
-            android:id="@+id/btnSubmitName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:backgroundTint="#438cf3"
-            android:text="완료" />
+        <!-- 이름 입력 완료 버튼은 더 이상 필요 없으므로 제거됨 -->
     </LinearLayout>
 
     <!-- 사진 미리보기 -->
@@ -84,17 +78,17 @@
         android:layout_width="250dp"
         android:layout_height="180dp"
         android:scaleType="centerCrop"
-        android:visibility="gone" />
+        android:visibility="gone"
+        android:layout_marginBottom="16dp" />
 
-    <!-- 사진 찍기 버튼 -->
+    <!-- 사진 찍기 버튼 (초기부터 보임) -->
     <Button
         android:id="@+id/btnTakePhoto"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:backgroundTint="#438cf3"
         android:text="사진 찍기"
-        android:textColor="#FFFFFF"
-        android:visibility="gone" />
+        android:textColor="#FFFFFF" />
 
     <!-- 사진 관련 액션 버튼 -->
     <LinearLayout
@@ -154,4 +148,3 @@
         android:textColor="#FFFFFF"
         android:visibility="gone" />
 </LinearLayout>
-

@@ -36,19 +36,25 @@ class AddPointDialogFragment : DialogFragment() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var isUploading = false
 
+    // `currentPlaceName` 변수는 더 이상 필요 없으므로 제거됨
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val view = requireActivity().layoutInflater.inflate(R.layout.activity_goingwalk_dialog_add_point, null)
         val builder = AlertDialog.Builder(requireActivity()).setView(view)
 
         val nameInputLayout = view.findViewById<LinearLayout>(R.id.nameInputLayout)
         val etPlaceName = view.findViewById<EditText>(R.id.etPlaceName)
-        val btnSubmitName = view.findViewById<Button>(R.id.btnSubmitName)
+        // `btnSubmitName`은 XML에서 제거되었으므로 여기서도 제거
         val imagePreview = view.findViewById<ImageView>(R.id.imagePreview)
         val btnTakePhoto = view.findViewById<Button>(R.id.btnTakePhoto)
         val btnRetake = view.findViewById<Button>(R.id.btnRetake)
         val btnConfirm = view.findViewById<Button>(R.id.btnConfirm)
         val photoActions = view.findViewById<LinearLayout>(R.id.photoActionButtons)
         val btnClose = view.findViewById<Button>(R.id.btnClose)
+
+        // `etPlaceNameDisplay`와 `tvPlaceNameLabel`은 더 이상 필요 없으므로 제거됨
+        // val etPlaceNameDisplay = view.findViewById<EditText>(R.id.etPlaceNameDisplay)
+        // val tvPlaceNameLabel = view.findViewById<TextView>(R.id.tvPlaceNameLabel)
 
         val completionLayout = view.findViewById<LinearLayout>(R.id.completionLayout)
         val tvReward = view.findViewById<TextView>(R.id.tvReward)
@@ -58,21 +64,22 @@ class AddPointDialogFragment : DialogFragment() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
-        btnTakePhoto.visibility = View.GONE
-        btnClose.visibility = View.GONE
+        // 초기 가시성 설정: 이름 입력 필드와 사진 찍기 버튼은 항상 보임
+        // `btnTakePhoto`는 XML에서 기본적으로 보이도록 설정되었으므로 여기서 `VISIBLE`로 설정할 필요 없음
+        btnClose.visibility = View.GONE // 닫기 버튼은 사진 촬영 단계에서 나타남
+        photoActions.visibility = View.GONE // 사진 촬영 전에는 액션 버튼 숨김
+        imagePreview.visibility = View.GONE // 사진 미리보기는 사진 촬영 전에는 숨김
 
-        btnSubmitName.setOnClickListener {
-            val placeName = etPlaceName.text.toString().trim()
-            if (placeName.isNotEmpty()) {
-                nameInputLayout.visibility = View.GONE
-                btnTakePhoto.visibility = View.VISIBLE
-                btnClose.visibility = View.VISIBLE
-            } else {
-                Toast.makeText(requireContext(), "포인트 이름을 입력하세요.", Toast.LENGTH_SHORT).show()
-            }
-        }
+        // `btnSubmitName` 클릭 리스너는 더 이상 필요 없으므로 제거됨
+        // 이름 입력은 `etPlaceName`에서 직접 이루어지고, 사진 촬영 버튼과 함께 제공됩니다.
 
         btnTakePhoto.setOnClickListener {
+            // 이름 입력 필드가 비어있는지 확인
+            val placeName = etPlaceName.text.toString().trim()
+            if (placeName.isEmpty()) {
+                Toast.makeText(requireContext(), "포인트 이름을 입력하세요.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             openCamera()
         }
 
@@ -87,6 +94,26 @@ class AddPointDialogFragment : DialogFragment() {
             // 중복 클릭 방지 + 로딩 표시
             btnConfirm.isEnabled = false
             progressLayout.visibility = View.VISIBLE
+
+            // 최종적으로 등록될 포인트 이름은 `etPlaceName`에서 가져옴
+            val finalPlaceName = etPlaceName.text.toString().trim()
+            if (finalPlaceName.isEmpty()) {
+                Toast.makeText(requireContext(), "포인트 이름을 입력하세요.", Toast.LENGTH_SHORT).show()
+                isUploading = false
+                progressLayout.visibility = View.GONE
+                btnConfirm.isEnabled = true
+                return@setOnClickListener
+            }
+
+            // 이미지 URI가 설정되었는지 확인
+            if (!::imageUri.isInitialized) {
+                Toast.makeText(requireContext(), "사진을 촬영해주세요.", Toast.LENGTH_SHORT).show()
+                isUploading = false
+                progressLayout.visibility = View.GONE
+                btnConfirm.isEnabled = true
+                return@setOnClickListener
+            }
+
 
             if (ActivityCompat.checkSelfPermission(
                     requireContext(),
@@ -138,7 +165,7 @@ class AddPointDialogFragment : DialogFragment() {
                                 imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
 
                                     val placeData = hashMapOf(
-                                        "name" to etPlaceName.text.toString().trim(),
+                                        "name" to finalPlaceName, // `etPlaceName`에서 이름 가져옴
                                         "geo" to GeoPoint(location.latitude, location.longitude),
                                         "imageTime" to timeStamp,
                                         "myImg" to true,
@@ -150,7 +177,7 @@ class AddPointDialogFragment : DialogFragment() {
                                         .collection("Places")
                                         .add(placeData)
                                         .addOnSuccessListener {
-                                            // **보상 로직 시작 - 수정된 부분**
+                                            // **보상 로직 시작**
                                             val userRewardRef = FirebaseFirestore.getInstance()
                                                 .collection("Game")
                                                 .document("users")
@@ -163,21 +190,21 @@ class AddPointDialogFragment : DialogFragment() {
                                                     completionLayout.visibility = View.VISIBLE
                                                     tvReward.text = "일반 보상 아이템 1개 지급"
 
+                                                    // 모든 이전 UI 요소 숨김
                                                     nameInputLayout.visibility = View.GONE
-                                                    btnSubmitName.visibility = View.GONE
+                                                    etPlaceName.visibility = View.GONE // 이름 입력 필드 숨김
                                                     btnTakePhoto.visibility = View.GONE
                                                     btnRetake.visibility = View.GONE
                                                     btnConfirm.visibility = View.GONE
                                                     btnClose.visibility = View.GONE
                                                     photoActions.visibility = View.GONE
                                                     progressLayout.visibility = View.GONE
+                                                    imagePreview.visibility = View.GONE
 
                                                     isUploading = false
                                                 }
                                                 .addOnFailureListener { e ->
                                                     Log.e("AddPointDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
-                                                    // 토스트 메시지 제거됨: Toast.makeText(requireContext(), "❌ 보상 아이템 지급 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-
                                                     // 문서가 없어서 업데이트에 실패한 경우, 새로 생성하는 로직 (초기값 1로)
                                                     if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
                                                         val initialRewardData = hashMapOf(
@@ -194,14 +221,16 @@ class AddPointDialogFragment : DialogFragment() {
                                                                 completionLayout.visibility = View.VISIBLE
                                                                 tvReward.text = "일반 보상 아이템 1개 지급"
 
+                                                                // 모든 이전 UI 요소 숨김
                                                                 nameInputLayout.visibility = View.GONE
-                                                                btnSubmitName.visibility = View.GONE
+                                                                etPlaceName.visibility = View.GONE // 이름 입력 필드 숨김
                                                                 btnTakePhoto.visibility = View.GONE
                                                                 btnRetake.visibility = View.GONE
                                                                 btnConfirm.visibility = View.GONE
                                                                 btnClose.visibility = View.GONE
                                                                 photoActions.visibility = View.GONE
                                                                 progressLayout.visibility = View.GONE
+                                                                imagePreview.visibility = View.GONE
 
                                                                 isUploading = false
                                                             }
@@ -338,6 +367,9 @@ class AddPointDialogFragment : DialogFragment() {
             }
             dialog?.findViewById<Button>(R.id.btnTakePhoto)?.visibility = View.GONE
             dialog?.findViewById<LinearLayout>(R.id.photoActionButtons)?.visibility = View.VISIBLE
+            dialog?.findViewById<Button>(R.id.btnClose)?.visibility = View.VISIBLE // 닫기 버튼 표시
+            // 이름 입력 필드의 포커스를 해제하여 키보드가 자동으로 올라오지 않도록 함
+            dialog?.findViewById<EditText>(R.id.etPlaceName)?.clearFocus()
         }
     }
 }
