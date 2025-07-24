@@ -19,13 +19,14 @@ import com.SICV.plurry.goingwalk.GoingWalkMainActivity
 import com.SICV.plurry.goingwalk.ExploreTrackingFragment
 import com.SICV.plurry.goingwalk.MapViewActivity
 import com.bumptech.glide.Glide
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 
 class PointRecordDialog : DialogFragment() {
 
     companion object{
-        fun newInstance(imageUrl: String, name: String, description: String, placeId: String = "", lat: Double = 0.0, lng: Double = 0.0): PointRecordDialog{
+        fun newInstance(imageUrl: String, name: String, description: String, placeId: String = "", lat: Double = 0.0, lng: Double = 0.0, crewId: String = ""): PointRecordDialog{
             val fragment = PointRecordDialog()
             val args = Bundle()
             args.putString("imageUrl", imageUrl)
@@ -34,6 +35,7 @@ class PointRecordDialog : DialogFragment() {
             args.putString("placeId", placeId)
             args.putDouble("lat", lat)
             args.putDouble("lng", lng)
+            args.putString("crewId", crewId)
             fragment.arguments = args
 
             Log.d("PointRecordDialog", "newInstance 호출 - placeId: $placeId, lat: $lat, lng: $lng")
@@ -55,6 +57,7 @@ class PointRecordDialog : DialogFragment() {
         val placeId = arguments?.getString("placeId") ?: ""
         val lat = arguments?.getDouble("lat") ?: 0.0
         val lng = arguments?.getDouble("lng") ?: 0.0
+        val crewId = arguments?.getString("crewId") ?: ""
 
         Log.d("PointRecordDialog", "onCreateDialog - placeId: $placeId, lat: $lat, lng: $lng")
 
@@ -69,6 +72,17 @@ class PointRecordDialog : DialogFragment() {
         }
 
         val btnStart = view.findViewById<Button>(R.id.btnStart)
+
+        if (crewId.isNotEmpty()) {
+            checkCrewMembership(crewId) { isMember ->
+                if (!isMember) {
+                    btnStart.visibility = View.GONE
+                }
+            }
+        } else {
+            btnStart.visibility = View.VISIBLE
+        }
+
         btnStart.setOnClickListener {
             if (placeId.isEmpty() || (lat == 0.0 && lng == 0.0)) {
                 Log.w("PointRecordDialog", "유효하지 않은 위치 데이터: placeId=$placeId, lat=$lat, lng=$lng")
@@ -183,6 +197,28 @@ class PointRecordDialog : DialogFragment() {
 
             return dialog
         }
+    }
+
+    private fun checkCrewMembership(crewId: String, callback: (Boolean) -> Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            callback(false)
+            return
+        }
+
+        val uid = currentUser.uid
+        FirebaseFirestore.getInstance().collection("Users").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                if (userDoc.exists()) {
+                    val userCrewId = userDoc.getString("crewAt")
+                    callback(userCrewId == crewId)
+                } else {
+                    callback(false)
+                }
+            }
+            .addOnFailureListener {
+                callback(false)
+            }
     }
 
     override fun onStart() {

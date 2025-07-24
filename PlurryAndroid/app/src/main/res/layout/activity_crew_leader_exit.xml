@@ -12,12 +12,12 @@
         android:background="@color/white">
 
         <TextView
-            android:id="@+id/crewMemberExit"
+            android:id="@+id/crewLeaderExit"
             android:layout_width="250dp"
             android:layout_height="150dp"
             android:gravity="center"
             android:layout_marginTop="90dp"
-            android:text="크루를 탈퇴하시면 크루기여도 등 관련 데이터가 삭제됩니다.\n\n크루를 탈퇴하시겠습니까?"
+            android:text="리더가 크루를 탈퇴하면 크루가 삭제됩니다.\n\n크루를 삭제하시겠습니까?"
             android:textAlignment="center"
             android:textSize="17sp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -25,7 +25,7 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <Button
-            android:id="@+id/btnExitBack"
+            android:id="@+id/btnLeaderExitBack"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="30dp"
@@ -36,7 +36,7 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <Button
-            android:id="@+id/btnExitOk"
+            android:id="@+id/btnLeaderExitOk"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="30dp"
