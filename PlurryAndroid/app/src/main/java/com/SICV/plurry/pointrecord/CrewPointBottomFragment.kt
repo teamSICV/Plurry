@@ -37,7 +37,9 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
     enum class SortType {
         DATE_DESC,
-        DISTANCE_ASC
+        DATE_ASC,
+        DISTANCE_ASC,
+        DISTANCE_DESC
     }
 
     private var currentSortType = SortType.DATE_DESC
@@ -147,34 +149,56 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
     }
 
     private fun sortPlacesByDate() {
-        if (currentSortType == SortType.DATE_DESC) return
+        currentSortType = when (currentSortType) {
+            SortType.DATE_DESC -> SortType.DATE_ASC
+            SortType.DATE_ASC -> SortType.DATE_DESC
+            else -> SortType.DATE_DESC
+        }
 
-        currentSortType = SortType.DATE_DESC
         updateSortButtonUI()
 
-        val sortedList = allPlaces.sortedByDescending { it.placeId }
+        val sortedList = when (currentSortType) {
+            SortType.DATE_DESC -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
+            SortType.DATE_ASC -> allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
+            else -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
+        }
 
         updateRecyclerView(sortedList)
-        Log.d("CrewPointBottom", "날짜순 정렬 완료")
+        Log.d("CrewPointBottom", "날짜순 정렬 완료 - ${if (currentSortType == SortType.DATE_DESC) "최신순" else "오래된순"}")
     }
 
     private fun sortPlacesByDistance() {
-        if (currentSortType == SortType.DISTANCE_ASC) return
-
         if (myLatitude == null || myLongitude == null) {
             Toast.makeText(requireContext(), "위치 정보가 없어 거리순 정렬을 할 수 없습니다", Toast.LENGTH_SHORT).show()
             return
         }
 
-        currentSortType = SortType.DISTANCE_ASC
+        currentSortType = when (currentSortType) {
+            SortType.DISTANCE_ASC -> SortType.DISTANCE_DESC
+            SortType.DISTANCE_DESC -> SortType.DISTANCE_ASC
+            else -> SortType.DISTANCE_ASC
+        }
+
         updateSortButtonUI()
 
-        val sortedList = allPlaces.sortedBy { place ->
-            calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+        val sortedList = when (currentSortType) {
+            SortType.DISTANCE_ASC -> {
+                allPlaces.sortedBy { place ->
+                    calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                }
+            }
+            SortType.DISTANCE_DESC -> {
+                allPlaces.sortedByDescending { place ->
+                    calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                }
+            }
+            else -> allPlaces.sortedBy { place ->
+                calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+            }
         }
 
         updateRecyclerView(sortedList)
-        Log.d("CrewPointBottom", "거리순 정렬 완료")
+        Log.d("CrewPointBottom", "거리순 정렬 완료 - ${if (currentSortType == SortType.DISTANCE_ASC) "가까운 순" else "먼 순"}")
     }
 
     private fun updateSortButtonUI() {
@@ -182,12 +206,21 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             SortType.DATE_DESC -> {
                 btnDateArray.isSelected = true
                 btnDisArray.isSelected = false
+                btnDateArray.text = "최신순"
                 btnDateArray.setTextColor(resources.getColor(R.color.black, null))
                 btnDisArray.setTextColor(resources.getColor(R.color.gray, null))
             }
-            SortType.DISTANCE_ASC -> {
+            SortType.DATE_ASC -> {
+                btnDateArray.isSelected = true
+                btnDisArray.isSelected = false
+                btnDateArray.text = "오래된순"
+                btnDateArray.setTextColor(resources.getColor(R.color.black, null))
+                btnDisArray.setTextColor(resources.getColor(R.color.gray, null))
+            }
+            SortType.DISTANCE_ASC, SortType.DISTANCE_DESC -> {
                 btnDateArray.isSelected = false
                 btnDisArray.isSelected = true
+                btnDateArray.text = "최신순"
                 btnDateArray.setTextColor(resources.getColor(R.color.gray, null))
                 btnDisArray.setTextColor(resources.getColor(R.color.black, null))
             }
@@ -301,12 +334,26 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
     private fun applySorting() {
         when (currentSortType) {
             SortType.DATE_DESC -> {
-                val sortedList = allPlaces.sortedByDescending { it.placeId }
+                val sortedList = allPlaces.sortedByDescending { it.imageTime ?: 0L }
+                updateRecyclerView(sortedList)
+            }
+            SortType.DATE_ASC -> {
+                val sortedList = allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
                 updateRecyclerView(sortedList)
             }
             SortType.DISTANCE_ASC -> {
                 if (myLatitude != null && myLongitude != null) {
                     val sortedList = allPlaces.sortedBy { place ->
+                        calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                    }
+                    updateRecyclerView(sortedList)
+                } else {
+                    updateRecyclerView(allPlaces)
+                }
+            }
+            SortType.DISTANCE_DESC -> {
+                if (myLatitude != null && myLongitude != null) {
+                    val sortedList = allPlaces.sortedByDescending { place ->
                         calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
                     }
                     updateRecyclerView(sortedList)
@@ -343,6 +390,8 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             val lat = geoPoint?.latitude ?: 0.0
             val lng = geoPoint?.longitude ?: 0.0
 
+            val imageTime = doc.getLong("imageTime")
+
             val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
                 val distance = calculateDistance(
                     myLatitude!!, myLongitude!!,
@@ -355,9 +404,9 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
             val description = "추가한 유저: $addedBy\n거리: $distanceText"
 
-            tempList.add(PlaceData(imageUrl, name, description, placeId, lat, lng))
+            tempList.add(PlaceData(imageUrl, name, description, placeId, lat, lng, imageTime))
 
-            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId, lat: $lat, lng: $lng)")
+            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId, lat: $lat, lng: $lng, imageTime: $imageTime)")
         }
 
         if (tempList.isEmpty()) {
@@ -371,7 +420,7 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                 val ref = storage.getReferenceFromUrl(place.imageUrl)
                 ref.downloadUrl
                     .addOnSuccessListener { uri ->
-                        finalList.add(PlaceData(uri.toString(), place.name, place.description, place.placeId, place.lat, place.lng))
+                        finalList.add(PlaceData(uri.toString(), place.name, place.description, place.placeId, place.lat, place.lng, place.imageTime))
                         processedCount++
 
                         if (processedCount == tempList.size) {
