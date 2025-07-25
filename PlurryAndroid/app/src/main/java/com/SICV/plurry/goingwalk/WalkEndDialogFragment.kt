@@ -11,7 +11,9 @@ import androidx.fragment.app.DialogFragment
 import com.SICV.plurry.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue // FieldValue 임포트 추가
 import java.util.Date
+import kotlin.math.floor // floor 함수 임포트 추가
 
 class WalkEndDialogFragment : DialogFragment() {
 
@@ -45,6 +47,7 @@ class WalkEndDialogFragment : DialogFragment() {
         // 🔐 로그인된 Firebase 사용자 UID로 저장
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
 
+        // 1. 산책 기록 저장
         db.collection("Users").document(userId)
             .collection("goWalk")
             .add(walkData)
@@ -54,6 +57,29 @@ class WalkEndDialogFragment : DialogFragment() {
             .addOnFailureListener {
                 // 저장 실패 로그 (선택)
             }
+
+        // 2. currentRaisingAmount 업데이트
+        val stepsDividedBy100 = floor(steps / 100.0).toInt() // 걸음수를 100으로 나누고 소수점 버림
+
+        if (userId != "anonymous") { // 익명 사용자가 아닌 경우에만 업데이트
+            val userRewardRef = db.collection("Game")
+                .document("users")
+                .collection("userReward")
+                .document(userId)
+
+            userRewardRef.update("currentRaisingAmount", FieldValue.increment(stepsDividedBy100.toLong()))
+                .addOnSuccessListener {
+                    // currentRaisingAmount 업데이트 성공 로그
+                    android.util.Log.d("WalkEndDialog", "currentRaisingAmount 업데이트 성공: $stepsDividedBy100 추가")
+                }
+                .addOnFailureListener { e ->
+                    // currentRaisingAmount 업데이트 실패 로그
+                    android.util.Log.e("WalkEndDialog", "currentRaisingAmount 업데이트 실패: ${e.message}")
+                    // 문서가 없어서 업데이트에 실패하는 경우의 로직은 제거되었습니다.
+                    // 계정 생성 시 'currentRaisingAmount' 필드가 항상 존재한다고 가정합니다.
+                }
+        }
+
 
         btnConfirm.setOnClickListener {
             dismiss()
