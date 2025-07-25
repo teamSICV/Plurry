@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.SICV.plurry.MainActivity
 import com.SICV.plurry.R
+import com.SICV.plurry.UserRewardInitializer
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -171,7 +172,18 @@ class LoginMainActivity : ComponentActivity() {
             .get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    goToMain()
+                    // 기존 사용자의 경우 리워드 데이터 동기화 후 메인으로 이동
+                    UserRewardInitializer.intializeUserReward(
+                        onSucces = {
+                            Log.d("Login", "사용자 리워드 동기화 완료")
+                            goToMain()
+                        },
+                        onFailure = { e ->
+                            Log.e("Login", "사용자 리워드 동기화 실패", e)
+                            // 리워드 동기화 실패해도 로그인은 진행
+                            goToMain()
+                        }
+                    )
                 } else {
                     goToLoginJoin()
                 }

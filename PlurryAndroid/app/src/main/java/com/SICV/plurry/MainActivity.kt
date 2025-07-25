@@ -62,17 +62,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonRaising.setOnClickListener{
-            UserRewardInitializer.intializeUserReward(
-                onSucces = {
-                    //성공 - 필드 생성, RaisingMainActivity로 이동
-                    val intent = Intent(this, RaisingMainActivity::class.java)
-                    startActivity(intent)
-                },
-                onFailure = { exception ->
-                    //실패 - 토스트 메시지만
-                    Toast.makeText(this,"오류 발생", Toast.LENGTH_SHORT).show()
-                }
-            )
+            val intent = Intent(this, RaisingMainActivity::class.java)
+            startActivity(intent)
         }
 
         buttonLogout.setOnClickListener{
