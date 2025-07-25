@@ -157,6 +157,26 @@ class FaceMosaicHelper(private val context: Context) {
             }
         }
 
+        if (allFaces.isEmpty()) {
+            Log.d("FaceMosaicHelper", "🔍 방법 3.5: 작은 얼굴 전용 확대 검출")
+            val enlargedBitmap = Bitmap.createScaledBitmap(
+                inputBitmap,
+                (inputBitmap.width * 1.5f).toInt(),
+                (inputBitmap.height * 1.5f).toInt(),
+                true
+            )
+            val enlargedFaces = detectFacesWithDetector(enlargedBitmap, faceDetector, "확대검출")
+            // 좌표를 원본 크기로 변환
+            enlargedFaces.forEach { rect ->
+                allFaces.add(RectF(
+                    rect.left / 1.5f,
+                    rect.top / 1.5f,
+                    rect.right / 1.5f,
+                    rect.bottom / 1.5f
+                ))
+            }
+        }
+
         // 🎯 방법 4: 백업 검출기 사용
         if (allFaces.isEmpty() && backupDetector != null) {
             Log.d("FaceMosaicHelper", "🔍 방법 4: 백업 검출기 사용")
@@ -206,6 +226,18 @@ class FaceMosaicHelper(private val context: Context) {
                     } else {
                         // 픽셀 좌표
                         RectF(box.left, box.top, box.left + box.width(), box.top + box.height())
+                    }
+
+                    val faceArea = faceRect.width() * faceRect.height()
+                    val imageArea = imageWidth * imageHeight
+                    val minConfidence = when {
+                        faceArea < imageArea * 0.02f -> 0.15f  // 작은 얼굴: 15%
+                        faceArea < imageArea * 0.05f -> 0.18f  // 중간 얼굴: 18%
+                        else -> 0.2f  // 큰 얼굴: 20%
+                    }
+                    if (confidence < minConfidence) {
+                        Log.d("FaceMosaicHelper", "$detectorName: 신뢰도 부족으로 제외 (${(confidence * 100).toInt()}% < ${(minConfidence * 100).toInt()}%)")
+                        return@mapNotNull null
                     }
 
                     // 유효성 검사
@@ -275,9 +307,39 @@ class FaceMosaicHelper(private val context: Context) {
 
     // 🎯 얼굴 영역 확장 (더 확실한 모자이크)
     private fun expandFaceRect(rect: RectF, imageWidth: Int, imageHeight: Int): RectF {
-        val expandRatio = 0.3f // 30% 확장
-        val expandWidth = rect.width() * expandRatio
-        val expandHeight = rect.height() * expandRatio
+        val faceWidth = rect.width()
+        val faceHeight = rect.height()
+        val faceArea = faceWidth * faceHeight
+        val imageArea = imageWidth * imageHeight
+
+        // 🎯 얼굴 크기에 따른 적응형 확장 비율
+        val expandRatio = when {
+            faceArea < imageArea * 0.01f -> {
+                // 매우 작은 얼굴 (이미지의 1% 미만): 확장 최소화
+                Log.d("FaceMosaicHelper", "🔍 매우 작은 얼굴 감지 - 확장 최소화")
+                0.1f  // 10%만 확장
+            }
+            faceArea < imageArea * 0.03f -> {
+                // 작은 얼굴 (이미지의 3% 미만): 적당한 확장
+                Log.d("FaceMosaicHelper", "🔍 작은 얼굴 감지 - 적당한 확장")
+                0.15f  // 15% 확장
+            }
+            faceArea < imageArea * 0.1f -> {
+                // 중간 얼굴 (이미지의 10% 미만): 일반 확장
+                Log.d("FaceMosaicHelper", "🔍 중간 얼굴 감지 - 일반 확장")
+                0.2f   // 20% 확장
+            }
+            else -> {
+                // 큰 얼굴 (이미지의 10% 이상): 기존 확장
+                Log.d("FaceMosaicHelper", "🔍 큰 얼굴 감지 - 기존 확장")
+                0.3f   // 30% 확장
+            }
+        }
+
+        val expandWidth = faceWidth * expandRatio
+        val expandHeight = faceHeight * expandRatio
+
+        Log.d("FaceMosaicHelper", "📏 얼굴 크기: ${faceWidth.toInt()}x${faceHeight.toInt()}, 확장비율: ${(expandRatio*100).toInt()}%")
 
         return RectF(
             maxOf(0f, rect.left - expandWidth / 2),
