@@ -143,7 +143,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                 val crewName = document.getString("name") ?: "크루"
                 crewNameTextView.text = crewName
                 Log.d("CrewLineMain", "크루 이름 설정: $crewName")
-                checkCrewMemberStatus(crewId, db, joinCrewMemberTextView, exitCrewMemberTextView)
+                checkCrewMemberStatus(crewId, db, joinCrewMemberTextView, exitCrewMemberTextView, morePointButton)
 
             }
             .addOnFailureListener { e ->
@@ -240,7 +240,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private fun showPlaceDetailDialog(imageUrl: String, name: String, description: String, placeId: String, lat: Double, lng: Double) {
         try {
-            val dialog = PointRecordDialog.newInstance(imageUrl, name, description, placeId, lat, lng)
+            val dialog = PointRecordDialog.newInstance(imageUrl, name, description, placeId, lat, lng, currentCrewId)
             dialog.show(supportFragmentManager, "PlaceDetailDialog")
         } catch (e: Exception) {
             Log.e("CrewLineMain", "팝업 다이얼로그 표시 오류", e)
@@ -312,11 +312,12 @@ class CrewLineMainActivity : AppCompatActivity() {
     }
 
     private fun checkCrewMemberStatus(crewId: String, db: FirebaseFirestore,
-                                      joinTextView: TextView, exitTextView: TextView) {
+                                      joinTextView: TextView, exitTextView: TextView, morePointButton: TextView) {
         val currentUser = auth.currentUser
         if (currentUser == null) {
             joinTextView.visibility = android.view.View.VISIBLE
             exitTextView.visibility = android.view.View.GONE
+            morePointButton.visibility = android.view.View.GONE
             return
         }
 
@@ -330,27 +331,58 @@ class CrewLineMainActivity : AppCompatActivity() {
                     if (crewAt == crewId) {
                         joinTextView.visibility = android.view.View.GONE
                         exitTextView.visibility = android.view.View.VISIBLE
+                        morePointButton.visibility = android.view.View.VISIBLE
                     } else {
                         joinTextView.visibility = android.view.View.VISIBLE
                         exitTextView.visibility = android.view.View.GONE
+                        morePointButton.visibility = android.view.View.GONE
                     }
                 } else {
                     joinTextView.visibility = android.view.View.VISIBLE
                     exitTextView.visibility = android.view.View.GONE
+                    morePointButton.visibility = android.view.View.GONE
                 }
             }
             .addOnFailureListener { e ->
                 Log.e("CrewLineMain", "사용자 정보 확인 실패", e)
                 joinTextView.visibility = android.view.View.VISIBLE
                 exitTextView.visibility = android.view.View.GONE
+                morePointButton.visibility = android.view.View.GONE
             }
     }
 
     private fun exitCrewMember(crewId: String, db: FirebaseFirestore) {
-        val exitDialog = CrewExit(this) {
-            performExitCrew(crewId, db)
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return
         }
-        exitDialog.show()
+
+        val uid = currentUser.uid
+
+        db.collection("Crew").document(crewId).collection("member").document("leader").get()
+            .addOnSuccessListener { leaderDoc ->
+                val leaderId = leaderDoc.getString("leader")
+                val isLeader = leaderId == uid
+
+                val exitDialog = if (isLeader) {
+                    CrewExit(this, true, crewId) {
+                        performExitCrew(crewId, db)
+                    }
+                } else {
+                    CrewExit(this, false, crewId) {
+                        performExitCrew(crewId, db)
+                    }
+                }
+                exitDialog.show()
+            }
+            .addOnFailureListener { e ->
+                Log.e("CrewLineMain", "리더 정보 확인 실패", e)
+                val exitDialog = CrewExit(this, false, crewId) {
+                    performExitCrew(crewId, db)
+                }
+                exitDialog.show()
+            }
     }
 
     private fun performExitCrew(crewId: String, db: FirebaseFirestore) {

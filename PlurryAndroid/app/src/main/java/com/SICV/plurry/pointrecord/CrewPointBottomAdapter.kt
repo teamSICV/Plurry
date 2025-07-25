@@ -16,7 +16,8 @@ data class PlaceData(
     val description : String,
     val placeId: String = "",
     val lat: Double = 0.0,
-    val lng: Double = 0.0
+    val lng: Double = 0.0,
+    val imageTime: Long? = null
 )
 
 class CrewPointBottomAdapter(

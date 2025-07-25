@@ -8,12 +8,14 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
+
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -25,9 +27,23 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var btnDateArray: TextView
+    private lateinit var btnDisArray: TextView
+
     private var myLatitude: Double? = null
     private var myLongitude: Double? = null
     private var crewId: String? = null
+    private var allPlaces = mutableListOf<PlaceData>()
+    private lateinit var adapter: CrewPointBottomAdapter
+
+    enum class SortType {
+        DATE_DESC,
+        DATE_ASC,
+        DISTANCE_ASC,
+        DISTANCE_DESC
+    }
+
+    private var currentSortType = SortType.DATE_DESC
 
     companion object {
         private const val ARG_CREW_ID = "crew_id"
@@ -79,9 +95,34 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        initViews(view)
+        setupSortButtons()
+        initLocationService()
+    }
+
+    private fun initViews(view: View) {
         recyclerView = view.findViewById(R.id.crewPointRecyclerView)
         recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
 
+        btnDateArray = view.findViewById(R.id.BtnDateArray)
+        btnDisArray = view.findViewById(R.id.BtnDisArray)
+
+        adapter = CrewPointBottomAdapter(requireContext(), allPlaces)
+        recyclerView.adapter = adapter
+    }
+
+    private fun setupSortButtons() {
+        btnDateArray.setOnClickListener {
+            sortPlacesByDate()
+        }
+
+        btnDisArray.setOnClickListener {
+            sortPlacesByDistance()
+        }
+        updateSortButtonUI()
+    }
+
+    private fun initLocationService() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         // 위치 권한 체크 후 위치 정보 가져오기
@@ -106,6 +147,91 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             // 위치 권한 없이도 데이터 로딩
             fetchCrewMembersAndPlaces()
         }
+    }
+
+    private fun sortPlacesByDate() {
+        currentSortType = when (currentSortType) {
+            SortType.DATE_DESC -> SortType.DATE_ASC
+            SortType.DATE_ASC -> SortType.DATE_DESC
+            else -> SortType.DATE_DESC
+        }
+
+        updateSortButtonUI()
+
+        val sortedList = when (currentSortType) {
+            SortType.DATE_DESC -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
+            SortType.DATE_ASC -> allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
+            else -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
+        }
+
+        updateRecyclerView(sortedList)
+        Log.d("CrewPointBottom", "날짜순 정렬 완료 - ${if (currentSortType == SortType.DATE_DESC) "최신순" else "오래된순"}")
+    }
+
+    private fun sortPlacesByDistance() {
+        if (myLatitude == null || myLongitude == null) {
+            Toast.makeText(requireContext(), "위치 정보가 없어 거리순 정렬을 할 수 없습니다", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        currentSortType = when (currentSortType) {
+            SortType.DISTANCE_ASC -> SortType.DISTANCE_DESC
+            SortType.DISTANCE_DESC -> SortType.DISTANCE_ASC
+            else -> SortType.DISTANCE_ASC
+        }
+
+        updateSortButtonUI()
+
+        val sortedList = when (currentSortType) {
+            SortType.DISTANCE_ASC -> {
+                allPlaces.sortedBy { place ->
+                    calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                }
+            }
+            SortType.DISTANCE_DESC -> {
+                allPlaces.sortedByDescending { place ->
+                    calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                }
+            }
+            else -> allPlaces.sortedBy { place ->
+                calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+            }
+        }
+
+        updateRecyclerView(sortedList)
+        Log.d("CrewPointBottom", "거리순 정렬 완료 - ${if (currentSortType == SortType.DISTANCE_ASC) "가까운 순" else "먼 순"}")
+    }
+
+    private fun updateSortButtonUI() {
+        when (currentSortType) {
+            SortType.DATE_DESC -> {
+                btnDateArray.isSelected = true
+                btnDisArray.isSelected = false
+                btnDateArray.text = "최신순"
+                btnDateArray.setTextColor(resources.getColor(R.color.black, null))
+                btnDisArray.setTextColor(resources.getColor(R.color.gray, null))
+            }
+            SortType.DATE_ASC -> {
+                btnDateArray.isSelected = true
+                btnDisArray.isSelected = false
+                btnDateArray.text = "오래된순"
+                btnDateArray.setTextColor(resources.getColor(R.color.black, null))
+                btnDisArray.setTextColor(resources.getColor(R.color.gray, null))
+            }
+            SortType.DISTANCE_ASC, SortType.DISTANCE_DESC -> {
+                btnDateArray.isSelected = false
+                btnDisArray.isSelected = true
+                btnDateArray.text = "최신순"
+                btnDateArray.setTextColor(resources.getColor(R.color.gray, null))
+                btnDisArray.setTextColor(resources.getColor(R.color.black, null))
+            }
+        }
+    }
+
+    private fun updateRecyclerView(newList: List<PlaceData>) {
+        allPlaces.clear()
+        allPlaces.addAll(newList)
+        adapter.notifyDataSetChanged()
     }
 
     private fun fetchCrewMembersAndPlaces() {
@@ -135,20 +261,20 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                             fetchPlacesByMembers(memberUids)
                         } else {
                             Log.d("CrewPointBottom", "크루 멤버가 없음")
-                            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), emptyList())
+                            updateRecyclerView(emptyList())
                         }
                     } else {
                         Log.d("CrewPointBottom", "크루 멤버 문서가 존재하지 않음")
-                        recyclerView.adapter = CrewPointBottomAdapter(requireContext(), emptyList())
+                        updateRecyclerView(emptyList())
                     }
                 }
                 .addOnFailureListener { exception ->
                     Log.e("CrewPointBottom", "크루 멤버 정보 불러오기 실패", exception)
-                    recyclerView.adapter = CrewPointBottomAdapter(requireContext(), emptyList())
+                    updateRecyclerView(emptyList())
                 }
         } ?: run {
             Log.e("CrewPointBottom", "crewId가 null입니다")
-            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), emptyList())
+            updateRecyclerView(emptyList())
         }
     }
 
@@ -160,13 +286,13 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
         // whereIn 쿼리는 최대 10개까지만 지원하므로 청크로 나누어 처리
         val chunks = memberUids.chunked(10)
-        val allPlaces = mutableListOf<PlaceData>()
+        val tempAllPlaces = mutableListOf<PlaceData>()
         var processedChunks = 0
 
         Log.d("CrewPointBottom", "청크 개수: ${chunks.size}")
 
         if (chunks.isEmpty()) {
-            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), emptyList())
+            updateRecyclerView(emptyList())
             return
         }
 
@@ -181,13 +307,16 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                         Log.d("CrewPointBottom", "장소 데이터: ${doc.data}")
                     }
 
-                    processChunkDocuments(documents, storage, allPlaces, chunks.size) { updatedAllPlaces ->
+                    processChunkDocuments(documents, storage, tempAllPlaces, chunks.size) { updatedAllPlaces ->
                         processedChunks++
                         Log.d("CrewPointBottom", "청크 $index 처리 완료 - 현재까지 총 장소: ${updatedAllPlaces.size}")
 
                         if (processedChunks == chunks.size) {
                             Log.d("CrewPointBottom", "모든 청크 처리 완료 - 최종 장소 개수: ${updatedAllPlaces.size}")
-                            recyclerView.adapter = CrewPointBottomAdapter(requireContext(), updatedAllPlaces)
+                            allPlaces.clear()
+                            allPlaces.addAll(updatedAllPlaces)
+
+                            applySorting()
                         }
                     }
                 }
@@ -195,9 +324,44 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                     Log.e("CrewPointBottom", "청크 $index 불러오기 실패", exception)
                     processedChunks++
                     if (processedChunks == chunks.size) {
-                        recyclerView.adapter = CrewPointBottomAdapter(requireContext(), allPlaces)
+                        allPlaces.clear()
+                        allPlaces.addAll(tempAllPlaces)
+                        applySorting()
                     }
                 }
+        }
+    }
+
+    private fun applySorting() {
+        when (currentSortType) {
+            SortType.DATE_DESC -> {
+                val sortedList = allPlaces.sortedByDescending { it.imageTime ?: 0L }
+                updateRecyclerView(sortedList)
+            }
+            SortType.DATE_ASC -> {
+                val sortedList = allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
+                updateRecyclerView(sortedList)
+            }
+            SortType.DISTANCE_ASC -> {
+                if (myLatitude != null && myLongitude != null) {
+                    val sortedList = allPlaces.sortedBy { place ->
+                        calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                    }
+                    updateRecyclerView(sortedList)
+                } else {
+                    updateRecyclerView(allPlaces)
+                }
+            }
+            SortType.DISTANCE_DESC -> {
+                if (myLatitude != null && myLongitude != null) {
+                    val sortedList = allPlaces.sortedByDescending { place ->
+                        calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
+                    }
+                    updateRecyclerView(sortedList)
+                } else {
+                    updateRecyclerView(allPlaces)
+                }
+            }
         }
     }
 
@@ -227,6 +391,8 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
             val lat = geoPoint?.latitude ?: 0.0
             val lng = geoPoint?.longitude ?: 0.0
 
+            val imageTime = doc.getLong("imageTime")
+
             val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
                 val distance = calculateDistance(
                     myLatitude!!, myLongitude!!,
@@ -239,9 +405,9 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
             val description = "추가한 유저: $addedBy\n거리: $distanceText"
 
-            tempList.add(PlaceData(imageUrl, name, description, placeId, lat, lng))
+            tempList.add(PlaceData(imageUrl, name, description, placeId, lat, lng, imageTime))
 
-            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId, lat: $lat, lng: $lng)")
+            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId, lat: $lat, lng: $lng, imageTime: $imageTime)")
         }
 
         if (tempList.isEmpty()) {
@@ -255,7 +421,7 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                 val ref = storage.getReferenceFromUrl(place.imageUrl)
                 ref.downloadUrl
                     .addOnSuccessListener { uri ->
-                        finalList.add(PlaceData(uri.toString(), place.name, place.description, place.placeId, place.lat, place.lng))
+                        finalList.add(PlaceData(uri.toString(), place.name, place.description, place.placeId, place.lat, place.lng, place.imageTime))
                         processedCount++
 
                         if (processedCount == tempList.size) {
@@ -284,15 +450,11 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        dialog?.let {
-            val bottomSheet = it.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-            bottomSheet?.let { sheet ->
-                val behavior = BottomSheetBehavior.from(sheet)
-                sheet.layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
-                behavior.peekHeight = 800
-                behavior.state = BottomSheetBehavior.STATE_COLLAPSED
-                behavior.isDraggable = true
-            }
+        val bottomSheetDialog = dialog as BottomSheetDialog
+        bottomSheetDialog.behavior.apply {
+            peekHeight = 800
+            state = BottomSheetBehavior.STATE_COLLAPSED
+            isDraggable = true
         }
     }
 }
