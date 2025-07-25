@@ -15,6 +15,7 @@ import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
+
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -449,15 +450,11 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        dialog?.let {
-            val bottomSheet = it.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-            bottomSheet?.let { sheet ->
-                val behavior = BottomSheetBehavior.from(sheet)
-                sheet.layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
-                behavior.peekHeight = 800
-                behavior.state = BottomSheetBehavior.STATE_COLLAPSED
-                behavior.isDraggable = true
-            }
+        val bottomSheetDialog = dialog as BottomSheetDialog
+        bottomSheetDialog.behavior.apply {
+            peekHeight = 800
+            state = BottomSheetBehavior.STATE_COLLAPSED
+            isDraggable = true
         }
     }
 }
