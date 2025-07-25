@@ -387,7 +387,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                     }
                     return@launch
                 }
-                val threshold = 0.5f
+                val threshold = 0.7f
                 val isMatch = similarity >= threshold
 
                 withContext(Dispatchers.Main) {
@@ -563,7 +563,7 @@ class ExploreResultDialogFragment : DialogFragment() {
                 val similarityPercent = (similarity * 100).toInt()
                 similarityTextView.text = "유사도: ${similarityPercent}%"
                 similarityTextView.setTextColor(
-                    if (similarityPercent >= 50)
+                    if (similarityPercent >= 70)
                         android.graphics.Color.GREEN
                     else
                         android.graphics.Color.RED
