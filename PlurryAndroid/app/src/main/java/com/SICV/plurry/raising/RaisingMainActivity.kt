@@ -12,19 +12,22 @@ import android.widget.TextView
 import android.os.Handler
 import android.os.Looper
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingMainActivity
 import com.unity3d.player.UnityPlayerGameActivity
 import com.unity3d.player.UnityPlayer
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
 
 class RaisingMainActivity : UnityPlayerGameActivity() {
 
-    private var currentRaisingPoint : Int = 0;
-    private var currentRaisingAmount : Int = 100;
-    private var currentStoryLevel : Int = 0;
-    private var currentNormalItemAmount : Int = 3;
-    private var currentCrewItemAmount : Int = 3;
+    private var currentRaisingPoint : Int = -1;
+    private var currentRaisingAmount : Int = -1;
+    private var currentStoryLevel : Int = -1;
+    private var currentNormalItemAmount : Int = -1;
+    private var currentCrewItemAmount : Int = -1;
 
     private lateinit var androidUIContainer: ViewGroup
 
@@ -49,11 +52,11 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
             Log.e("MainUnityGameActivity", "Error adding Android UI overlay", e)
         }
 
-        setupUIElements()
+        loadUserDataFromFirebase()
 
         Handler(Looper.getMainLooper()).postDelayed({
             findViewById<ImageView>(R.id.img_loading).visibility = View.GONE
-        }, 3500)
+        }, 5000)
 
         handleIntent(intent)
     }
@@ -83,16 +86,43 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 *
 * ******************/
 
-/*    private fun loadUserDataFromFirebase() {
-        val db = FirebaseFirestore.getInstance()
-        db.collection("Game").document("users")
-            .collection("userReward").document("userID")
-            .get()
-            .addOnSuccessListener { document ->
-                currentRaisingPoint = document.getLong("raisingPoint")?.toInt() ?: -1
-                currentRaisingAmount = document.getLong("raisingAmount")?.toInt() ?: -1
-            }
-    }*/
+    private fun loadUserDataFromFirebase() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val userId = currentUser.uid
+            val db = FirebaseFirestore.getInstance()
+            db.collection("Game").document("users")
+                .collection("userReward").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        Log.d("FirebaseDebug", "currentRaisingPoint: ${document.get("currentRaisingPoint")}")
+                        Log.d("FirebaseDebug", "필드 타입: ${document.get("currentRaisingPoint")?.javaClass?.simpleName}")
+
+                        currentRaisingPoint = document.getLong("currentRaisingPoint")?.toInt() ?: -1
+                        currentRaisingAmount = document.getLong("currentRaisingAmount")?.toInt() ?: -1
+                        currentStoryLevel = document.getLong("level")?.toInt() ?: -1
+                        currentNormalItemAmount = document.getLong("userRewardItem")?.toInt() ?: -1
+                        //currentCrewItemAmount = document.getLong("crewRewardItem")?.toInt() ?: -1
+
+                        Toast.makeText(this, "데이터 로드 성공", Toast.LENGTH_SHORT).show()
+                        setupUIElements()
+                    } else {
+                        Toast.makeText(this, "사용자 데이터를 찾을 수 없습니다: $userId", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "데이터 로드 실패: $userId", Toast.LENGTH_SHORT).show()
+                }
+
+/*            if(currentRaisingPoint==-1||currentRaisingAmount==-1||currentStoryLevel==-1||currentNormalItemAmount==-1||currentCrewItemAmount==-1)
+            {
+                Toast.makeText(this, "데이터 로드 실패" + userId.toString(), Toast.LENGTH_SHORT).show()
+            }*/
+        } else {
+            Toast.makeText(this, "로그인이 필요합니다", Toast.LENGTH_SHORT).show()
+        }
+    }
 
 
 
@@ -124,6 +154,9 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         }
         btnGrowing.visibility = View.GONE
         btnGrowing.isEnabled = false
+
+        val txtcurrentLevel = findViewById<TextView>(R.id.t_level)
+        txtcurrentLevel.text = currentStoryLevel.toString()
 
         val txtcurrentRaisingPoint = findViewById<TextView>(R.id.t_raisingPoint)
         txtcurrentRaisingPoint.text = currentRaisingPoint.toString()
@@ -165,6 +198,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     private fun ProcessGrowing() {
         val txtcurrentRaisingPoint = findViewById<TextView>(R.id.t_raisingPoint)
         val txtcurrentRaisingAmount = findViewById<TextView>(R.id.t_raisingAmount)
+        val txtcurrentLevel = findViewById<TextView>(R.id.t_level)
 
         if(currentRaisingAmount > 0) {
             currentRaisingPoint += 1
@@ -173,6 +207,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         txtcurrentRaisingPoint.text = currentRaisingPoint.toString()
         txtcurrentRaisingAmount.text = currentRaisingAmount.toString()
         currentStoryLevel = currentRaisingPoint / 100
+        txtcurrentLevel.text = currentStoryLevel.toString()
 
         //Call Unity
         SendMessageToUnity( "UnityProcessGrowing" )
