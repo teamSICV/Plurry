@@ -9,6 +9,7 @@ import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingCrewTotal
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,10 +83,15 @@ class CrewExit(
 
         scope.launch {
             try {
+                Log.d(TAG, "Starting crew deletion for ID: $crewId")
+
                 firestore.collection("Crew")
                     .document(crewId)
                     .delete()
                     .await()
+                Log.d(TAG, "Deleted Firestore crew document: $crewId")
+
+                deleteCrewStorage(crewId)
 
                 firestore.collection("Game")
                     .document("crew")
@@ -93,16 +99,50 @@ class CrewExit(
                     .document(crewId)
                     .delete()
                     .await()
+                Log.d(TAG, "Deleted crew reward document: $crewId")
 
-                Log.d(TAG, "Leader deleted crew: $crewId")
+                Log.d(TAG, "Successfully deleted all crew data: $crewId")
                 onConfirm()
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error deleting crew", e)
+                Log.e(TAG, "Error deleting crew: $crewId", e)
                 onConfirm()
             } finally {
                 dismiss()
             }
+        }
+    }
+
+    private suspend fun deleteCrewStorage(crewId: String) {
+        try {
+            val storage = FirebaseStorage.getInstance("gs://plurry-855a9.firebasestorage.app")
+            val crewRef = storage.reference.child("Crew").child(crewId)
+
+            val result = crewRef.listAll().await()
+
+            result.items.forEach { file ->
+                file.delete().await()
+            }
+
+            result.prefixes.forEach { folder ->
+                deleteStorageFolder(folder)
+            }
+
+            Log.d(TAG, "Deleted storage folder: Crew/$crewId")
+        } catch (e: Exception) {
+            Log.w(TAG, "Storage deletion failed for Crew/$crewId: ${e.message}")
+        }
+    }
+
+    private suspend fun deleteStorageFolder(folderRef: com.google.firebase.storage.StorageReference) {
+        val result = folderRef.listAll().await()
+
+        result.items.forEach { file ->
+            file.delete().await()
+        }
+
+        result.prefixes.forEach { subfolder ->
+            deleteStorageFolder(subfolder)
         }
     }
 
