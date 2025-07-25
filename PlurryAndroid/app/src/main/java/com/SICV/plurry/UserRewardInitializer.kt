@@ -22,7 +22,7 @@ class UserRewardInitializer {
 
             val userRewardData = hashMapOf(
                 "characterName" to "",
-                "crewRewardItem" to null,
+                "crewRewardItem" to 0,
                 "level" to 0,
                 "currentRaisingPoint" to 0,
                 "currentRaisingAmount" to 0,
