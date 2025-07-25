@@ -44,6 +44,8 @@ class ExploreTrackingFragment : Fragment() {
     private lateinit var imgTargetPreview: ImageView
     private lateinit var btnExitExplore: Button
     private lateinit var mapFragment: SupportMapFragment
+    // 🚀 NEW: 속도 경고 메시지 TextView
+    private lateinit var tvSpeedWarning: TextView
 
     private var googleMap: com.google.android.gms.maps.GoogleMap? = null
     private var targetLat = 0.0
@@ -63,6 +65,13 @@ class ExploreTrackingFragment : Fragment() {
     // Firebase Auth 인스턴스 (사용자별 데이터 저장 시 필요)
     private lateinit var auth: FirebaseAuth
 
+    // 🚀 NEW: 탐색 기능 활성화 여부
+    private var isExploringActive = true
+    // 🚀 NEW: 이전 위치 업데이트 시간 (속도 계산용)
+    private var lastLocationTime: Long = 0L
+    // 🚀 NEW: 이전 위치 (속도 계산용)
+    private var lastLocation: Location? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -74,6 +83,8 @@ class ExploreTrackingFragment : Fragment() {
         arrowImageView = view.findViewById(R.id.arrowImageView)
         imgTargetPreview = view.findViewById(R.id.imgTargetPreview)
         btnExitExplore = view.findViewById(R.id.btnExitExplore)
+        // 🚀 NEW: tvSpeedWarning 초기화
+        tvSpeedWarning = view.findViewById(R.id.tvSpeedWarning)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
@@ -125,45 +136,86 @@ class ExploreTrackingFragment : Fragment() {
 
     private fun startLocationTracking() {
         val request = LocationRequest.create().apply {
-            interval = 5000
-            fastestInterval = 3000
+            interval = 2000 // 🚀 수정: 속도 감지를 위해 interval을 더 짧게 설정
+            fastestInterval = 1000 // 🚀 수정: 속도 감지를 위해 fastestInterval을 더 짧게 설정
             priority = Priority.PRIORITY_HIGH_ACCURACY
         }
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val current = result.lastLocation ?: return
-                val distance = calculateDistance(current.latitude, current.longitude)
-                tvDistanceInfo.text = "남은 거리: %.1f m".format(distance)
 
-                val destLoc = Location("dest").apply {
-                    latitude = targetLat
-                    longitude = targetLng
-                }
-                val bearing = calculateBearing(current, destLoc)
-                arrowImageView.rotation = bearing
+                // 🚀 NEW: 속도 감지 및 탐색 기능 제어 로직
+                if (lastLocation != null && lastLocationTime != 0L) {
+                    val timeDeltaSeconds = (current.elapsedRealtimeNanos - lastLocationTime) / 1_000_000_000.0
+                    val distanceDeltaMeters = current.distanceTo(lastLocation!!)
 
-                val roundedLevel = (distance / 100).toInt()
-                if (roundedLevel < lastVibrationLevel) {
-                    triggerVibration()
-                    lastVibrationLevel = roundedLevel
-                }
+                    // 초당 미터 (m/s)
+                    val speedMs = if (timeDeltaSeconds > 0) (distanceDeltaMeters / timeDeltaSeconds) else 0.0
+                    // 시속 킬로미터 (km/h)
+                    val speedKmh = speedMs * 3.6
 
-                val currentLevel50m = (distance / 50).toInt()
-                if (currentLevel50m != lastLoggedDistanceLevel) {
-                    if (lastLoggedDistanceLevel != -1) {
-                        if (currentLevel50m < lastLoggedDistanceLevel) {
-                            Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
-                        } else {
-                            Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
+                    Log.d("ExploreTrackingFragment", "현재 속도: %.2f km/h".format(speedKmh))
+
+                    // 시속 30km 이상일 경우
+                    if (speedKmh >= 30.0) {
+                        if (isExploringActive) {
+                            isExploringActive = false // 탐색 기능 비활성화
+                            tvSpeedWarning.visibility = View.VISIBLE // 경고 메시지 표시
+                            tvDistanceInfo.visibility = View.GONE // 거리 정보 숨김
+                            arrowImageView.visibility = View.GONE // 화살표 숨김
+                            Toast.makeText(requireContext(), "이동수단에서 내린 후 진행해주세요.", Toast.LENGTH_LONG).show()
+                            Log.d("ExploreTrackingFragment", "속도 제한 초과: 탐색 기능 중지.")
+                        }
+                    } else {
+                        if (!isExploringActive) {
+                            isExploringActive = true // 탐색 기능 재활성화
+                            tvSpeedWarning.visibility = View.GONE // 경고 메시지 숨김
+                            tvDistanceInfo.visibility = View.VISIBLE // 거리 정보 다시 표시
+                            arrowImageView.visibility = View.VISIBLE // 화살표 다시 표시
+                            Toast.makeText(requireContext(), "탐색을 재개합니다.", Toast.LENGTH_SHORT).show()
+                            Log.d("ExploreTrackingFragment", "속도 정상: 탐색 기능 재개.")
                         }
                     }
-                    lastLoggedDistanceLevel = currentLevel50m
                 }
 
-                if (distance < 50 && !arrivalDialogShown) {
-                    arrivalDialogShown = true
-                    onArriveAtPlace()
+                lastLocation = current
+                lastLocationTime = current.elapsedRealtimeNanos
+
+                // 🚀 MODIFIED: isExploringActive가 true일 때만 탐색 관련 UI 업데이트
+                if (isExploringActive) {
+                    val distance = calculateDistance(current.latitude, current.longitude)
+                    tvDistanceInfo.text = "남은 거리: %.1f m".format(distance)
+
+                    val destLoc = Location("dest").apply {
+                        latitude = targetLat
+                        longitude = targetLng
+                    }
+                    val bearing = calculateBearing(current, destLoc)
+                    arrowImageView.rotation = bearing
+
+                    val roundedLevel = (distance / 100).toInt()
+                    if (roundedLevel < lastVibrationLevel) {
+                        triggerVibration()
+                        lastVibrationLevel = roundedLevel
+                    }
+
+                    val currentLevel50m = (distance / 50).toInt()
+                    if (currentLevel50m != lastLoggedDistanceLevel) {
+                        if (lastLoggedDistanceLevel != -1) {
+                            if (currentLevel50m < lastLoggedDistanceLevel) {
+                                Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
+                            } else {
+                                Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
+                            }
+                        }
+                        lastLoggedDistanceLevel = currentLevel50m
+                    }
+
+                    if (distance < 50 && !arrivalDialogShown) {
+                        arrivalDialogShown = true
+                        onArriveAtPlace()
+                    }
                 }
             }
         }
@@ -179,6 +231,12 @@ class ExploreTrackingFragment : Fragment() {
     }
 
     private fun onArriveAtPlace() {
+        // 🚀 MODIFIED: 탐색이 비활성화 상태일 때는 도착 처리하지 않음
+        if (!isExploringActive) {
+            Log.d("ExploreTrackingFragment", "탐색 기능이 비활성화되어 도착 처리를 건너뜁니다.")
+            return
+        }
+
         val endTime = System.currentTimeMillis()
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
@@ -211,9 +269,6 @@ class ExploreTrackingFragment : Fragment() {
 
                 Log.d("GoogleFit", "탐색 중 측정 결과 - 거리: ${"%.2f".format(totalDistance / 1000)}km, 걸음: $totalSteps, 칼로리: ${"%.1f".format(totalCalories)}kcal")
 
-                // Firebase에 저장하는 로직을 ExploreResultDialogFragment로 이동했으므로 여기서는 제거합니다.
-                // saveExploreDataToFirebase(totalSteps, totalDistance, totalCalories, exploreStartTime, endTime)
-
                 targetImageUrl?.let { imageUrl ->
                     // 탐색 결과 다이얼로그를 띄울 때 운동 데이터를 함께 전달합니다.
                     // 이 데이터는 사진 비교 성공 시 Firebase에 저장될 것입니다.
@@ -226,56 +281,6 @@ class ExploreTrackingFragment : Fragment() {
                 Log.e("GoogleFit", "탐색 GoogleFit 데이터 로딩 실패", it)
             }
     }
-
-    // saveExploreDataToFirebase 함수는 더 이상 ExploreTrackingFragment에서 사용되지 않으므로 제거합니다.
-    /*
-    private fun saveExploreDataToFirebase(
-        steps: Int,
-        distance: Double,
-        calories: Double,
-        startTime: Long,
-        endTime: Long
-    ) {
-        val userId = auth.currentUser?.uid // 현재 로그인된 사용자의 UID 가져오기
-        if (userId == null) {
-            Log.e("Firebase", "사용자가 로그인되어 있지 않습니다. 탐색 데이터를 저장할 수 없습니다.")
-            Toast.makeText(requireContext(), "사용자 로그인 정보가 없습니다. 데이터 저장 불가.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (placeId == null) {
-            Log.e("Firebase", "Place ID가 null입니다. 탐색 데이터를 저장할 수 없습니다.")
-            Toast.makeText(requireContext(), "대상 장소 정보가 없습니다. 데이터 저장 불가.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val visitedPlaceData = hashMapOf(
-            "calo" to calories,
-            "geo" to mapOf("latitude" to targetLat, "longitude" to targetLng),
-            "placeId" to placeId,
-            "stepNum" to steps,
-            "walkDistance" to distance,
-            "walkEndTime" to endTime,
-            "walkStartTime" to startTime,
-            "userId" to userId
-        )
-
-        // 🚀 수정: 데이터 저장 경로를 Users/{userId}/visitedPlaces/{placeId}로 간소화합니다.
-        db.collection("Users") // 'Users' 컬렉션
-            .document(userId) // 사용자 UID 문서
-            .collection("visitedPlaces") // 새로운 컬렉션: 'visitedPlaces'
-            .document(placeId!!) // placeId를 문서 ID로 사용
-            .set(visitedPlaceData) // 여기에 직접 탐색 데이터를 저장
-            .addOnSuccessListener {
-                Log.d("Firebase", "탐색 데이터 Firebase 저장 성공 (새 경로)!")
-                Toast.makeText(requireContext(), "탐색 기록이 성공적으로 저장되었습니다!", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firebase", "탐색 데이터 Firebase 저장 실패 (새 경로)", e)
-                Toast.makeText(requireContext(), "탐색 기록 저장 실패: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-            }
-    }
-    */
 
     private fun calculateDistance(currentLat: Double, currentLng: Double): Float {
         val curLoc = Location("cur").apply {

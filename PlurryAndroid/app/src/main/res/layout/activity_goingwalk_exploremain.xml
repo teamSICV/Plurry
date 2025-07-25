@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/exploreMainLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -41,6 +42,20 @@
                 android:scaleType="centerCrop"
                 android:contentDescription="목표 장소 이미지" />
         </LinearLayout>
+
+        <!-- 🚀 NEW: 속도 경고 메시지 TextView -->
+        <TextView
+            android:id="@+id/tvSpeedWarning"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="이동수단에서 내린 후 진행해주세요."
+            android:textColor="@android:color/holo_red_dark"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp" /> <!-- 🚀 NEW: 상단 마진 추가 -->
+
     </LinearLayout>
 
     <!-- 탐색 종료 버튼 -->
@@ -68,4 +83,3 @@
         android:contentDescription="방향 화살표" />
 
 </FrameLayout>
-
