@@ -189,26 +189,7 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
             .addOnFailureListener { e ->
                 Log.e("ExploreResultDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
-
-                if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true) {
-                    val initialRewardData = hashMapOf(
-                        "userRewardItem" to 1,
-                        "characterName" to "",
-                        "crewRewardItem" to null,
-                        "level" to 0,
-                        "storyLevel" to 0
-                    )
-                    userRewardRef.set(initialRewardData)
-                        .addOnSuccessListener {
-                            Log.d("ExploreResultDialog", "✅ userReward 문서 새로 생성 및 일반 보상 아이템 1개 지급 완료!")
-                        }
-                        .addOnFailureListener { setE ->
-                            Log.e("ExploreResultDialog", "❌ userReward 문서 생성 실패: ${setE.message}")
-                            Toast.makeText(requireContext(), "❌ 보상 아이템 지급 최종 실패: ${setE.message}", Toast.LENGTH_SHORT).show()
-                        }
-                } else {
-                    Toast.makeText(requireContext(), "❌ 보상 아이템 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(requireContext(), "❌ 보상 아이템 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
