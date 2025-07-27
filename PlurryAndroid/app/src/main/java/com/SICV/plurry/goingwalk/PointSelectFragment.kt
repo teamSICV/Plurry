@@ -31,10 +31,25 @@ class PointSelectFragment : DialogFragment() {
     // 🚀 NEW: 사용자가 추가한 장소 ID를 저장할 Set
     private val userAddedPlaceIds = mutableSetOf<String>()
 
+    // 🚀 오류 수정: radiusValues 재선언
     private val radiusValues = listOf(1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)
+
+    // 🚀 수정: 레벨별 탐색 가능 거리 정의 (1레벨: 1km, 2레벨: 1.5km, ..., 9레벨 이상: 5km)
+    private val levelToRadiusMap = mapOf(
+        1 to 1.0,
+        2 to 1.5,
+        3 to 2.0,
+        4 to 2.5,
+        5 to 3.0,
+        6 to 3.5,
+        7 to 4.0,
+        8 to 4.5,
+        9 to 5.0 // 9레벨 이상은 5km
+    )
 
     private var userLat = 0.0
     private var userLng = 0.0
+    private var userLevel = 1 // 🚀 NEW: 사용자 레벨을 저장할 변수 (기본값 1)
 
     private lateinit var auth: FirebaseAuth
 
@@ -47,19 +62,17 @@ class PointSelectFragment : DialogFragment() {
 
         auth = FirebaseAuth.getInstance()
 
-        val spinnerOptions = listOf("1km", "1.5km", "2km", "2.5km", "3km", "3.5km", "4km", "4.5km", "5km")
-        val spinnerAdapter = object : ArrayAdapter<String>(requireContext(), android.R.layout.simple_spinner_item, spinnerOptions) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent) as TextView
-                view.setTextColor(android.graphics.Color.BLACK)
-                return view
-            }
-        }
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinner.adapter = spinnerAdapter
+        // 🚀 수정: 스피너 옵션을 사용자 레벨에 따라 동적으로 설정
+        setupRadiusSpinner()
 
         confirmBtn.setOnClickListener {
             val selectedRadius = radiusValues.getOrNull(spinner.selectedItemPosition) ?: 1.0
+            // 🚀 NEW: 선택된 반경이 사용자 레벨이 탐색 가능한 최대 반경을 초과하는지 확인
+            val maxAllowedRadius = levelToRadiusMap[userLevel] ?: 1.0
+            if (selectedRadius > maxAllowedRadius) {
+                Toast.makeText(context, "선택하신 거리는 현재 레벨에서 탐색할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             loadVisitedPlacesThenUpdateLocation(selectedRadius)
         }
 
@@ -70,7 +83,65 @@ class PointSelectFragment : DialogFragment() {
         recyclerView.adapter = adapter
         recyclerView.layoutManager = GridLayoutManager(context, 3)
 
+        // 🚀 NEW: 사용자 레벨을 로드하는 함수 호출
+        loadUserLevel()
+
         return view
+    }
+
+    // 🚀 NEW: 사용자 레벨을 로드하는 함수
+    private fun loadUserLevel() {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            Log.d("PointSelectFragment", "사용자 ID를 찾을 수 없습니다. 기본 레벨 1로 설정.")
+            setupRadiusSpinner() // 사용자 레벨이 없으면 기본 스피너 설정
+            return
+        }
+
+        Firebase.firestore.collection("Game")
+            .document("users")
+            .collection("userReward")
+            .document(userId) // 사용자 UID로 문서 참조
+            .get()
+            .addOnSuccessListener { documentSnapshot ->
+                if (documentSnapshot.exists()) {
+                    userLevel = documentSnapshot.getLong("level")?.toInt() ?: 1
+                    Log.d("PointSelectFragment", "사용자 레벨 로드 성공: $userLevel")
+                } else {
+                    userLevel = 1 // 문서가 없으면 기본 레벨 1
+                    Log.d("PointSelectFragment", "사용자 문서가 없습니다. 기본 레벨 1로 설정.")
+                }
+                setupRadiusSpinner() // 레벨 로드 후 스피너 설정
+            }
+            .addOnFailureListener { e ->
+                Log.e("PointSelectFragment", "사용자 레벨 로드 오류: ${e.message}", e)
+                userLevel = 1 // 오류 발생 시 기본 레벨 1
+                setupRadiusSpinner() // 오류 발생 시 스피너 설정
+            }
+    }
+
+    // 🚀 NEW: 사용자 레벨에 따라 스피너 옵션을 설정하는 함수
+    private fun setupRadiusSpinner() {
+        val maxAllowedRadius = levelToRadiusMap[userLevel] ?: 1.0 // 현재 레벨의 최대 탐색 거리
+        Log.d("PointSelectFragment", "사용자 레벨: $userLevel, 최대 허용 반경: $maxAllowedRadius km")
+
+        val availableRadiusOptions = radiusValues.filter { it <= maxAllowedRadius }.map { "${it}km" }
+        Log.d("PointSelectFragment", "스피너에 표시될 옵션: $availableRadiusOptions")
+
+        val spinnerAdapter = object : ArrayAdapter<String>(requireContext(), android.R.layout.simple_spinner_item, availableRadiusOptions) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent) as TextView
+                view.setTextColor(android.graphics.Color.BLACK)
+                return view
+            }
+        }
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = spinnerAdapter
+
+        // 스피너가 비어있지 않다면 첫 번째 항목 선택
+        if (availableRadiusOptions.isNotEmpty()) {
+            spinner.setSelection(0)
+        }
     }
 
     private fun loadVisitedPlacesThenUpdateLocation(radiusKm: Double) {
