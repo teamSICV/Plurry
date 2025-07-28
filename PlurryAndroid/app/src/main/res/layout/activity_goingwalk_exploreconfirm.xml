@@ -6,6 +6,17 @@
     android:padding="24dp"
     android:background="@android:color/white">
 
+    <!-- 🚀 NEW: 장소 이름 TextView -->
+    <TextView
+        android:id="@+id/tvPlaceName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp"
+        android:layout_gravity="center_horizontal"
+        android:text="장소 이름" />
+
     <ImageView
         android:id="@+id/dialogImage"
         android:layout_width="match_parent"

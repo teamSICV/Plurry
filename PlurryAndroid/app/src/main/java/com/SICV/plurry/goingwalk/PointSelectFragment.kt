@@ -215,8 +215,9 @@ class PointSelectFragment : DialogFragment() {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(context, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -227,7 +228,7 @@ class PointSelectFragment : DialogFragment() {
             }
             loadNearbyPoints(radiusKm)
         }.addOnFailureListener {
-            Toast.makeText(context, "위치 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "위치 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -248,6 +249,7 @@ class PointSelectFragment : DialogFragment() {
                 val placeId = doc.id
                 // 🚀 MODIFIED: 장소를 추가한 사용자 ID를 'addedBy' 필드에서 가져오도록 변경
                 val placeCreatorId = doc.getString("addedBy")
+                val placeName = doc.getString("name") ?: "알 수 없는 장소" // 🚀 NEW: 장소 이름 가져오기
 
                 // 🚀 NEW: 현재 사용자가 추가한 장소인지 확인
                 val isUserAdded = currentUserId != null && placeCreatorId == currentUserId
@@ -273,18 +275,22 @@ class PointSelectFragment : DialogFragment() {
                 if (userLocation.distanceTo(placeLocation) <= radiusKm * 1000) {
                     val imgUrl = doc.getString("myImgUrl") ?: continue
                     // 🚀 MODIFIED: PlaceData 생성 시 hasVisitedAndImageUrl, isUserAdded 상태와 운동 데이터를 함께 전달
-                    placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded))
-                    Log.d("PointSelectFragment", "추가된 장소: $placeId (방문+이미지 여부: $hasVisitedAndImageUrl, 방문 이미지: $visitedImageUrl, 칼로리: $calo, 거리: $distance, 걸음수: $stepNum, 사용자 추가 여부: $isUserAdded)")
+                    // 🚀 MODIFIED: PlaceData에 placeName 추가
+                    placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName))
+                    Log.d("PointSelectFragment", "추가된 장소: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 방문 이미지: $visitedImageUrl, 칼로리: $calo, 거리: $distance, 걸음수: $stepNum, 사용자 추가 여부: $isUserAdded)")
                 } else {
                     Log.d("PointSelectFragment", "거리 초과로 스킵된 장소: $placeId (거리: ${userLocation.distanceTo(placeLocation)}m)")
                 }
             }
 
+            // 🚀 REMOVED: placeList.sortByDescending { it.isVisitedWithImage }
+            // 이미 방문한 장소 정렬 로직은 제거되었습니다.
+
             adapter.notifyDataSetChanged()
             Log.d("PointSelectFragment", "필터링 후 최종 표시될 장소 수: ${placeList.size}")
 
             if (placeList.isEmpty()) {
-                Toast.makeText(context, "주변에 탐색 가능한 장소가 없습니다.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "주변에 탐색 가능한 장소가 없습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -299,6 +305,7 @@ class PointSelectFragment : DialogFragment() {
     )
 
     // 🚀 수정: isVisitedWithImage, calo, distance, stepNum, visitedImageUrl, isUserAdded 필드 추가
+    // 🚀 NEW: placeName 필드 추가
     data class PlaceData(
         val placeId: String,
         val lat: Double,
@@ -309,7 +316,8 @@ class PointSelectFragment : DialogFragment() {
         val distance: Double = 0.0,
         val stepNum: Long = 0L,
         val visitedImageUrl: String? = null, // 🚀 NEW: Field for the image URL from visitedPlaces
-        val isUserAdded: Boolean = false // 🚀 NEW: 사용자가 추가한 장소인지 여부
+        val isUserAdded: Boolean = false, // 🚀 NEW: 사용자가 추가한 장소인지 여부
+        val placeName: String // 🚀 NEW: 장소 이름
     )
 
     inner class ExploreAdapter(
@@ -348,6 +356,10 @@ class PointSelectFragment : DialogFragment() {
             val btnCancel = view.findViewById<Button>(R.id.btnCancelExplore)
             val tvStatusMessage = view.findViewById<TextView>(R.id.tvStatusMessage) // 🚀 NEW: 상태 메시지 TextView
             val tvExerciseData = view.findViewById<TextView>(R.id.tvExerciseData) // 🚀 NEW: 운동 데이터 TextView
+            val tvPlaceName = view.findViewById<TextView>(R.id.tvPlaceName) // 🚀 NEW: 장소 이름 TextView
+
+            // 🚀 NEW: 장소 이름 설정
+            tvPlaceName.text = place.placeName
 
             // Load the original place image
             Glide.with(view).load(place.imageUrl).into(imageView)
@@ -398,7 +410,8 @@ class PointSelectFragment : DialogFragment() {
 
             btnStart.setOnClickListener {
                 if (btnStart.isEnabled) { // 🚀 추가: 버튼이 활성화된 경우에만 동작하도록 확인
-                    val fragment = ExploreTrackingFragment.newInstance(place.placeId, place.lat, place.lng, place.imageUrl)
+                    // 🚀 MODIFIED: newInstance 호출 시 place.placeName 전달
+                    val fragment = ExploreTrackingFragment.newInstance(place.placeId, place.lat, place.lng, place.imageUrl, place.placeName)
                     val activity = activity as? AppCompatActivity ?: return@setOnClickListener
 
                     activity.supportFragmentManager.beginTransaction()
