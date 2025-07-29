@@ -61,6 +61,8 @@ class CrewLineMainActivity : AppCompatActivity() {
     private lateinit var refreshRunnable: Runnable
     private val REFRESH_INTERVAL = 5000L
 
+    private var isJustJoined = false
+
     private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val earthRadius = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
@@ -193,6 +195,26 @@ class CrewLineMainActivity : AppCompatActivity() {
         checkAndRequestLocationPermission()
     }
 
+    override fun onBackPressed() {
+        var shouldCallSuper = true
+
+        if (isJustJoined) {
+            isJustJoined = false
+            val intent = Intent(this, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            startActivity(intent)
+            finish()
+            shouldCallSuper = false
+        } else {
+            checkCrewMembershipAndNavigate()
+            shouldCallSuper = false
+        }
+
+        if (shouldCallSuper) {
+            super.onBackPressed()
+        }
+    }
+
     private fun checkCrewMembershipAndNavigate() {
         val currentUser = auth.currentUser
         if (currentUser == null) {
@@ -292,6 +314,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                         db.collection("Users").document(uid).update(updates)
                             .addOnSuccessListener {
                                 Log.d("CrewLineMain", "사용자 crewAt 필드 업데이트 완료")
+                                isJustJoined = true
                                 addUserPlacesToCrew(crewId, uid, db)
                             }
                             .addOnFailureListener { e ->

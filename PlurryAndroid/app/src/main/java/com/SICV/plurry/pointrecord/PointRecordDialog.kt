@@ -69,20 +69,40 @@ class PointRecordDialog : DialogFragment() {
 
         textView.text = "$name\n\n$description"
 
+        val btnStart = view.findViewById<Button>(R.id.btnStart)
+
         extractAndReplaceUidWithName(description, name, placeId) { updatedDescription ->
             textView.text = "$name\n\n$updatedDescription"
         }
 
-        val btnStart = view.findViewById<Button>(R.id.btnStart)
-
-        if (crewId.isNotEmpty()) {
-            checkCrewMembership(crewId) { isMember ->
-                if (!isMember) {
+        // 현재 로그인된 사용자 확인
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null && placeId.isNotEmpty()) {
+            checkPlaceOwnership(placeId, currentUser.uid) { isOwner ->
+                if (isOwner) {
+                    // 현재 사용자가 장소를 추가한 사용자와 같으면 버튼 숨김
                     btnStart.visibility = View.GONE
+                    Log.d("PointRecordDialog", "현재 사용자가 장소 소유자이므로 탐색 버튼 숨김")
+                } else {
+                    // 크루 멤버십 확인
+                    if (crewId.isNotEmpty()) {
+                        checkCrewMembership(crewId) { isMember ->
+                            btnStart.visibility = if (isMember) View.VISIBLE else View.GONE
+                        }
+                    } else {
+                        btnStart.visibility = View.VISIBLE
+                    }
                 }
             }
         } else {
-            btnStart.visibility = View.VISIBLE
+            // 로그인되지 않았거나 placeId가 없는 경우 기존 로직 유지
+            if (crewId.isNotEmpty()) {
+                checkCrewMembership(crewId) { isMember ->
+                    btnStart.visibility = if (isMember) View.VISIBLE else View.GONE
+                }
+            } else {
+                btnStart.visibility = View.VISIBLE
+            }
         }
 
         btnStart.setOnClickListener {
@@ -99,6 +119,27 @@ class PointRecordDialog : DialogFragment() {
         return AlertDialog.Builder(requireContext())
             .setView(view)
             .create()
+    }
+
+    private fun checkPlaceOwnership(placeId: String, currentUserId: String, callback: (Boolean) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("Places").document(placeId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val addedBy = document.getString("addedBy")
+                    val isOwner = addedBy == currentUserId
+                    Log.d("PointRecordDialog", "장소 소유권 확인: addedBy=$addedBy, currentUser=$currentUserId, isOwner=$isOwner")
+                    callback(isOwner)
+                } else {
+                    Log.d("PointRecordDialog", "Places 문서가 존재하지 않음")
+                    callback(false)
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("PointRecordDialog", "장소 소유권 확인 실패", exception)
+                callback(false)
+            }
     }
 
     private fun extractAndReplaceUidWithName(description: String, placeName: String, placeId: String, callback: (String) -> Unit) {
