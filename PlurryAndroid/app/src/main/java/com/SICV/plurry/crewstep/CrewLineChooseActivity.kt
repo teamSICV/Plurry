@@ -18,6 +18,7 @@ class CrewLineChooseActivity : AppCompatActivity() {
 
     private val crewList = mutableListOf<Crew>()
     private lateinit var adapter: CrewAdapter
+    private var isLoading = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,11 +50,29 @@ class CrewLineChooseActivity : AppCompatActivity() {
         fetchCrewList()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!isLoading) {
+            fetchCrewList()
+        }
+    }
+
     private fun fetchCrewList() {
+        if (isLoading) return
+        isLoading = true
+
         firestore.collection("Crew")
             .get()
             .addOnSuccessListener { documents ->
                 crewList.clear()
+
+                if (documents.isEmpty) {
+                    adapter.notifyDataSetChanged()
+                    isLoading = false
+                    return@addOnSuccessListener
+                }
+
+                var pendingTasks = documents.size()
 
                 for (doc in documents) {
                     val crewId = doc.id
@@ -75,15 +94,24 @@ class CrewLineChooseActivity : AppCompatActivity() {
                                 memberCount = memberCount
                             )
                             crewList.add(crew)
-                            adapter.notifyDataSetChanged()
-                        }
-                }
 
-                if (documents.isEmpty) {
-                    adapter.notifyDataSetChanged()
+                            pendingTasks--
+                            if (pendingTasks == 0) {
+                                adapter.notifyDataSetChanged()
+                                isLoading = false
+                            }
+                        }
+                        .addOnFailureListener {
+                            pendingTasks--
+                            if (pendingTasks == 0) {
+                                adapter.notifyDataSetChanged()
+                                isLoading = false
+                            }
+                        }
                 }
             }
             .addOnFailureListener {
+                isLoading = false
             }
     }
 }
