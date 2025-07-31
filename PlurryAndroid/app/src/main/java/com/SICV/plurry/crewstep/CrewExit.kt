@@ -107,15 +107,15 @@ class CrewExit(
                     .delete()
                     .await()
 
-                onConfirm()
-                dismiss()
-
                 clearMembersCrewAt(crewId)
+                deleteCrewPlaceDocuments(crewId)
+                deleteCrewRewardDocument(crewId)
                 deleteCrewStorage(crewId)
+
+                Log.d(TAG, "Successfully deleted crew: $crewId")
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting crew: $crewId", e)
-                onConfirm()
-                dismiss()
             }
         }
     }
@@ -196,6 +196,21 @@ class CrewExit(
             Log.d(TAG, "Successfully deleted all crewPlace documents for crew: $crewId")
         } catch (e: Exception) {
             Log.w(TAG, "Error deleting crewPlace documents for crew $crewId: ${e.message}")
+        }
+    }
+
+    private suspend fun deleteCrewRewardDocument(crewId: String) {
+        try {
+            firestore.collection("Game")
+                .document("crew")
+                .collection("crewReward")
+                .document(crewId)
+                .delete()
+                .await()
+
+            Log.d(TAG, "Successfully deleted crewReward document for crew: $crewId")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error deleting crewReward document for crew $crewId: ${e.message}")
         }
     }
 
