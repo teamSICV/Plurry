@@ -43,6 +43,15 @@
                 android:text="확인"
                 android:background="#438cf3"
                 android:layout_marginStart="12dp" />
+
+            <!-- NEW: 크루 탐색 버튼 -->
+            <Button
+                android:id="@+id/btnCrewExplore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="크루 탐색"
+                android:background="#438cf3"
+                android:layout_marginStart="12dp" />
         </LinearLayout>
 
         <!-- 장소 목록 -->

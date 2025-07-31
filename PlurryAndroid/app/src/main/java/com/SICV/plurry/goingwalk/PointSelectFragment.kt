@@ -18,11 +18,14 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.SICV.plurry.R
 import com.google.firebase.auth.FirebaseAuth
+import com.google.android.gms.tasks.Tasks // Tasks 클래스를 사용하기 위해 import 추가
+import com.google.firebase.firestore.DocumentSnapshot // DocumentSnapshot import 추가
 
 class PointSelectFragment : DialogFragment() {
 
     private lateinit var spinner: Spinner
     private lateinit var confirmBtn: Button
+    private lateinit var crewExploreBtn: Button // 🚀 NEW: 크루 탐색 버튼
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ExploreAdapter
     private val placeList = mutableListOf<PlaceData>()
@@ -58,6 +61,7 @@ class PointSelectFragment : DialogFragment() {
 
         spinner = view.findViewById(R.id.spinnerRadius)
         confirmBtn = view.findViewById(R.id.btnConfirmRadius)
+        crewExploreBtn = view.findViewById(R.id.btnCrewExplore) // 🚀 NEW: 크루 탐색 버튼 초기화
         recyclerView = view.findViewById(R.id.recyclerViewPlaces)
 
         auth = FirebaseAuth.getInstance()
@@ -73,7 +77,13 @@ class PointSelectFragment : DialogFragment() {
                 Toast.makeText(context, "선택하신 거리는 현재 레벨에서 탐색할 수 없습니다.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            // 거리 탐색 버튼 클릭 시, 방문 장소 로드 후 위치 업데이트 및 주변 장소 로드
             loadVisitedPlacesThenUpdateLocation(selectedRadius)
+        }
+
+        // 🚀 NEW: 크루 탐색 버튼 클릭 리스너
+        crewExploreBtn.setOnClickListener {
+            loadCrewPlaces()
         }
 
         // 🚀 수정: ExploreAdapter에 PlaceData만 넘기도록 유지 (isVisitedWithImage 필드 추가로 처리)
@@ -294,6 +304,170 @@ class PointSelectFragment : DialogFragment() {
             }
         }
     }
+
+    // 🚀 NEW: 크루 장소를 로드하는 함수
+    private fun loadCrewPlaces() {
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId == null) {
+            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        Log.d("PointSelectFragment", "크루 탐색 시작. 현재 사용자 ID: $currentUserId")
+
+        // 1. 모든 크루 문서를 가져옵니다.
+        Firebase.firestore.collection("Crew")
+            .get()
+            .addOnSuccessListener { allCrewsSnapshot ->
+                Log.d("PointSelectFragment", "모든 크루 쿼리 결과 문서 수: ${allCrewsSnapshot.documents.size}")
+
+                if (allCrewsSnapshot.isEmpty) {
+                    Toast.makeText(context, "등록된 크루가 없습니다.", Toast.LENGTH_SHORT).show()
+                    placeList.clear()
+                    adapter.notifyDataSetChanged()
+                    return@addOnSuccessListener
+                }
+
+                var crewFoundAndProcessed = false // Flag to ensure we only process the first found crew
+
+                // Collect all member check tasks
+                val memberCheckTasks = mutableListOf<com.google.android.gms.tasks.Task<DocumentSnapshot>>()
+                val crewIds = mutableListOf<String>() // To map tasks back to crew IDs
+
+                for (crewDoc in allCrewsSnapshot.documents) {
+                    val crewId = crewDoc.id
+                    crewIds.add(crewId) // Store crewId at the same exact index as its task
+
+                    // 🚀 수정: Firestore 경로를 'member' 서브컬렉션 안의 'members' 문서로 변경
+                    val memberDocRef = Firebase.firestore.collection("Crew")
+                        .document(crewId)
+                        .collection("member") // 'member' 서브컬렉션
+                        .document("members") // 'members' 문서
+
+                    memberCheckTasks.add(memberDocRef.get())
+                }
+
+                // Wait for all member check tasks to complete
+                Tasks.whenAll(memberCheckTasks)
+                    .addOnCompleteListener { allTasksResult ->
+                        if (allTasksResult.isSuccessful) {
+                            for (i in memberCheckTasks.indices) {
+                                val task = memberCheckTasks[i]
+                                if (task.isSuccessful) {
+                                    val memberDocSnapshot = task.result // task.result는 DocumentSnapshot 타입입니다.
+                                    // 🚀 수정: 'members' 문서 내에 현재 사용자 UID가 필드로 존재하는지 확인
+                                    if (memberDocSnapshot != null && memberDocSnapshot.exists() && memberDocSnapshot.contains(currentUserId)) {
+                                        val crewId = crewIds[i] // Get the corresponding crewId
+                                        if (!crewFoundAndProcessed) { // Process only the first found crew
+                                            Log.d("PointSelectFragment", "크루 발견! ID: $crewId, 멤버 UID 필드 존재: $currentUserId")
+                                            crewFoundAndProcessed = true
+                                            fetchAndDisplayCrewPlaces(crewId, currentUserId)
+                                        } else {
+                                            Log.d("PointSelectFragment", "이미 크루를 찾았으므로 크루 $crewId 는 스킵합니다. (멤버 UID 필드 존재: ${memberDocSnapshot.id})")
+                                        }
+                                    } else {
+                                        Log.d("PointSelectFragment", "크루 ${crewIds[i]} 에서 사용자 ($currentUserId)를 찾을 수 없습니다. (members 문서 없음 또는 필드 없음)")
+                                    }
+                                } else {
+                                    Log.e("PointSelectFragment", "크루 ${crewIds[i]} 의 멤버 확인 오류: ${task.exception?.message}", task.exception)
+                                }
+                            }
+
+                            // If after checking all crews, no crew was found and processed
+                            if (!crewFoundAndProcessed) {
+                                Toast.makeText(context, "속한 크루를 찾을 수 없습니다. Firestore 'Crew' 컬렉션의 'member' 서브컬렉션 내 'members' 문서 구조를 확인해주세요.", Toast.LENGTH_LONG).show()
+                                placeList.clear()
+                                adapter.notifyDataSetChanged()
+                                Log.d("PointSelectFragment", "모든 크루 확인 결과: 속한 크루를 찾지 못했습니다.")
+                            }
+                        } else {
+                            // At least one task failed in Tasks.whenAll
+                            Log.e("PointSelectFragment", "모든 크루 멤버 확인 중 오류 발생: ${allTasksResult.exception?.message}", allTasksResult.exception)
+                            Toast.makeText(context, "크루 멤버 확인 중 오류 발생: ${allTasksResult.exception?.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            placeList.clear()
+                            adapter.notifyDataSetChanged()
+                        }
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("PointSelectFragment", "크루 정보 로드 오류 (초기): ${e.message}", e)
+                Toast.makeText(context, "크루 정보 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                placeList.clear()
+                adapter.notifyDataSetChanged()
+            }
+    }
+
+    // 🚀 NEW: 크루 장소를 가져와 화면에 표시하는 함수
+    private fun fetchAndDisplayCrewPlaces(crewId: String, currentUserId: String) {
+        Firebase.firestore.collection("Crew")
+            .document(crewId)
+            .collection("crewPlace")
+            .get()
+            .addOnSuccessListener { crewPlaceQuerySnapshot ->
+                val crewPlaceIds = mutableListOf<String>()
+                for (doc in crewPlaceQuerySnapshot.documents) {
+                    val placeId = doc.id
+                    crewPlaceIds.add(placeId)
+                }
+                Log.d("PointSelectFragment", "크루 장소 ID 목록: $crewPlaceIds")
+
+                if (crewPlaceIds.isEmpty()) {
+                    Toast.makeText(context, "크루에 등록된 장소가 없습니다.", Toast.LENGTH_SHORT).show()
+                    placeList.clear()
+                    adapter.notifyDataSetChanged()
+                    return@addOnSuccessListener
+                }
+
+                Firebase.firestore.collection("Places").get().addOnSuccessListener { allPlacesSnapshot ->
+                    placeList.clear()
+                    userAddedPlaceIds.clear()
+
+                    val placesMap = allPlacesSnapshot.associateBy { it.id }
+
+                    for (placeId in crewPlaceIds) {
+                        val doc = placesMap[placeId]
+                        if (doc != null) {
+                            val placeCreatorId = doc.getString("addedBy")
+                            val placeName = doc.getString("name") ?: "알 수 없는 장소"
+
+                            val isUserAdded = currentUserId != null && placeCreatorId == currentUserId
+                            if (isUserAdded) {
+                                userAddedPlaceIds.add(placeId)
+                                Log.d("PointSelectFragment", "사용자가 추가한 장소로 식별됨 (크루 탐색): $placeId")
+                            }
+
+                            val visitedDetails = visitedPlaceInfo[placeId]
+                            val hasVisitedAndImageUrl = visitedDetails?.hasImageUrl ?: false
+                            val visitedImageUrl = visitedDetails?.visitedImageUrl
+                            val calo = visitedDetails?.calo ?: 0.0
+                            val distance = visitedDetails?.distance ?: 0.0
+                            val stepNum = visitedDetails?.stepNum ?: 0L
+
+                            val geo = doc.getGeoPoint("geo") ?: continue
+                            val imgUrl = doc.getString("myImgUrl") ?: continue
+
+                            placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName))
+                            Log.d("PointSelectFragment", "크루 장소 추가됨: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 사용자 추가 여부: $isUserAdded)")
+                        } else {
+                            Log.d("PointSelectFragment", "Places 컬렉션에서 크루 장소 ID $placeId 에 해당하는 문서를 찾을 수 없습니다.")
+                        }
+                    }
+                    adapter.notifyDataSetChanged()
+                    Log.d("PointSelectFragment", "크루 탐색 후 최종 표시될 장소 수: ${placeList.size}")
+
+                    if (placeList.isEmpty()) {
+                        Toast.makeText(requireContext(), "크루에 탐색 가능한 장소가 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
+                }.addOnFailureListener { e ->
+                    Log.e("PointSelectFragment", "모든 장소 로드 오류 (크루 탐색): ${e.message}", e)
+                    Toast.makeText(context, "장소 정보 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("PointSelectFragment", "크루 장소 로드 오류: ${e.message}", e)
+                Toast.makeText(context, "크루 장소 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
 
     // 🚀 NEW: 방문한 장소의 상세 정보를 담을 데이터 클래스
     data class VisitedPlaceDetails(
