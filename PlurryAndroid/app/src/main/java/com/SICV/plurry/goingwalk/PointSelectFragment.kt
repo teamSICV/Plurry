@@ -56,6 +56,9 @@ class PointSelectFragment : DialogFragment() {
 
     private lateinit var auth: FirebaseAuth
 
+    // 🚀 NEW: 크루 장소 ID를 저장할 Set
+    private val crewPlaceIds = mutableSetOf<String>()
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.activity_goingwalk_point_select, container, false)
 
@@ -77,18 +80,24 @@ class PointSelectFragment : DialogFragment() {
                 Toast.makeText(context, "선택하신 거리는 현재 레벨에서 탐색할 수 없습니다.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            // 거리 탐색 버튼 클릭 시, 방문 장소 로드 후 위치 업데이트 및 주변 장소 로드
-            loadVisitedPlacesThenUpdateLocation(selectedRadius)
+            // 🚀 MODIFIED: 거리 탐색 버튼 클릭 시, 방문 장소와 크루 장소 로드 후 위치 업데이트 및 주변 장소 로드
+            loadVisitedPlacesThenLoadCrewPlaces {
+                updateUserLocationThenLoad(selectedRadius)
+            }
         }
 
         // 🚀 NEW: 크루 탐색 버튼 클릭 리스너
         crewExploreBtn.setOnClickListener {
-            loadCrewPlaces()
+            // 🚀 MODIFIED: 크루 탐색 버튼 클릭 시, 방문 장소와 크루 장소 로드 후 크루 장소만 표시
+            loadVisitedPlacesThenLoadCrewPlaces {
+                loadCrewPlaces()
+            }
         }
 
         // 🚀 수정: ExploreAdapter에 PlaceData만 넘기도록 유지 (isVisitedWithImage 필드 추가로 처리)
+        // 🚀 MODIFIED: ExploreConfirmDialog 생성 시 userLat, userLng 전달
         adapter = ExploreAdapter(placeList) { place ->
-            ExploreConfirmDialog(place, this).show(parentFragmentManager, "ExploreConfirmDialog")
+            ExploreConfirmDialog(place, this, userLat, userLng).show(parentFragmentManager, "ExploreConfirmDialog")
         }
         recyclerView.adapter = adapter
         recyclerView.layoutManager = GridLayoutManager(context, 3)
@@ -154,13 +163,13 @@ class PointSelectFragment : DialogFragment() {
         }
     }
 
-    private fun loadVisitedPlacesThenUpdateLocation(radiusKm: Double) {
+    // 🚀 NEW: 방문 기록을 먼저 로드한 후, 크루 장소 ID를 로드하는 함수
+    private fun loadVisitedPlacesThenLoadCrewPlaces(onComplete: () -> Unit) {
         val userId = auth.currentUser?.uid
-        Log.d("PointSelectFragment", "현재 로그인된 사용자 ID: $userId")
-
         if (userId == null) {
-            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
-            updateUserLocationThenLoad(radiusKm)
+            visitedPlaceInfo.clear()
+            crewPlaceIds.clear()
+            onComplete()
             return
         }
 
@@ -169,55 +178,88 @@ class PointSelectFragment : DialogFragment() {
             .collection("visitedPlaces")
             .get()
             .addOnSuccessListener { querySnapshot ->
-                visitedPlaceInfo.clear() // 🚀 수정: visitedPlaceInfo 클리어
-                Log.d("PointSelectFragment", "visitedPlaces 쿼리 결과 문서 수: ${querySnapshot.documents.size}")
-
-                if (querySnapshot.documents.isEmpty()) {
-                    Log.d("PointSelectFragment", "방문 기록이 없습니다. (새 경로 쿼리 결과 0개)")
-                    Log.d("PointSelectFragment", "쿼리 대상 userId: $userId")
-                }
-
+                visitedPlaceInfo.clear()
                 for (document in querySnapshot.documents) {
                     val placeIdFromDoc = document.id
-                    val userIdFromDoc = document.getString("userId")
-                    val imageUrlFromDoc = document.getString("imageUrl") // 🚀 추가: imageUrl 필드 가져오기
-                    val caloFromDoc = document.getDouble("calo") ?: 0.0 // 🚀 NEW: calo 데이터 가져오기
-                    val distanceFromDoc = document.getDouble("distance") ?: 0.0 // 🚀 NEW: distance 데이터 가져오기
-                    val stepNumFromDoc = document.getLong("stepNum") ?: 0L // 🚀 NEW: stepNum 데이터 가져오기
-                    val docPath = document.reference.path
+                    val imageUrlFromDoc = document.getString("imageUrl")
+                    val caloFromDoc = document.getDouble("calo") ?: 0.0
+                    val distanceFromDoc = document.getDouble("distance") ?: 0.0
+                    val stepNumFromDoc = document.getLong("stepNum") ?: 0L
 
-                    Log.d("PointSelectFragment", "처리 중인 문서: $docPath")
-                    Log.d("PointSelectFragment", "  - 문서 ID (placeId): $placeIdFromDoc")
-                    Log.d("PointSelectFragment", "  - 문서 내 userId: $userIdFromDoc")
-                    Log.d("PointSelectFragment", "  - 문서 내 imageUrl: $imageUrlFromDoc")
-                    Log.d("PointSelectFragment", "  - 문서 내 calo: $caloFromDoc")
-                    Log.d("PointSelectFragment", "  - 문서 내 distance: $distanceFromDoc")
-                    Log.d("PointSelectFragment", "  - 문서 내 stepNum: $stepNumFromDoc")
-                    Log.d("PointSelectFragment", "  - 현재 앱의 userId: $userId")
-
-                    if (placeIdFromDoc != null && userIdFromDoc == userId) {
-                        // 🚀 수정: imageUrl이 null이 아닌 경우에만 true로 저장 및 운동 데이터 함께 저장
+                    if (placeIdFromDoc != null) {
                         visitedPlaceInfo[placeIdFromDoc] = VisitedPlaceDetails(
                             hasImageUrl = !imageUrlFromDoc.isNullOrEmpty(),
-                            visitedImageUrl = imageUrlFromDoc, // 🚀 NEW: Store the actual image URL
+                            visitedImageUrl = imageUrlFromDoc,
                             calo = caloFromDoc,
                             distance = distanceFromDoc,
                             stepNum = stepNumFromDoc
                         )
-                        Log.d("PointSelectFragment", "  -> 방문한 장소 ID 추가됨: $placeIdFromDoc (userId 일치, imageUrl 존재: ${!imageUrlFromDoc.isNullOrEmpty()})")
-                    } else {
-                        Log.d("PointSelectFragment", "  -> 문서 스킵됨:")
-                        if (placeIdFromDoc == null) Log.d("PointSelectFragment", "    - placeId 없음 (문서 ID가 null)")
-                        if (userIdFromDoc != userId) Log.d("PointSelectFragment", "    - userId 불일치: 문서 userId($userIdFromDoc) vs 현재 userId($userId)")
                     }
                 }
-                Log.d("PointSelectFragment", "최종 visitedPlaceInfo: $visitedPlaceInfo")
-                updateUserLocationThenLoad(radiusKm)
+                // 방문 장소 로드 완료 후 크루 장소 로드 시작
+                loadCrewPlaceIds(onComplete)
             }
             .addOnFailureListener { e ->
-                Log.e("PointSelectFragment", "방문한 장소 로드 오류: ${e.message}", e)
+                Log.e("PointSelectFragment", "방문 기록 로드 오류: ${e.message}", e)
                 Toast.makeText(context, "방문 기록 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                updateUserLocationThenLoad(radiusKm)
+                loadCrewPlaceIds(onComplete) // 오류가 발생해도 크루 장소 로드는 진행
+            }
+    }
+
+    // 🚀 NEW: 사용자가 속한 크루의 장소 ID 목록을 로드하는 함수
+    private fun loadCrewPlaceIds(onComplete: () -> Unit) {
+        val currentUserId = auth.currentUser?.uid ?: return onComplete()
+
+        Firebase.firestore.collection("Crew")
+            .get()
+            .addOnSuccessListener { allCrewsSnapshot ->
+                val memberCheckTasks = mutableListOf<com.google.android.gms.tasks.Task<DocumentSnapshot>>()
+                val crewIds = mutableListOf<String>()
+
+                for (crewDoc in allCrewsSnapshot.documents) {
+                    val crewId = crewDoc.id
+                    crewIds.add(crewId)
+                    val memberDocRef = Firebase.firestore.collection("Crew").document(crewId).collection("member").document("members")
+                    memberCheckTasks.add(memberDocRef.get())
+                }
+
+                Tasks.whenAll(memberCheckTasks)
+                    .addOnCompleteListener {
+                        var foundCrewId: String? = null
+                        if (it.isSuccessful) {
+                            for (i in memberCheckTasks.indices) {
+                                val task = memberCheckTasks[i]
+                                if (task.isSuccessful && task.result?.exists() == true && task.result?.contains(currentUserId) == true) {
+                                    foundCrewId = crewIds[i]
+                                    break
+                                }
+                            }
+                        }
+
+                        if (foundCrewId != null) {
+                            Firebase.firestore.collection("Crew").document(foundCrewId).collection("crewPlace").get()
+                                .addOnSuccessListener { crewPlaceQuerySnapshot ->
+                                    crewPlaceIds.clear()
+                                    for (doc in crewPlaceQuerySnapshot.documents) {
+                                        crewPlaceIds.add(doc.id)
+                                    }
+                                    Log.d("PointSelectFragment", "크루 장소 ID 로드 완료: $crewPlaceIds")
+                                    onComplete()
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("PointSelectFragment", "크루 장소 ID 로드 실패: ${e.message}")
+                                    onComplete()
+                                }
+                        } else {
+                            crewPlaceIds.clear()
+                            Log.d("PointSelectFragment", "속한 크루를 찾을 수 없습니다.")
+                            onComplete()
+                        }
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("PointSelectFragment", "크루 데이터 로드 실패: ${e.message}", e)
+                onComplete()
             }
     }
 
@@ -236,6 +278,7 @@ class PointSelectFragment : DialogFragment() {
                 userLat = location.latitude
                 userLng = location.longitude
             }
+            // 🚀 MODIFIED: 크루 장소 ID를 알고 있는 상태에서 주변 장소 로드
             loadNearbyPoints(radiusKm)
         }.addOnFailureListener {
             Toast.makeText(requireContext(), "위치 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
@@ -284,17 +327,19 @@ class PointSelectFragment : DialogFragment() {
 
                 if (userLocation.distanceTo(placeLocation) <= radiusKm * 1000) {
                     val imgUrl = doc.getString("myImgUrl") ?: continue
-                    // 🚀 MODIFIED: PlaceData 생성 시 hasVisitedAndImageUrl, isUserAdded 상태와 운동 데이터를 함께 전달
-                    // 🚀 MODIFIED: PlaceData에 placeName 추가
-                    placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName))
-                    Log.d("PointSelectFragment", "추가된 장소: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 방문 이미지: $visitedImageUrl, 칼로리: $calo, 거리: $distance, 걸음수: $stepNum, 사용자 추가 여부: $isUserAdded)")
+                    // 🚀 NEW: 해당 장소가 크루 장소인지 확인
+                    val isCrewPlace = crewPlaceIds.contains(placeId)
+
+                    // 🚀 MODIFIED: PlaceData 생성 시 isCrewPlace 상태와 함께 전달
+                    placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName, isCrewPlace))
+                    Log.d("PointSelectFragment", "추가된 장소: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 방문 이미지: $visitedImageUrl, 칼로리: $calo, 거리: $distance, 걸음수: $stepNum, 사용자 추가 여부: $isUserAdded, 크루 장소 여부: $isCrewPlace)")
                 } else {
                     Log.d("PointSelectFragment", "거리 초과로 스킵된 장소: $placeId (거리: ${userLocation.distanceTo(placeLocation)}m)")
                 }
             }
 
-            // 🚀 REMOVED: placeList.sortByDescending { it.isVisitedWithImage }
-            // 이미 방문한 장소 정렬 로직은 제거되었습니다.
+            // 🚀 NEW: 크루 장소를 목록의 제일 위로 정렬
+            placeList.sortByDescending { it.isCrewPlace }
 
             adapter.notifyDataSetChanged()
             Log.d("PointSelectFragment", "필터링 후 최종 표시될 장소 수: ${placeList.size}")
@@ -398,73 +443,90 @@ class PointSelectFragment : DialogFragment() {
 
     // 🚀 NEW: 크루 장소를 가져와 화면에 표시하는 함수
     private fun fetchAndDisplayCrewPlaces(crewId: String, currentUserId: String) {
-        Firebase.firestore.collection("Crew")
-            .document(crewId)
-            .collection("crewPlace")
-            .get()
-            .addOnSuccessListener { crewPlaceQuerySnapshot ->
-                val crewPlaceIds = mutableListOf<String>()
-                for (doc in crewPlaceQuerySnapshot.documents) {
-                    val placeId = doc.id
-                    crewPlaceIds.add(placeId)
-                }
-                Log.d("PointSelectFragment", "크루 장소 ID 목록: $crewPlaceIds")
-
-                if (crewPlaceIds.isEmpty()) {
-                    Toast.makeText(context, "크루에 등록된 장소가 없습니다.", Toast.LENGTH_SHORT).show()
-                    placeList.clear()
-                    adapter.notifyDataSetChanged()
-                    return@addOnSuccessListener
-                }
-
-                Firebase.firestore.collection("Places").get().addOnSuccessListener { allPlacesSnapshot ->
-                    placeList.clear()
-                    userAddedPlaceIds.clear()
-
-                    val placesMap = allPlacesSnapshot.associateBy { it.id }
-
-                    for (placeId in crewPlaceIds) {
-                        val doc = placesMap[placeId]
-                        if (doc != null) {
-                            val placeCreatorId = doc.getString("addedBy")
-                            val placeName = doc.getString("name") ?: "알 수 없는 장소"
-
-                            val isUserAdded = currentUserId != null && placeCreatorId == currentUserId
-                            if (isUserAdded) {
-                                userAddedPlaceIds.add(placeId)
-                                Log.d("PointSelectFragment", "사용자가 추가한 장소로 식별됨 (크루 탐색): $placeId")
-                            }
-
-                            val visitedDetails = visitedPlaceInfo[placeId]
-                            val hasVisitedAndImageUrl = visitedDetails?.hasImageUrl ?: false
-                            val visitedImageUrl = visitedDetails?.visitedImageUrl
-                            val calo = visitedDetails?.calo ?: 0.0
-                            val distance = visitedDetails?.distance ?: 0.0
-                            val stepNum = visitedDetails?.stepNum ?: 0L
-
-                            val geo = doc.getGeoPoint("geo") ?: continue
-                            val imgUrl = doc.getString("myImgUrl") ?: continue
-
-                            placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName))
-                            Log.d("PointSelectFragment", "크루 장소 추가됨: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 사용자 추가 여부: $isUserAdded)")
-                        } else {
-                            Log.d("PointSelectFragment", "Places 컬렉션에서 크루 장소 ID $placeId 에 해당하는 문서를 찾을 수 없습니다.")
-                        }
-                    }
-                    adapter.notifyDataSetChanged()
-                    Log.d("PointSelectFragment", "크루 탐색 후 최종 표시될 장소 수: ${placeList.size}")
-
-                    if (placeList.isEmpty()) {
-                        Toast.makeText(requireContext(), "크루에 탐색 가능한 장소가 없습니다.", Toast.LENGTH_SHORT).show()
-                    }
-                }.addOnFailureListener { e ->
-                    Log.e("PointSelectFragment", "모든 장소 로드 오류 (크루 탐색): ${e.message}", e)
-                    Toast.makeText(context, "장소 정보 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                }
+        // 🚀 MODIFIED: 크루 장소 로드 전에 사용자 위치를 먼저 업데이트
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                userLat = location.latitude
+                userLng = location.longitude
             }
-            .addOnFailureListener { e ->
-                Log.e("PointSelectFragment", "크루 장소 로드 오류: ${e.message}", e)
-                Toast.makeText(context, "크루 장소 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+
+            Firebase.firestore.collection("Crew")
+                .document(crewId)
+                .collection("crewPlace")
+                .get()
+                .addOnSuccessListener { crewPlaceQuerySnapshot ->
+                    val crewPlaceIds = mutableListOf<String>()
+                    for (doc in crewPlaceQuerySnapshot.documents) {
+                        val placeId = doc.id
+                        crewPlaceIds.add(placeId)
+                    }
+                    Log.d("PointSelectFragment", "크루 장소 ID 목록: $crewPlaceIds")
+
+                    if (crewPlaceIds.isEmpty()) {
+                        Toast.makeText(context, "크루에 등록된 장소가 없습니다.", Toast.LENGTH_SHORT).show()
+                        placeList.clear()
+                        adapter.notifyDataSetChanged()
+                        return@addOnSuccessListener
+                    }
+
+                    Firebase.firestore.collection("Places").get().addOnSuccessListener { allPlacesSnapshot ->
+                        placeList.clear()
+                        userAddedPlaceIds.clear()
+
+                        val placesMap = allPlacesSnapshot.associateBy { it.id }
+
+                        for (placeId in crewPlaceIds) {
+                            val doc = placesMap[placeId]
+                            if (doc != null) {
+                                val placeCreatorId = doc.getString("addedBy")
+                                val placeName = doc.getString("name") ?: "알 수 없는 장소"
+
+                                val isUserAdded = currentUserId != null && placeCreatorId == currentUserId
+                                if (isUserAdded) {
+                                    userAddedPlaceIds.add(placeId)
+                                    Log.d("PointSelectFragment", "사용자가 추가한 장소로 식별됨 (크루 탐색): $placeId")
+                                }
+
+                                val visitedDetails = visitedPlaceInfo[placeId]
+                                val hasVisitedAndImageUrl = visitedDetails?.hasImageUrl ?: false
+                                val visitedImageUrl = visitedDetails?.visitedImageUrl
+                                val calo = visitedDetails?.calo ?: 0.0
+                                val distance = visitedDetails?.distance ?: 0.0
+                                val stepNum = visitedDetails?.stepNum ?: 0L
+
+                                val geo = doc.getGeoPoint("geo") ?: continue
+                                val imgUrl = doc.getString("myImgUrl") ?: continue
+
+                                // 🚀 MODIFIED: 크루 탐색이므로 isCrewPlace를 true로 설정
+                                placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName, true))
+                                Log.d("PointSelectFragment", "크루 장소 추가됨: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 사용자 추가 여부: $isUserAdded, 크루 장소 여부: true)")
+                            } else {
+                                Log.d("PointSelectFragment", "Places 컬렉션에서 크루 장소 ID $placeId 에 해당하는 문서를 찾을 수 없습니다.")
+                            }
+                        }
+                        adapter.notifyDataSetChanged()
+                        Log.d("PointSelectFragment", "크루 탐색 후 최종 표시될 장소 수: ${placeList.size}")
+
+                        if (placeList.isEmpty()) {
+                            Toast.makeText(requireContext(), "크루에 탐색 가능한 장소가 없습니다.", Toast.LENGTH_SHORT).show()
+                        }
+                    }.addOnFailureListener { e ->
+                        Log.e("PointSelectFragment", "모든 장소 로드 오류 (크루 탐색): ${e.message}", e)
+                        Toast.makeText(context, "장소 정보 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("PointSelectFragment", "크루 장소 로드 오류: ${e.message}", e)
+                    Toast.makeText(context, "크루 장소 로드 실패: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
+        }
+            .addOnFailureListener {
+                Toast.makeText(requireContext(), "위치 정보를 가져오지 못했습니다.", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -479,7 +541,7 @@ class PointSelectFragment : DialogFragment() {
     )
 
     // 🚀 수정: isVisitedWithImage, calo, distance, stepNum, visitedImageUrl, isUserAdded 필드 추가
-    // 🚀 NEW: placeName 필드 추가
+    // 🚀 NEW: placeName, isCrewPlace 필드 추가
     data class PlaceData(
         val placeId: String,
         val lat: Double,
@@ -491,7 +553,8 @@ class PointSelectFragment : DialogFragment() {
         val stepNum: Long = 0L,
         val visitedImageUrl: String? = null, // 🚀 NEW: Field for the image URL from visitedPlaces
         val isUserAdded: Boolean = false, // 🚀 NEW: 사용자가 추가한 장소인지 여부
-        val placeName: String // 🚀 NEW: 장소 이름
+        val placeName: String, // 🚀 NEW: 장소 이름
+        val isCrewPlace: Boolean = false // 🚀 NEW: 크루 장소인지 여부
     )
 
     inner class ExploreAdapter(
@@ -518,7 +581,8 @@ class PointSelectFragment : DialogFragment() {
         }
     }
 
-    class ExploreConfirmDialog(private val place: PlaceData, private val parent: DialogFragment) : DialogFragment() {
+    // 🚀 MODIFIED: ExploreConfirmDialog 생성자에 userLat, userLng 추가
+    class ExploreConfirmDialog(private val place: PlaceData, private val parent: DialogFragment, private val userLat: Double, private val userLng: Double) : DialogFragment() {
 
         override fun onCreateDialog(savedInstanceState: Bundle?): android.app.Dialog {
             val view = LayoutInflater.from(requireContext())
@@ -531,12 +595,36 @@ class PointSelectFragment : DialogFragment() {
             val tvStatusMessage = view.findViewById<TextView>(R.id.tvStatusMessage) // 🚀 NEW: 상태 메시지 TextView
             val tvExerciseData = view.findViewById<TextView>(R.id.tvExerciseData) // 🚀 NEW: 운동 데이터 TextView
             val tvPlaceName = view.findViewById<TextView>(R.id.tvPlaceName) // 🚀 NEW: 장소 이름 TextView
+            val tvDistance = view.findViewById<TextView>(R.id.tvDistance) // 🚀 NEW: 거리 TextView
+            val tvCrewLabel = view.findViewById<TextView>(R.id.tvCrewLabel) // 🚀 NEW: 크루 라벨 TextView
+
 
             // 🚀 NEW: 장소 이름 설정
             tvPlaceName.text = place.placeName
 
             // Load the original place image
             Glide.with(view).load(place.imageUrl).into(imageView)
+
+            // 🚀 NEW: 거리 계산 및 표시
+            val userLocation = Location("user").apply {
+                latitude = userLat
+                longitude = userLng
+            }
+            val placeLocation = Location("place").apply {
+                latitude = place.lat
+                longitude = place.lng
+            }
+            val distanceInMeters = userLocation.distanceTo(placeLocation)
+            val distanceInKm = distanceInMeters / 1000.0
+            tvDistance.text = "거리 : ${String.format("%.1f", distanceInKm)}km"
+
+
+            // 🚀 NEW: 크루 장소일 경우 '크루' 라벨 표시
+            if (place.isCrewPlace) {
+                tvCrewLabel.visibility = View.VISIBLE
+            } else {
+                tvCrewLabel.visibility = View.GONE
+            }
 
             // 🚀 NEW: 장소 상태에 따른 UI 로직 (우선순위: 사용자 추가 장소 > 방문 완료 장소 > 탐색 가능 장소)
             if (place.isUserAdded) {
