@@ -172,18 +172,8 @@ class LoginMainActivity : ComponentActivity() {
             .get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    // 기존 사용자의 경우 리워드 데이터 동기화 후 메인으로 이동
-                    UserRewardInitializer.intializeUserReward(
-                        onSucces = {
-                            Log.d("Login", "사용자 리워드 동기화 완료")
-                            goToMain()
-                        },
-                        onFailure = { e ->
-                            Log.e("Login", "사용자 리워드 동기화 실패", e)
-                            // 리워드 동기화 실패해도 로그인은 진행
-                            goToMain()
-                        }
-                    )
+                    Log.d("Login", "기존 사용자 로그인")
+                    goToMain()
                 } else {
                     goToLoginJoin()
                 }

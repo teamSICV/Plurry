@@ -81,35 +81,136 @@ class CrewExit(
             return
         }
 
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId != null) {
+            firestore.collection("Users")
+                .document(currentUserId)
+                .update("crewAt", "")
+            Log.d(TAG, "Started clearing current leader's crewAt: $currentUserId")
+        }
+
+        onConfirm()
+        dismiss()
+
         scope.launch {
             try {
-                Log.d(TAG, "Starting crew deletion for ID: $crewId")
+                val currentUserId = auth.currentUser?.uid
+                if (currentUserId != null) {
+                    firestore.collection("Users")
+                        .document(currentUserId)
+                        .update("crewAt", "")
+                        .await()
+                }
 
                 firestore.collection("Crew")
                     .document(crewId)
                     .delete()
                     .await()
-                Log.d(TAG, "Deleted Firestore crew document: $crewId")
 
+                clearMembersCrewAt(crewId)
+                deleteCrewPlaceDocuments(crewId)
+                deleteCrewRewardDocument(crewId)
                 deleteCrewStorage(crewId)
 
-                firestore.collection("Game")
-                    .document("crew")
-                    .collection("crewReward")
-                    .document(crewId)
-                    .delete()
-                    .await()
-                Log.d(TAG, "Deleted crew reward document: $crewId")
-
-                Log.d(TAG, "Successfully deleted all crew data: $crewId")
-                onConfirm()
+                Log.d(TAG, "Successfully deleted crew: $crewId")
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting crew: $crewId", e)
-                onConfirm()
-            } finally {
-                dismiss()
             }
+        }
+    }
+
+    private suspend fun clearMembersCrewAt(crewId: String) {
+        try {
+            val membersDoc = firestore.collection("Crew")
+                .document(crewId)
+                .collection("member")
+                .document("members")
+                .get()
+                .await()
+
+            if (membersDoc.exists()) {
+                val membersData = membersDoc.data
+                membersData?.keys?.forEach { memberUid ->
+                    try {
+                        firestore.collection("Users")
+                            .document(memberUid)
+                            .update("crewAt", "")
+                            .await()
+                        Log.d(TAG, "Cleared crewAt for member: $memberUid")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to clear crewAt for member $memberUid: ${e.message}")
+                    }
+                }
+
+                membersDoc.reference.delete().await()
+                Log.d(TAG, "Deleted members document")
+            }
+
+            val leaderDoc = firestore.collection("Crew")
+                .document(crewId)
+                .collection("member")
+                .document("leader")
+                .get()
+                .await()
+
+            if (leaderDoc.exists()) {
+                val leaderData = leaderDoc.data
+                val leaderField = leaderData?.get("leader") as? String
+
+                if (leaderField != null) {
+                    try {
+                        firestore.collection("Users")
+                            .document(leaderField)
+                            .update("crewAt", "")
+                            .await()
+                        Log.d(TAG, "Cleared crewAt for leader: $leaderField")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to clear crewAt for leader $leaderField: ${e.message}")
+                    }
+                }
+
+                leaderDoc.reference.delete().await()
+                Log.d(TAG, "Deleted leader document")
+            }
+
+            Log.d(TAG, "Successfully cleared crewAt for all members and leader")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing members crewAt", e)
+        }
+    }
+
+    private suspend fun deleteCrewPlaceDocuments(crewId: String) {
+        try {
+            val crewPlaceRef = firestore.collection("Crew")
+                .document(crewId)
+                .collection("crewPlace")
+
+            val documents = crewPlaceRef.get().await()
+
+            documents.documents.forEach { document ->
+                document.reference.delete().await()
+                Log.d(TAG, "Deleted crewPlace document: ${document.id}")
+            }
+
+            Log.d(TAG, "Successfully deleted all crewPlace documents for crew: $crewId")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error deleting crewPlace documents for crew $crewId: ${e.message}")
+        }
+    }
+
+    private suspend fun deleteCrewRewardDocument(crewId: String) {
+        try {
+            firestore.collection("Game")
+                .document("crew")
+                .collection("crewReward")
+                .document(crewId)
+                .delete()
+                .await()
+
+            Log.d(TAG, "Successfully deleted crewReward document for crew: $crewId")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error deleting crewReward document for crew $crewId: ${e.message}")
         }
     }
 
