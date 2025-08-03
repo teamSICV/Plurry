@@ -9,12 +9,15 @@ class CrewGameManager {
             val db = FirebaseFirestore.getInstance()
 
             val crewGameData = hashMapOf(
-                "crewRewardItem" to null,
+                "crewRewardItem" to 0,
                 "lastUpdated" to Timestamp.now(),
                 "updateLock" to false,
-                "characterName" to "",
                 "level" to 0,
-                "storyLevel" to 0
+                "storyLevel" to 0,
+                "crewWalkCount" to 0,
+                "crewCaloCount" to 0,
+                "crewId" to crewId,
+                "crewDisCount" to 0
             )
 
             db.collection("Game")

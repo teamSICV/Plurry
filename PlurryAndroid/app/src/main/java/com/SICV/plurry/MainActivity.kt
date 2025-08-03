@@ -4,6 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.SICV.plurry.crewstep.CrewLineChooseActivity
@@ -12,6 +15,8 @@ import com.SICV.plurry.goingwalk.GoingWalkMainActivity
 import com.SICV.plurry.login.LoginMainActivity
 import com.SICV.plurry.pointrecord.PointRecordMainActivity
 import com.SICV.plurry.raising.RaisingMainActivity
+import com.SICV.plurry.ranking.MainCrewRankingManager
+import com.SICV.plurry.ranking.MainRankingManager
 import com.SICV.plurry.ranking.RankingMainActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -24,6 +29,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var rankingManager: MainRankingManager
+    private lateinit var crewRankingManager: MainCrewRankingManager
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +46,18 @@ class MainActivity : AppCompatActivity() {
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
         settingButton()
+
+        //메인-랭킹
+        setupRankingManager()
+
+        //메인-크루데이터
+        val caloTextView = findViewById<TextView>(R.id.mainCrewCalo)
+        val countTextView = findViewById<TextView>(R.id.mainCrewCount)
+        val distanceTextView = findViewById<TextView>(R.id.mainCrewDistance)
+
+        crewRankingManager = MainCrewRankingManager(caloTextView, countTextView, distanceTextView)
+        crewRankingManager.startUpdating()
+
     }
 
     private fun settingButton() {
@@ -71,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //메인-로그인, 로그아웃
     private fun checkUserCrewStatus() {
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
@@ -126,5 +147,39 @@ class MainActivity : AppCompatActivity() {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
+    }
+
+    //메인-랭킹
+    private fun setupRankingManager() {
+        val rankingLinearLayout = findViewById<LinearLayout>(R.id.mainRankLinearLayout)
+        val titleTextView = rankingLinearLayout.getChildAt(0) as TextView
+        val valueTextView = rankingLinearLayout.getChildAt(1) as TextView
+        val unitTextView = rankingLinearLayout.getChildAt(2) as TextView
+
+        val leftArrow = findViewById<ImageView>(R.id.btnPre)
+        val rightArrow = findViewById<ImageView>(R.id.btnNext)
+
+        rankingManager = MainRankingManager(
+            titleTextView, valueTextView, unitTextView, leftArrow, rightArrow
+        )
+
+        rankingManager.initialize()
+    }
+
+    //메인-크루데이터
+    override fun onResume() {
+        super.onResume()
+        crewRankingManager.startUpdating()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        crewRankingManager.stopUpdating()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        rankingManager.cleanup()
+        crewRankingManager.cleanup()
     }
 }
