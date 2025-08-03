@@ -317,6 +317,15 @@ class CrewLineMainActivity : AppCompatActivity() {
                                 Log.d("CrewLineMain", "사용자 crewAt 필드 업데이트 완료")
                                 isJustJoined = true
                                 addUserPlacesToCrew(crewId, uid, db)
+
+                                db.collection("Game").document("users").collection("userReward").document(uid)
+                                    .update("crewRewardItem", 0)
+                                    .addOnSuccessListener {
+                                        Log.d("CrewLineMain", "crewRewardItem 초기화 완료")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e("CrewLineMain", "crewRewardItem 초기화 실패", e)
+                                    }
                             }
                             .addOnFailureListener { e ->
                                 Log.e("CrewLineMain", "사용자 crewAt 필드 업데이트 실패", e)
