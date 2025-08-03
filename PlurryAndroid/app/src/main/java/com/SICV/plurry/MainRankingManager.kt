@@ -1,5 +1,7 @@
 package com.SICV.plurry.ranking
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.ImageView
 import android.widget.TextView
@@ -22,6 +24,10 @@ class MainRankingManager(
     private var currentCrewId: String? = null
     private var currentRankingType = RankingType.PERSONAL_RANKING
 
+    private val refreshHandler = Handler(Looper.getMainLooper())
+    private var refreshRunnable: Runnable? = null
+    private val refreshInterval = 5000L
+
     enum class RankingType {
         PERSONAL_RANKING,
         CREW_CONTRIBUTION,
@@ -32,17 +38,91 @@ class MainRankingManager(
         setupClickListeners()
         loadUserInfo()
         valueTextView.gravity = android.view.Gravity.END
+        startAutoRefresh()
     }
 
     private fun setupClickListeners() {
         leftArrow.setOnClickListener {
             currentRankingType = getPreviousType()
             updateDisplay()
+            restartAutoRefresh()
         }
 
         rightArrow.setOnClickListener {
             currentRankingType = getNextType()
             updateDisplay()
+            restartAutoRefresh()
+        }
+    }
+
+    private fun startAutoRefresh() {
+        stopAutoRefresh()
+
+        refreshRunnable = object : Runnable {
+            override fun run() {
+                refreshUserCrewInfoAndData()
+                refreshHandler.postDelayed(this, refreshInterval)
+            }
+        }
+        refreshHandler.postDelayed(refreshRunnable!!, refreshInterval)
+    }
+
+    private fun stopAutoRefresh() {
+        refreshRunnable?.let {
+            refreshHandler.removeCallbacks(it)
+        }
+        refreshRunnable = null
+    }
+
+    private fun restartAutoRefresh() {
+        stopAutoRefresh()
+        startAutoRefresh()
+    }
+
+    private fun refreshUserCrewInfoAndData() {
+        currentUserId?.let { userId ->
+            firestore.collection("Users")
+                .document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    try {
+                        val previousCrewId = currentCrewId
+
+                        if (document.exists()) {
+                            val newCrewId = document.getString("crewAt")
+                            currentCrewId = if (newCrewId.isNullOrBlank()) null else newCrewId
+                        } else {
+                            currentCrewId = null
+                        }
+
+                        if (previousCrewId != currentCrewId) {
+                            if (currentCrewId != null && currentCrewId!!.isNotBlank()) {
+                                crewTotalManager.startCrewScoreListener(currentCrewId!!)
+                            }
+
+                            if (currentRankingType == RankingType.CREW_CONTRIBUTION ||
+                                currentRankingType == RankingType.CREW_RANKING) {
+                                if (currentCrewId == null || currentCrewId!!.isBlank()) {
+                                    valueTextView.text = "--"
+                                }
+                            }
+                        }
+                        loadCurrentRankingData()
+                    } catch (e: Exception) {
+                        loadCurrentRankingData()
+                    }
+                }
+                .addOnFailureListener {
+                    loadCurrentRankingData()
+                }
+        }
+    }
+
+    private fun loadCurrentRankingData() {
+        when (currentRankingType) {
+            RankingType.PERSONAL_RANKING -> loadPersonalRanking()
+            RankingType.CREW_CONTRIBUTION -> loadCrewContribution()
+            RankingType.CREW_RANKING -> loadCrewRanking()
         }
     }
 
@@ -211,6 +291,7 @@ class MainRankingManager(
     }
 
     fun cleanup() {
+        stopAutoRefresh()
         crewTotalManager.stopAllListeners()
     }
 }
