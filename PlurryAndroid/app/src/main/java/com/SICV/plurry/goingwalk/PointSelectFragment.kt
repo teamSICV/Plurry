@@ -26,7 +26,7 @@ class PointSelectFragment : DialogFragment() {
     private lateinit var spinner: Spinner
     private lateinit var confirmBtn: Button
     private lateinit var crewExploreBtn: Button // 🚀 NEW: 크루 탐색 버튼
-    private lateinit var recyclerView: RecyclerView
+    private lateinit var recyclerView: RecyclerView // 🚀 FIXED: 'varrecyclerView' -> 'recyclerView' 오타 수정
     private lateinit var adapter: ExploreAdapter
     private val placeList = mutableListOf<PlaceData>()
     // 🚀 수정: visitedPlaceInfo를 VisitedPlaceDetails를 포함하는 Map으로 변경
@@ -65,7 +65,7 @@ class PointSelectFragment : DialogFragment() {
         spinner = view.findViewById(R.id.spinnerRadius)
         confirmBtn = view.findViewById(R.id.btnConfirmRadius)
         crewExploreBtn = view.findViewById(R.id.btnCrewExplore) // 🚀 NEW: 크루 탐색 버튼 초기화
-        recyclerView = view.findViewById(R.id.recyclerViewPlaces)
+        recyclerView = view.findViewById(R.id.recyclerViewPlaces) // 🚀 FIXED: 'varrecyclerView' -> 'recyclerView' 오타 수정
 
         auth = FirebaseAuth.getInstance()
 
@@ -332,14 +332,20 @@ class PointSelectFragment : DialogFragment() {
 
                     // 🚀 MODIFIED: PlaceData 생성 시 isCrewPlace 상태와 함께 전달
                     placeList.add(PlaceData(placeId, geo.latitude, geo.longitude, imgUrl, hasVisitedAndImageUrl, calo, distance, stepNum, visitedImageUrl, isUserAdded, placeName, isCrewPlace))
-                    Log.d("PointSelectFragment", "추가된 장소: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 방문 이미지: $visitedImageUrl, 칼로리: $calo, 거리: $distance, 걸음수: $stepNum, 사용자 추가 여부: $isUserAdded, 크루 장소 여부: $isCrewPlace)")
+                    Log.d("PointSelectFragment", "추가된 장소: $placeId (이름: $placeName, 방문+이미지 여부: $hasVisitedAndImageUrl, 사용자 추가 여부: $isUserAdded, 크루 장소 여부: $isCrewPlace)")
                 } else {
                     Log.d("PointSelectFragment", "거리 초과로 스킵된 장소: $placeId (거리: ${userLocation.distanceTo(placeLocation)}m)")
                 }
             }
 
-            // 🚀 NEW: 크루 장소를 목록의 제일 위로 정렬
-            placeList.sortByDescending { it.isCrewPlace }
+            // 🚀 MODIFIED: 사용자의 요청에 따라 장소 정렬 순서를 변경합니다.
+            // 1. 아직 탐색하지 않은 장소 (isVisitedWithImage = false, isUserAdded = false)
+            // 2. 이미 탐색한 장소 (isVisitedWithImage = true, isUserAdded = false)
+            // 3. 내가 추가한 장소 (isUserAdded = true)
+            // isCrewPlace 정렬은 사용자 요청에 따라 제거되었습니다.
+            placeList.sortWith(compareBy<PlaceData> { it.isUserAdded }
+                .thenBy { it.isVisitedWithImage }
+            )
 
             adapter.notifyDataSetChanged()
             Log.d("PointSelectFragment", "필터링 후 최종 표시될 장소 수: ${placeList.size}")
@@ -509,6 +515,16 @@ class PointSelectFragment : DialogFragment() {
                                 Log.d("PointSelectFragment", "Places 컬렉션에서 크루 장소 ID $placeId 에 해당하는 문서를 찾을 수 없습니다.")
                             }
                         }
+
+                        // 🚀 MODIFIED: 사용자의 요청에 따라 장소 정렬 순서를 변경합니다.
+                        // 1. 아직 탐색하지 않은 장소 (isVisitedWithImage = false, isUserAdded = false)
+                        // 2. 이미 탐색한 장소 (isVisitedWithImage = true, isUserAdded = false)
+                        // 3. 내가 추가한 장소 (isUserAdded = true)
+                        // isCrewPlace 정렬은 사용자 요청에 따라 제거되었습니다.
+                        placeList.sortWith(compareBy<PlaceData> { it.isUserAdded }
+                            .thenBy { it.isVisitedWithImage }
+                        )
+
                         adapter.notifyDataSetChanged()
                         Log.d("PointSelectFragment", "크루 탐색 후 최종 표시될 장소 수: ${placeList.size}")
 
