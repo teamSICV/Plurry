@@ -59,6 +59,7 @@ class ExploreResultDialogFragment : DialogFragment() {
     private var totalSteps: Int = 0
     private var totalDistance: Double = 0.0
     private var totalCalories: Double = 0.0
+    private var placeName: String? = null // 장소 이름을 저장할 변수 추가
 
     // 이미지 비교용 데이터 추가
     private var userImagePath: String? = null
@@ -109,9 +110,34 @@ class ExploreResultDialogFragment : DialogFragment() {
             Glide.with(this).load(it).into(placeImageView)
         }
 
-        setupDialogByMode()
+        // 장소 이름 가져오기
+        placeId?.let { id ->
+            fetchPlaceName(id) { name ->
+                placeName = name
+                // 장소 이름을 가져온 후 UI를 설정합니다.
+                setupDialogByMode()
+            }
+        } ?: run {
+            // placeId가 null일 경우 바로 UI 설정
+            setupDialogByMode()
+        }
+
         builder.setView(view)
         return builder.create()
+    }
+
+    // 장소 이름을 가져오는 함수 추가
+    private fun fetchPlaceName(id: String, onComplete: (String?) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("Places").document(id).get()
+            .addOnSuccessListener { document ->
+                val name = document.getString("name")
+                onComplete(name)
+            }
+            .addOnFailureListener { e ->
+                Log.e("ExploreDialog", "장소 이름 가져오기 실패: ${e.message}")
+                onComplete(null)
+            }
     }
 
     private fun setupDialogByMode() {
@@ -138,25 +164,40 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
 
             "success" -> {
-                titleTextView.text = "탐색 성공!\n보상을 획득했어요!"
+                // 장소 이름이 있으면 타이틀에 포함
+                titleTextView.text = if (placeName != null) {
+                    "${placeName} 탐색 성공!\n보상을 획득했어요!"
+                } else {
+                    "탐색 성공!\n보상을 획득했어요!"
+                }
                 rewardTextView.visibility = View.VISIBLE
                 mainActionButton.visibility = View.GONE
                 secondaryButton.visibility = View.VISIBLE
 
-                rewardTextView.text = "일반 보상 아이템 지급\n크루 보상 아이템 지급"
+                // 초기에는 일반 보상만 표시
+                rewardTextView.text = "일반 보상 아이템 지급"
                 statsTextView.text = "걸음: ${totalSteps} 걸음\n거리: %.2f km\n칼로리: %.1f kcal".format(totalDistance / 1000, totalCalories)
                 statsTextView.visibility = View.VISIBLE
 
                 // 이미지 비교 표시
                 setupImageComparison()
 
-                // ** 일반 보상 아이템 지급 로직 추가 시작 **
+                // 일반 보상 아이템 지급 로직 호출
                 giveGeneralRewardItem()
-                // ** 일반 보상 아이템 지급 로직 추가 끝 **
 
-                // ** 크루 보상 아이템 지급 로직 추가 시작 **
-                giveCrewRewardItemIfApplicable()
-                // ** 크루 보상 아이템 지급 로직 추가 끝 **
+                // 크루 보상 아이템 지급 로직 호출 및 결과에 따라 UI 업데이트
+                giveCrewRewardItemIfApplicable { isCrewRewardGiven ->
+                    if (isCrewRewardGiven) {
+                        // UI 스레드에서 rewardTextView 업데이트
+                        activity?.runOnUiThread {
+                            val currentText = rewardTextView.text.toString()
+                            // 이미 크루 보상 메시지가 없는 경우에만 추가하여 중복 방지
+                            if (!currentText.contains("크루 보상 아이템 지급")) {
+                                rewardTextView.text = "$currentText\n크루 보상 아이템 지급"
+                            }
+                        }
+                    }
+                }
 
                 secondaryButton.setOnClickListener {
                     dismiss()
@@ -193,13 +234,14 @@ class ExploreResultDialogFragment : DialogFragment() {
             }
     }
 
-    // 크루 보상 아이템 지급 (조건부)
-    private fun giveCrewRewardItemIfApplicable() {
+    // 크루 보상 아이템 지급 (조건부) - 콜백 추가
+    private fun giveCrewRewardItemIfApplicable(onResult: (Boolean) -> Unit) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val currentUid = currentUser?.uid
 
         if (currentUid == null || placeId == null) {
             Log.e("ExploreResultDialog", "❌ 크루 보상 지급 오류: UID 또는 Place ID가 null입니다.")
+            onResult(false) // 실패 콜백 호출
             return
         }
 
@@ -212,6 +254,7 @@ class ExploreResultDialogFragment : DialogFragment() {
             .addOnSuccessListener { userDoc ->
                 if (!userDoc.exists()) {
                     Log.d("ExploreResultDialog", "현재 사용자 문서가 존재하지 않습니다: $currentUid")
+                    onResult(false) // 실패 콜백 호출
                     return@addOnSuccessListener
                 }
                 val currentUserCharacterId = userDoc.getString("characterId")
@@ -219,7 +262,8 @@ class ExploreResultDialogFragment : DialogFragment() {
                 Log.d("ExploreResultDialog", "현재 사용자 characterId: $currentUserCharacterId, crewId (crewAt): $currentUserCrewId")
 
                 if (currentUserCrewId == null || currentUserCrewId.isEmpty()) {
-                    Log.d("ExploreResultDialog", "현재 사용자는 크루에 속해있지 않거나 crewAt(크루ID)가 비어있습니다. 크루 보상 지급 안함.")
+                    Log.d("ExploreDialog", "현재 사용자는 크루에 속해있지 않거나 crewAt(크루ID)가 비어있습니다. 크루 보상 지급 안함.")
+                    onResult(false) // 실패 콜백 호출
                     return@addOnSuccessListener
                 }
 
@@ -227,14 +271,16 @@ class ExploreResultDialogFragment : DialogFragment() {
                 db.collection("Places").document(placeId!!).get()
                     .addOnSuccessListener { placeDoc ->
                         if (!placeDoc.exists()) {
-                            Log.d("ExploreResultDialog", "탐색 장소 문서가 존재하지 않습니다: $placeId")
+                            Log.d("ExploreDialog", "탐색 장소 문서가 존재하지 않습니다: $placeId")
+                            onResult(false) // 실패 콜백 호출
                             return@addOnSuccessListener
                         }
                         val addedByCharacterId = placeDoc.getString("addedBy")
-                        Log.d("ExploreResultDialog", "탐색 장소 추가자 (characterId): $addedByCharacterId")
+                        Log.d("ExploreDialog", "탐색 장소 추가자 (characterId): $addedByCharacterId")
 
                         if (addedByCharacterId == null || addedByCharacterId.isEmpty()) {
-                            Log.d("ExploreResultDialog", "탐색 장소에 'addedBy' 정보가 없거나 비어있습니다. 크루 보상 지급 안함.")
+                            Log.d("ExploreDialog", "탐색 장소에 'addedBy' 정보가 없거나 비어있습니다. 크루 보상 지급 안함.")
+                            onResult(false) // 실패 콜백 호출
                             return@addOnSuccessListener
                         }
 
@@ -245,17 +291,18 @@ class ExploreResultDialogFragment : DialogFragment() {
                             .get()
                             .addOnSuccessListener { addedByUserQuery ->
                                 if (addedByUserQuery.isEmpty) {
-                                    Log.d("ExploreResultDialog", "'addedBy' characterId에 해당하는 사용자 문서를 찾을 수 없습니다 ($addedByCharacterId). 크루 보상 지급 안함.")
+                                    Log.d("ExploreDialog", "'addedBy' characterId에 해당하는 사용자 문서를 찾을 수 없습니다 ($addedByCharacterId). 크루 보상 지급 안함.")
+                                    onResult(false) // 실패 콜백 호출
                                     return@addOnSuccessListener
                                 }
                                 val addedByUserDoc = addedByUserQuery.documents.first()
                                 val addedByUserId = addedByUserDoc.id
                                 val addedByCrewId = addedByUserDoc.getString("crewAt") // crewAt 필드 사용
-                                Log.d("ExploreResultDialog", "탐색 장소 추가자의 UID: $addedByUserId, CrewId (crewAt): $addedByCrewId")
+                                Log.d("ExploreDialog", "탐색 장소 추가자의 UID: $addedByUserId, CrewId (crewAt): $addedByCrewId")
 
                                 // 4. 현재 사용자의 crewId와 장소를 추가한 사람의 crewId가 같은지 확인
                                 if (currentUserCrewId == addedByCrewId) {
-                                    Log.d("ExploreResultDialog", "✅ 같은 크루원(ID: $currentUserCrewId)이 추가한 장소입니다. 크루 보상 지급 시작!")
+                                    Log.d("ExploreDialog", "✅ 같은 크루원(ID: $currentUserCrewId)이 추가한 장소입니다. 크루 보상 지급 시작!")
                                     // 5. 같은 크루라면 해당 사용자의 userReward 문서를 찾아 crewRewardItem 증가
                                     val userRewardRef = db.collection("Game")
                                         .document("users")
@@ -264,11 +311,12 @@ class ExploreResultDialogFragment : DialogFragment() {
 
                                     userRewardRef.update("crewRewardItem", FieldValue.increment(1))
                                         .addOnSuccessListener {
-                                            Log.d("ExploreResultDialog", "✅ 크루 보상 아이템 1개 지급 완료!")
+                                            Log.d("ExploreDialog", "✅ 크루 보상 아이템 1개 지급 완료!")
                                             Toast.makeText(requireContext(), "크루원 장소 탐색 성공! 크루 보상 획득!", Toast.LENGTH_SHORT).show()
+                                            onResult(true) // 성공 콜백 호출
                                         }
                                         .addOnFailureListener { e ->
-                                            Log.e("ExploreResultDialog", "❌ 크루 보상 아이템 지급 실패 (업데이트): ${e.message}")
+                                            Log.e("ExploreDialog", "❌ 크루 보상 아이템 지급 실패 (업데이트): ${e.message}")
                                             // crewRewardItem 필드가 없거나 문서가 없을 경우 처리
                                             if (e.message?.contains("NOT_FOUND") == true || e.message?.contains("No document to update") == true || e.message?.contains("FieldValue.increment() can only be used with numeric values") == true) {
                                                 // 기존 데이터를 가져와서 crewRewardItem만 업데이트
@@ -280,38 +328,46 @@ class ExploreResultDialogFragment : DialogFragment() {
 
                                                     userRewardRef.set(updatedData) // 전체 문서를 덮어쓰기 (필드 추가/업데이트)
                                                         .addOnSuccessListener {
-                                                            Log.d("ExploreResultDialog", "✅ 크루 보상 아이템 문서 업데이트/생성 후 1개 지급 완료!")
+                                                            Log.d("ExploreDialog", "✅ 크루 보상 아이템 문서 업데이트/생성 후 1개 지급 완료!")
                                                             Toast.makeText(requireContext(), "크루원 장소 탐색 성공! 크루 보상 획득!", Toast.LENGTH_SHORT).show()
+                                                            onResult(true) // 성공 콜백 호출
                                                         }
                                                         .addOnFailureListener { setE ->
-                                                            Log.e("ExploreResultDialog", "❌ 크루 보상 아이템 문서 생성/업데이트 최종 실패: ${setE.message}")
+                                                            Log.e("ExploreDialog", "❌ 크루 보상 아이템 문서 생성/업데이트 최종 실패: ${setE.message}")
                                                             Toast.makeText(requireContext(), "❌ 크루 보상 지급 최종 실패: ${setE.message}", Toast.LENGTH_SHORT).show()
+                                                            onResult(false) // 실패 콜백 호출
                                                         }
                                                 }.addOnFailureListener { getE ->
-                                                    Log.e("ExploreResultDialog", "❌ 크루 보상 지급을 위한 문서 조회 실패: ${getE.message}")
+                                                    Log.e("ExploreDialog", "❌ 크루 보상 지급을 위한 문서 조회 실패: ${getE.message}")
                                                     Toast.makeText(requireContext(), "❌ 크루 보상 지급 오류: ${getE.message}", Toast.LENGTH_SHORT).show()
+                                                    onResult(false) // 실패 콜백 호출
                                                 }
                                             } else {
                                                 Toast.makeText(requireContext(), "❌ 크루 보상 지급 알 수 없는 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                onResult(false) // 실패 콜백 호출
                                             }
                                         }
                                 } else {
-                                    Log.d("ExploreResultDialog", "탐색 장소 추가자와 크루가 다릅니다. (현재 크루: $currentUserCrewId, 추가자 크루: $addedByCrewId) 크루 보상 지급 안함.")
+                                    Log.d("ExploreDialog", "탐색 장소 추가자와 크루가 다릅니다. (현재 크루: $currentUserCrewId, 추가자 크루: $addedByCrewId) 크루 보상 지급 안함.")
+                                    onResult(false) // 실패 콜백 호출
                                 }
                             }
                             .addOnFailureListener { e ->
-                                Log.e("ExploreResultDialog", "❌ 'addedBy' 사용자 정보 쿼리 실패: ${e.message}")
+                                Log.e("ExploreDialog", "❌ 'addedBy' 사용자 정보 쿼리 실패: ${e.message}")
                                 Toast.makeText(requireContext(), "❌ 'addedBy' 사용자 정보 조회 실패", Toast.LENGTH_SHORT).show()
+                                onResult(false) // 실패 콜백 호출
                             }
                     }
                     .addOnFailureListener { e ->
-                        Log.e("ExploreResultDialog", "❌ 장소 정보(Places) 조회 실패: ${e.message}")
+                        Log.e("ExploreDialog", "❌ 장소 정보(Places) 조회 실패: ${e.message}")
                         Toast.makeText(requireContext(), "❌ 장소 정보 로드 실패", Toast.LENGTH_SHORT).show()
+                        onResult(false) // 실패 콜백 호출
                     }
             }
             .addOnFailureListener { e ->
-                Log.e("ExploreResultDialog", "❌ 현재 사용자 정보(Users) 조회 실패: ${e.message}")
+                Log.e("ExploreDialog", "❌ 현재 사용자 정보(Users) 조회 실패: ${e.message}")
                 Toast.makeText(requireContext(), "❌ 현재 사용자 정보 로드 실패", Toast.LENGTH_SHORT).show()
+                onResult(false) // 실패 콜백 호출
             }
     }
 
