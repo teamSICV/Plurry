@@ -85,7 +85,10 @@ class CrewExit(
         if (currentUserId != null) {
             firestore.collection("Users")
                 .document(currentUserId)
-                .update("crewAt", "")
+                .update(mapOf(
+                    "crewAt" to com.google.firebase.firestore.FieldValue.delete(),
+                    "crewAtTime" to com.google.firebase.firestore.FieldValue.delete()
+                ))
             Log.d(TAG, "Started clearing current leader's crewAt: $currentUserId")
         }
 
@@ -98,7 +101,10 @@ class CrewExit(
                 if (currentUserId != null) {
                     firestore.collection("Users")
                         .document(currentUserId)
-                        .update("crewAt", "")
+                        .update(mapOf(
+                            "crewAt" to com.google.firebase.firestore.FieldValue.delete(),
+                            "crewAtTime" to com.google.firebase.firestore.FieldValue.delete()
+                        ))
                         .await()
                 }
 
@@ -135,7 +141,10 @@ class CrewExit(
                     try {
                         firestore.collection("Users")
                             .document(memberUid)
-                            .update("crewAt", "")
+                            .update(mapOf(
+                                "crewAt" to com.google.firebase.firestore.FieldValue.delete(),
+                                "crewAtTime" to com.google.firebase.firestore.FieldValue.delete()
+                            ))
                             .await()
                         Log.d(TAG, "Cleared crewAt for member: $memberUid")
                     } catch (e: Exception) {
@@ -162,7 +171,10 @@ class CrewExit(
                     try {
                         firestore.collection("Users")
                             .document(leaderField)
-                            .update("crewAt", "")
+                            .update(mapOf(
+                                "crewAt" to com.google.firebase.firestore.FieldValue.delete(),
+                                "crewAtTime" to com.google.firebase.firestore.FieldValue.delete()
+                            ))
                             .await()
                         Log.d(TAG, "Cleared crewAt for leader: $leaderField")
                     } catch (e: Exception) {

@@ -204,6 +204,12 @@ class RankingCrewTotal {
 
     private suspend fun getCrewMembers(crewId: String): List<String> {
         return try {
+            // crewId가 비어있거나 null인 경우 체크
+            if (crewId.isBlank()) {
+                Log.w(TAG, "Crew ID is empty or blank")
+                return emptyList()
+            }
+
             val crewDoc = firestore.collection("Crew")
                 .document(crewId)
                 .collection("member")
@@ -216,11 +222,11 @@ class RankingCrewTotal {
                 Log.d(TAG, "Found ${members.size} members for crew $crewId")
                 members
             } else {
-                Log.w(TAG, "No members found for crew $crewId")
+                Log.w(TAG, "No members document found for crew $crewId")
                 emptyList()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting crew members for $crewId", e)
+            Log.e(TAG, "Error getting crew members for crewId: '$crewId'", e)
             emptyList()
         }
     }

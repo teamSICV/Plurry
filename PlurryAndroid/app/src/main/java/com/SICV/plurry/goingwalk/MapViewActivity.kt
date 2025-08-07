@@ -93,9 +93,10 @@ class MapViewActivity : AppCompatActivity() {
             val lat = intent.getDoubleExtra("lat", 0.0)
             val lng = intent.getDoubleExtra("lng", 0.0)
             val imageUrl = intent.getStringExtra("imageUrl") ?: ""
+            val placeName = intent.getStringExtra("placeName") ?: "알 수 없는 장소" // 🚀 NEW: placeName 가져오기
 
-            Log.d("MapViewActivity", "탐색 모드 시작: placeId=$placeId, lat=$lat, lng=$lng")
-            startExploreMode(placeId, lat, lng, imageUrl)
+            Log.d("MapViewActivity", "탐색 모드 시작: placeId=$placeId, lat=$lat, lng=$lng, placeName=$placeName")
+            startExploreMode(placeId, lat, lng, imageUrl, placeName) // 🚀 MODIFIED: placeName 전달
         }
 
         btnEndWalk.setOnClickListener {
@@ -401,11 +402,11 @@ class MapViewActivity : AppCompatActivity() {
             }
     }
 
-    private fun startExploreMode(placeId: String, lat: Double, lng: Double, imageUrl: String) {
+    private fun startExploreMode(placeId: String, lat: Double, lng: Double, imageUrl: String, placeName: String) { // 🚀 MODIFIED: placeName 파라미터 추가
         try {
             // ExploreTrackingFragment 클래스가 정의되어 있어야 합니다.
             // 이 코드를 실행하기 전에 해당 Fragment가 프로젝트에 정의되어 있는지 확인해주세요.
-            val fragment = ExploreTrackingFragment.newInstance(placeId, lat, lng, imageUrl)
+            val fragment = ExploreTrackingFragment.newInstance(placeId, lat, lng, imageUrl, placeName) // 🚀 MODIFIED: placeName 전달
 
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainerExplore, fragment)
