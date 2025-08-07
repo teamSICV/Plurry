@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var rankingManager: MainRankingManager
     private lateinit var crewRankingManager: MainCrewRankingManager
-
+    private lateinit var myWalkRecord: MainMyWalkRecord
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +57,9 @@ class MainActivity : AppCompatActivity() {
 
         crewRankingManager = MainCrewRankingManager(caloTextView, countTextView, distanceTextView)
         crewRankingManager.startUpdating()
+
+        //메인-내 항해기록
+        setupMyWalkRecord()
 
     }
 
@@ -166,20 +169,32 @@ class MainActivity : AppCompatActivity() {
         rankingManager.initialize()
     }
 
-    //메인-크루데이터
+    //메인-내 항해기록
+    private fun setupMyWalkRecord() {
+        val caloTextView = findViewById<TextView>(R.id.mainWalkCalo)
+        val distanceTextView = findViewById<TextView>(R.id.mainWalkDistance)
+        val countTextView = findViewById<TextView>(R.id.mainWalkCount)
+
+        myWalkRecord = MainMyWalkRecord(caloTextView, distanceTextView, countTextView)
+        myWalkRecord.startUpdating()
+    }
+
     override fun onResume() {
         super.onResume()
         crewRankingManager.startUpdating()
+        myWalkRecord.startUpdating()
     }
 
     override fun onPause() {
         super.onPause()
         crewRankingManager.stopUpdating()
+        myWalkRecord.stopUpdating()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         rankingManager.cleanup()
         crewRankingManager.cleanup()
+        myWalkRecord.cleanup()
     }
 }
