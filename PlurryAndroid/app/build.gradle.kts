@@ -123,8 +123,6 @@ dependencies {
     implementation ("com.google.mediapipe:tasks-vision:0.10.7")
     //이미지 회전문제 해결
     implementation ("androidx.exifinterface:exifinterface:1.3.6")
-    //MLKit 이미지 키워드 추출
-    implementation ("com.google.mlkit:image-labeling:17.0.7")
 
 
 
