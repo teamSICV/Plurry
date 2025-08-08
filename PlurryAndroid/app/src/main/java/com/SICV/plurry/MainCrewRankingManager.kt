@@ -120,7 +120,7 @@ class MainCrewRankingManager(
     private fun setDefaultValues() {
         caloTextView.text = "0"
         countTextView.text = "0"
-        distanceTextView.text = "0.0"
+        distanceTextView.text = "0"
 
         previousCalo = null
         previousCount = null
@@ -129,14 +129,45 @@ class MainCrewRankingManager(
 
     private fun formatNumber(number: Int): String {
         return when {
-            number >= 1000000 -> String.format("%.1fM", number / 1000000.0)
-            number >= 1000 -> String.format("%.1fK", number / 1000.0)
+            number >= 10000000 -> {
+                val millions = (number / 10000).toInt() / 100.0
+                if (millions == millions.toInt().toDouble()) {
+                    "${millions.toInt()}M"
+                } else {
+                    String.format("%.2f", millions).trimEnd('0').trimEnd('.') + "M"
+                }
+            }
+            number >= 10000 -> {
+                val thousands = (number / 10).toInt() / 100.0
+                if (thousands == thousands.toInt().toDouble()) {
+                    "${thousands.toInt()}K"
+                } else {
+                    String.format("%.2f", thousands).trimEnd('0').trimEnd('.') + "K"
+                }
+            }
             else -> number.toString()
         }
     }
 
     private fun formatDistance(distance: Float): String {
-        return String.format("%.1f", distance)
+        return when {
+            distance >= 10000 -> {
+                val thousands = (distance * 100).toInt() / 100000.0
+                if (thousands == thousands.toInt().toDouble()) {
+                    "${thousands.toInt()}K"
+                } else {
+                    String.format("%.2f", thousands).trimEnd('0').trimEnd('.') + "K"
+                }
+            }
+            else -> {
+                val truncated = (distance * 100).toInt() / 100.0
+                if (truncated == truncated.toInt().toDouble()) {
+                    truncated.toInt().toString()
+                } else {
+                    String.format("%.2f", truncated).trimEnd('0').trimEnd('.')
+                }
+            }
+        }
     }
 
     private fun scheduleNextUpdate() {
