@@ -1068,7 +1068,24 @@ class CrewLineMainActivity : AppCompatActivity() {
                 myLongitude = myLongitude,
                 limit = 10
             )
+            checkAndAddNewMemberPlaces(crewId, db)
         }
+    }
+
+    private fun checkAndAddNewMemberPlaces(crewId: String, db: FirebaseFirestore) {
+        db.collection("Crew").document(crewId).collection("member").document("members").get()
+            .addOnSuccessListener { memberDoc ->
+                if (memberDoc.exists()) {
+                    val memberData = memberDoc.data
+                    if (memberData != null && memberData.isNotEmpty()) {
+                        val memberUids = memberData.keys.toList()
+
+                        for (uid in memberUids) {
+                            addUserPlacesToCrew(crewId, uid, db)
+                        }
+                    }
+                }
+            }
     }
 
     override fun onPause() {

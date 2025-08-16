@@ -4,17 +4,23 @@ import android.Manifest
 import android.app.Dialog
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -22,6 +28,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlin.coroutines.resumeWithException
 
 class CrewPointBottomFragment : BottomSheetDialogFragment() {
 
@@ -35,6 +42,10 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
     private var crewId: String? = null
     private var allPlaces = mutableListOf<PlaceData>()
     private lateinit var adapter: CrewPointBottomAdapter
+    private val handler = Handler(Looper.getMainLooper())
+
+    // 페이징 관련 변수
+    private val pageSize = 3 // 한 번에 로드할 개수
 
     enum class SortType {
         DATE_DESC,
@@ -125,7 +136,6 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
     private fun initLocationService() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
-        // 위치 권한 체크 후 위치 정보 가져오기
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
@@ -135,16 +145,13 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
                 } else {
                     Log.d("CrewPointBottom", "위치 정보를 가져올 수 없음")
                 }
-                // 위치 정보 획득 후 데이터 로딩
                 fetchCrewMembersAndPlaces()
             }.addOnFailureListener { exception ->
                 Log.e("CrewPointBottom", "위치 정보 가져오기 실패", exception)
-                // 위치 정보 없이도 데이터 로딩
                 fetchCrewMembersAndPlaces()
             }
         } else {
             Log.d("CrewPointBottom", "위치 권한 없음")
-            // 위치 권한 없이도 데이터 로딩
             fetchCrewMembersAndPlaces()
         }
     }
@@ -157,14 +164,7 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
         }
 
         updateSortButtonUI()
-
-        val sortedList = when (currentSortType) {
-            SortType.DATE_DESC -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
-            SortType.DATE_ASC -> allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
-            else -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
-        }
-
-        updateRecyclerView(sortedList)
+        applySorting()
         Log.d("CrewPointBottom", "날짜순 정렬 완료 - ${if (currentSortType == SortType.DATE_DESC) "최신순" else "오래된순"}")
     }
 
@@ -181,24 +181,7 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
         }
 
         updateSortButtonUI()
-
-        val sortedList = when (currentSortType) {
-            SortType.DISTANCE_ASC -> {
-                allPlaces.sortedBy { place ->
-                    calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
-                }
-            }
-            SortType.DISTANCE_DESC -> {
-                allPlaces.sortedByDescending { place ->
-                    calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
-                }
-            }
-            else -> allPlaces.sortedBy { place ->
-                calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
-            }
-        }
-
-        updateRecyclerView(sortedList)
+        applySorting()
         Log.d("CrewPointBottom", "거리순 정렬 완료 - ${if (currentSortType == SortType.DISTANCE_ASC) "가까운 순" else "먼 순"}")
     }
 
@@ -281,168 +264,145 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
     private fun fetchPlacesByMembers(memberUids: List<String>) {
         Log.d("CrewPointBottom", "멤버들의 장소 정보 가져오기 시작 - 멤버 수: ${memberUids.size}")
 
-        val db = FirebaseFirestore.getInstance()
-        val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val storage = com.google.firebase.storage.FirebaseStorage.getInstance()
 
-        // whereIn 쿼리는 최대 10개까지만 지원하므로 청크로 나누어 처리
-        val chunks = memberUids.chunked(10)
-        val tempAllPlaces = mutableListOf<PlaceData>()
-        var processedChunks = 0
+                // whereIn 쿼리는 최대 10개까지만 지원하므로 청크로 나누어 처리
+                val chunks = memberUids.chunked(10)
+                val allPlacesData = mutableListOf<PlaceData>()
 
-        Log.d("CrewPointBottom", "청크 개수: ${chunks.size}")
+                Log.d("CrewPointBottom", "청크 개수: ${chunks.size}")
 
-        if (chunks.isEmpty()) {
-            updateRecyclerView(emptyList())
-            return
-        }
+                for ((index, chunk) in chunks.withIndex()) {
+                    Log.d("CrewPointBottom", "청크 $index 처리 중 - 멤버들: $chunk")
 
-        for ((index, chunk) in chunks.withIndex()) {
-            Log.d("CrewPointBottom", "청크 $index 처리 중 - 멤버들: $chunk")
+                    try {
+                        val documents = db.collection("Places")
+                            .whereIn("addedBy", chunk)
+                            .get()
+                            .await()
+                        val documentList = documents.documents
+                        val pages = documentList.chunked(pageSize)
 
-            db.collection("Places")
-                .whereIn("addedBy", chunk)
-                .get()
-                .addOnSuccessListener { documents ->
-                    for (doc in documents) {
-                        Log.d("CrewPointBottom", "장소 데이터: ${doc.data}")
-                    }
+                        for ((pageIndex, page) in pages.withIndex()) {
+                            Log.d("CrewPointBottom", "페이지 $pageIndex 처리 중 - 문서 수: ${page.size}")
 
-                    processChunkDocuments(documents, storage, tempAllPlaces, chunks.size) { updatedAllPlaces ->
-                        processedChunks++
-                        Log.d("CrewPointBottom", "청크 $index 처리 완료 - 현재까지 총 장소: ${updatedAllPlaces.size}")
+                            val pageData = mutableListOf<PlaceData>()
 
-                        if (processedChunks == chunks.size) {
-                            Log.d("CrewPointBottom", "모든 청크 처리 완료 - 최종 장소 개수: ${updatedAllPlaces.size}")
-                            allPlaces.clear()
-                            allPlaces.addAll(updatedAllPlaces)
+                            for (doc in page) {
+                                try {
+                                    Log.d("CrewPointBottom", "장소 데이터: ${doc.data}")
 
-                            applySorting()
+                                    val imageUrl = if (doc.getBoolean("myImg") == true)
+                                        doc.getString("myImgUrl") ?: ""
+                                    else
+                                        doc.getString("baseImgUrl") ?: ""
+
+                                    val name = doc.getString("name") ?: "이름 없음"
+                                    val addedBy = doc.getString("addedBy") ?: ""
+                                    val geoPoint = doc.getGeoPoint("geo")
+                                    val placeId = doc.id
+                                    val lat = geoPoint?.latitude ?: 0.0
+                                    val lng = geoPoint?.longitude ?: 0.0
+                                    val imageTime = doc.getLong("imageTime")
+
+                                    val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
+                                        val distance = calculateDistance(
+                                            myLatitude!!, myLongitude!!,
+                                            geoPoint.latitude, geoPoint.longitude
+                                        )
+                                        "${distance}km"
+                                    } else {
+                                        "거리 정보 없음"
+                                    }
+
+                                    val description = "추가한 유저: $addedBy\n거리: $distanceText"
+
+                                    val finalImageUrl = if (imageUrl.startsWith("gs://")) {
+                                        try {
+                                            val ref = storage.getReferenceFromUrl(imageUrl)
+                                            ref.downloadUrl.await().toString()
+                                        } catch (e: Exception) {
+                                            Log.e("CrewPointBottom", "이미지 URL 변환 실패: $imageUrl", e)
+                                            imageUrl
+                                        }
+                                    } else {
+                                        imageUrl
+                                    }
+
+                                    pageData.add(PlaceData(finalImageUrl, name, description, placeId, lat, lng, imageTime))
+
+                                    Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId)")
+                                } catch (e: Exception) {
+                                    Log.e("CrewPointBottom", "개별 장소 처리 중 오류", e)
+                                }
+                            }
+
+                            withContext(Dispatchers.Main) {
+                                val startIndex = allPlaces.size
+                                allPlaces.addAll(pageData)
+                                adapter.notifyItemRangeInserted(startIndex, pageData.size)
+                                Log.d("CrewPointBottom", "페이지 $pageIndex 완료 - 추가된 장소: ${pageData.size}개")
+                            }
+
+                            delay(50)
                         }
+                    } catch (e: Exception) {
+                        Log.e("CrewPointBottom", "청크 $index 처리 중 오류", e)
                     }
                 }
-                .addOnFailureListener { exception ->
-                    Log.e("CrewPointBottom", "청크 $index 불러오기 실패", exception)
-                    processedChunks++
-                    if (processedChunks == chunks.size) {
-                        allPlaces.clear()
-                        allPlaces.addAll(tempAllPlaces)
-                        applySorting()
-                    }
+
+                withContext(Dispatchers.Main) {
+                    Log.d("CrewPointBottom", "모든 데이터 로드 완료 - 총 장소: ${allPlaces.size}개")
+                    applySorting()
                 }
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.e("CrewPointBottom", "데이터 로드 중 전체 오류", e)
+                    updateRecyclerView(emptyList())
+                }
+            }
         }
     }
 
     private fun applySorting() {
-        when (currentSortType) {
-            SortType.DATE_DESC -> {
-                val sortedList = allPlaces.sortedByDescending { it.imageTime ?: 0L }
-                updateRecyclerView(sortedList)
-            }
-            SortType.DATE_ASC -> {
-                val sortedList = allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
-                updateRecyclerView(sortedList)
-            }
+        val sortedList = when (currentSortType) {
+            SortType.DATE_DESC -> allPlaces.sortedByDescending { it.imageTime ?: 0L }
+            SortType.DATE_ASC -> allPlaces.sortedBy { it.imageTime ?: Long.MAX_VALUE }
             SortType.DISTANCE_ASC -> {
                 if (myLatitude != null && myLongitude != null) {
-                    val sortedList = allPlaces.sortedBy { place ->
+                    allPlaces.sortedBy { place ->
                         calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
                     }
-                    updateRecyclerView(sortedList)
                 } else {
-                    updateRecyclerView(allPlaces)
+                    allPlaces.sortedByDescending { it.imageTime ?: 0L }
                 }
             }
             SortType.DISTANCE_DESC -> {
                 if (myLatitude != null && myLongitude != null) {
-                    val sortedList = allPlaces.sortedByDescending { place ->
+                    allPlaces.sortedByDescending { place ->
                         calculateDistance(myLatitude!!, myLongitude!!, place.lat, place.lng)
                     }
-                    updateRecyclerView(sortedList)
                 } else {
-                    updateRecyclerView(allPlaces)
+                    allPlaces.sortedByDescending { it.imageTime ?: 0L }
                 }
             }
         }
+
+        updateRecyclerView(sortedList)
     }
 
-    private fun processChunkDocuments(
-        documents: com.google.firebase.firestore.QuerySnapshot,
-        storage: com.google.firebase.storage.FirebaseStorage,
-        allPlaces: MutableList<PlaceData>,
-        totalChunks: Int,
-        onChunkComplete: (MutableList<PlaceData>) -> Unit
-    ) {
-        val tempList = mutableListOf<PlaceData>()
-        val finalList = mutableListOf<PlaceData>()
-        var processedCount = 0
-
-        Log.d("CrewPointBottom", "문서 처리 시작 - 문서 개수: ${documents.size()}")
-
-        for (doc in documents) {
-            val imageUrl = if (doc.getBoolean("myImg") == true)
-                doc.getString("myImgUrl") ?: ""
-            else
-                doc.getString("baseImgUrl") ?: ""
-
-            val name = doc.getString("name") ?: "이름 없음"
-            val addedBy = doc.getString("addedBy") ?: ""
-            val geoPoint = doc.getGeoPoint("geo")
-            val placeId = doc.id
-            val lat = geoPoint?.latitude ?: 0.0
-            val lng = geoPoint?.longitude ?: 0.0
-
-            val imageTime = doc.getLong("imageTime")
-
-            val distanceText = if (geoPoint != null && myLatitude != null && myLongitude != null) {
-                val distance = calculateDistance(
-                    myLatitude!!, myLongitude!!,
-                    geoPoint.latitude, geoPoint.longitude
-                )
-                "$distance km"
-            } else {
-                "거리 정보 없음"
-            }
-
-            val description = "추가한 유저: $addedBy\n거리: $distanceText"
-
-            tempList.add(PlaceData(imageUrl, name, description, placeId, lat, lng, imageTime))
-
-            Log.d("CrewPointBottom", "장소 추가: $name (by: $addedBy, placeId: $placeId, lat: $lat, lng: $lng, imageTime: $imageTime)")
-        }
-
-        if (tempList.isEmpty()) {
-            Log.d("CrewPointBottom", "처리할 장소가 없음")
-            onChunkComplete(allPlaces)
-            return
-        }
-
-        for (place in tempList) {
-            if (place.imageUrl.startsWith("gs://")) {
-                val ref = storage.getReferenceFromUrl(place.imageUrl)
-                ref.downloadUrl
-                    .addOnSuccessListener { uri ->
-                        finalList.add(PlaceData(uri.toString(), place.name, place.description, place.placeId, place.lat, place.lng, place.imageTime))
-                        processedCount++
-
-                        if (processedCount == tempList.size) {
-                            allPlaces.addAll(finalList)
-                            onChunkComplete(allPlaces)
-                        }
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e("CrewPointBottom", "이미지 URL 변환 실패: ${place.imageUrl}", exception)
-                        processedCount++
-                        if (processedCount == tempList.size) {
-                            allPlaces.addAll(finalList)
-                            onChunkComplete(allPlaces)
-                        }
-                    }
-            } else {
-                finalList.add(place)
-                processedCount++
-                if (processedCount == tempList.size) {
-                    allPlaces.addAll(finalList)
-                    onChunkComplete(allPlaces)
+    // Task를 코루틴으로 변환하는 확장 함수
+    private suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T {
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            addOnCompleteListener { task ->
+                if (task.exception != null) {
+                    cont.resumeWithException(task.exception!!)
+                } else {
+                    cont.resume(task.result, null)
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.SICV.plurry.crewstep
 
 import android.content.Context
+import android.os.Looper
 import android.util.Log
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -9,6 +10,7 @@ import com.SICV.plurry.pointrecord.PointRecordDialog
 import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import androidx.fragment.app.FragmentManager
+import android.os.Handler
 
 class CrewRecentPlaceManager(
     private val context: Context,
@@ -128,13 +130,18 @@ class CrewRecentPlaceManager(
                     return@addOnSuccessListener
                 }
 
-                fetchPlaceDetails(activePlaceIds, db, container, myLatitude, myLongitude, limit, isInitialLoad)
+                // 🔥 여기서 미리 제한하기 - 최신 장소만 선택
+                Log.d("CrewRecentPlaceManager", "총 ${activePlaceIds.size}개 장소 중 최대 ${limit * 2}개만 처리")
+                val limitedPlaceIds = activePlaceIds.take(minOf(activePlaceIds.size, limit * 2)) // limit의 2배만 처리
+
+                fetchPlaceDetails(limitedPlaceIds, db, container, myLatitude, myLongitude, limit, isInitialLoad)
 
             }
             .addOnFailureListener { e ->
                 Log.e("CrewRecentPlaceManager", "crewPlace 컬렉션 가져오기 실패", e)
             }
     }
+
 
     private fun fetchPlaceDetails(
         placeIds: List<String>,
@@ -146,15 +153,48 @@ class CrewRecentPlaceManager(
         isInitialLoad: Boolean
     ) {
         val placeInfoList = mutableListOf<PlaceInfo>()
-        var processedCount = 0
+
+        // 🔥 더 작은 배치 크기와 더 긴 딜레이
+        val batchSize = 2 // 5개 → 2개로 줄이기
+        val batchDelay = 1000L // 500ms → 1초로 늘리기
+        val batches = placeIds.chunked(batchSize)
 
         val logPrefix = if (isInitialLoad) "초기 로드" else "업데이트"
-        Log.d("CrewRecentPlaceManager", "$logPrefix - 장소 상세 정보 가져오기 시작 - 총 ${placeIds.size}개")
+        Log.d("CrewRecentPlaceManager", "$logPrefix - 장소 상세 정보 가져오기 시작 - 총 ${placeIds.size}개 (${batches.size}개 배치)")
 
-        for (placeId in placeIds) {
+        // 메모리 상태 체크
+        logMemoryUsage("배치 처리 시작 전")
+
+        processBatchesWithMemoryCheck(batches, 0, placeInfoList, db, container, myLatitude, myLongitude, limit, isInitialLoad, batchDelay)
+    }
+
+    // 이 메소드는 새로 추가하세요 (fetchPlaceDetails 메소드 바로 아래에)
+    private fun processBatches(
+        batches: List<List<String>>,
+        currentBatchIndex: Int,
+        placeInfoList: MutableList<PlaceInfo>,
+        db: FirebaseFirestore,
+        container: LinearLayout,
+        myLatitude: Double?,
+        myLongitude: Double?,
+        limit: Int,
+        isInitialLoad: Boolean
+    ) {
+        if (currentBatchIndex >= batches.size) {
+            // 모든 배치 처리 완료
+            displaySortedPlaces(placeInfoList, container, myLatitude, myLongitude, limit, isInitialLoad)
+            return
+        }
+
+        val currentBatch = batches[currentBatchIndex]
+        var processedInBatch = 0
+
+        Log.d("CrewRecentPlaceManager", "배치 ${currentBatchIndex + 1}/${batches.size} 처리 시작 (${currentBatch.size}개)")
+
+        for (placeId in currentBatch) {
             db.collection("Places").document(placeId).get()
                 .addOnSuccessListener { placeDoc ->
-                    processedCount++
+                    processedInBatch++
 
                     if (placeDoc.exists()) {
                         val imageUrl = placeDoc.getString("myImgUrl") ?: ""
@@ -185,19 +225,178 @@ class CrewRecentPlaceManager(
                         Log.w("CrewRecentPlaceManager", "장소 문서가 존재하지 않음: $placeId")
                     }
 
-                    if (processedCount == placeIds.size) {
-                        displaySortedPlaces(placeInfoList, container, myLatitude, myLongitude, limit, isInitialLoad)
+                    // 현재 배치의 모든 작업이 완료되면 다음 배치 처리
+                    if (processedInBatch == currentBatch.size) {
+                        Log.d("CrewRecentPlaceManager", "배치 ${currentBatchIndex + 1} 완료, 0.5초 후 다음 배치 처리")
+
+                        // 배치 간 딜레이 추가 (메모리 정리 시간 확보)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            processBatches(
+                                batches,
+                                currentBatchIndex + 1,
+                                placeInfoList,
+                                db,
+                                container,
+                                myLatitude,
+                                myLongitude,
+                                limit,
+                                isInitialLoad
+                            )
+                        }, 500) // 0.5초 딜레이
                     }
                 }
                 .addOnFailureListener { e ->
                     Log.e("CrewRecentPlaceManager", "Places/$placeId 문서 가져오기 실패", e)
-                    processedCount++
+                    processedInBatch++
 
-                    if (processedCount == placeIds.size) {
-                        displaySortedPlaces(placeInfoList, container, myLatitude, myLongitude, limit, isInitialLoad)
+                    if (processedInBatch == currentBatch.size) {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            processBatches(
+                                batches,
+                                currentBatchIndex + 1,
+                                placeInfoList,
+                                db,
+                                container,
+                                myLatitude,
+                                myLongitude,
+                                limit,
+                                isInitialLoad
+                            )
+                        }, 500)
                     }
                 }
         }
+    }
+
+    private fun processBatchesWithMemoryCheck(
+        batches: List<List<String>>,
+        currentBatchIndex: Int,
+        placeInfoList: MutableList<PlaceInfo>,
+        db: FirebaseFirestore,
+        container: LinearLayout,
+        myLatitude: Double?,
+        myLongitude: Double?,
+        limit: Int,
+        isInitialLoad: Boolean,
+        batchDelay: Long
+    ) {
+        // 메모리 사용률 체크
+        val runtime = Runtime.getRuntime()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        val maxMemory = runtime.maxMemory()
+        val memoryUsagePercent = (usedMemory * 100 / maxMemory).toInt()
+
+        // 🔥 메모리 사용률이 70% 넘으면 강제 가비지 컬렉션
+        if (memoryUsagePercent > 70) {
+            Log.w("CrewRecentPlaceManager", "메모리 사용률 높음 (${memoryUsagePercent}%) - 가비지 컬렉션 실행")
+            System.gc()
+
+            // 가비지 컬렉션 후 잠시 대기
+            Handler(Looper.getMainLooper()).postDelayed({
+                processBatchesWithMemoryCheck(batches, currentBatchIndex, placeInfoList, db, container, myLatitude, myLongitude, limit, isInitialLoad, batchDelay)
+            }, 1000)
+            return
+        }
+
+        // 🔥 메모리 사용률이 85% 넘으면 중단
+        if (memoryUsagePercent > 85) {
+            Log.e("CrewRecentPlaceManager", "메모리 사용률 위험 (${memoryUsagePercent}%) - 처리 중단")
+            displaySortedPlaces(placeInfoList, container, myLatitude, myLongitude, limit, isInitialLoad)
+            return
+        }
+
+        if (currentBatchIndex >= batches.size) {
+            displaySortedPlaces(placeInfoList, container, myLatitude, myLongitude, limit, isInitialLoad)
+            return
+        }
+
+        val currentBatch = batches[currentBatchIndex]
+        var processedInBatch = 0
+
+        Log.d("CrewRecentPlaceManager", "배치 ${currentBatchIndex + 1}/${batches.size} 처리 시작 (${currentBatch.size}개) - 메모리: ${memoryUsagePercent}%")
+
+        for (placeId in currentBatch) {
+            db.collection("Places").document(placeId).get()
+                .addOnSuccessListener { placeDoc ->
+                    processedInBatch++
+
+                    if (placeDoc.exists()) {
+                        val imageUrl = placeDoc.getString("myImgUrl") ?: ""
+                        val placeName = placeDoc.getString("name") ?: "장소 이름 없음"
+                        val addedBy = placeDoc.getString("addedBy") ?: "알 수 없음"
+                        val geoPoint = placeDoc.getGeoPoint("geo")
+                        val lat = geoPoint?.latitude ?: 0.0
+                        val lng = geoPoint?.longitude ?: 0.0
+                        val imageTime = placeDoc.getLong("imageTime") ?: 0L
+
+                        if (imageUrl.isNotEmpty()) {
+                            val placeInfo = PlaceInfo(
+                                placeId = placeId,
+                                imageUrl = imageUrl,
+                                name = placeName,
+                                addedBy = addedBy,
+                                lat = lat,
+                                lng = lng,
+                                imageTime = imageTime
+                            )
+                            placeInfoList.add(placeInfo)
+
+                            if (isInitialLoad) {
+                                Log.d("CrewRecentPlaceManager", "장소 정보 추가: $placeName")
+                            }
+                        }
+                    }
+
+                    if (processedInBatch == currentBatch.size) {
+                        Log.d("CrewRecentPlaceManager", "배치 ${currentBatchIndex + 1} 완료, ${batchDelay}ms 후 다음 배치 처리")
+
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            processBatchesWithMemoryCheck(
+                                batches,
+                                currentBatchIndex + 1,
+                                placeInfoList,
+                                db,
+                                container,
+                                myLatitude,
+                                myLongitude,
+                                limit,
+                                isInitialLoad,
+                                batchDelay
+                            )
+                        }, batchDelay)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("CrewRecentPlaceManager", "Places/$placeId 문서 가져오기 실패", e)
+                    processedInBatch++
+
+                    if (processedInBatch == currentBatch.size) {
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            processBatchesWithMemoryCheck(
+                                batches,
+                                currentBatchIndex + 1,
+                                placeInfoList,
+                                db,
+                                container,
+                                myLatitude,
+                                myLongitude,
+                                limit,
+                                isInitialLoad,
+                                batchDelay
+                            )
+                        }, batchDelay)
+                    }
+                }
+        }
+    }
+
+    private fun logMemoryUsage(tag: String) {
+        val runtime = Runtime.getRuntime()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        val maxMemory = runtime.maxMemory()
+        val percentUsed = (usedMemory * 100 / maxMemory).toInt()
+
+        Log.d("CrewRecentPlaceManager", "$tag - 메모리 사용률: $percentUsed% (${usedMemory / 1024 / 1024}MB / ${maxMemory / 1024 / 1024}MB)")
     }
 
     private fun displaySortedPlaces(
@@ -208,16 +407,14 @@ class CrewRecentPlaceManager(
         limit: Int,
         isInitialLoad: Boolean
     ) {
-        val sortedPlaces = placeInfoList.sortedByDescending { it.imageTime }.take(limit)
+        // 🔥 더 작은 limit 적용
+        val actualLimit = minOf(limit, 3, placeInfoList.size)
+        val sortedPlaces = placeInfoList.sortedByDescending { it.imageTime }.take(actualLimit)
 
         val logPrefix = if (isInitialLoad) "초기 로드" else "업데이트"
-        Log.d("CrewRecentPlaceManager", "$logPrefix - 정렬 완료 - 총 ${sortedPlaces.size}개 장소")
+        Log.d("CrewRecentPlaceManager", "$logPrefix - 정렬 완료 - 총 ${sortedPlaces.size}개 장소 (${placeInfoList.size}개 중 상위 $actualLimit)")
 
-        if (isInitialLoad) {
-            sortedPlaces.forEachIndexed { index, place ->
-                Log.d("CrewRecentPlaceManager", "$index: ${place.name} - imageTime: ${place.imageTime}")
-            }
-        }
+        logMemoryUsage("UI 업데이트 전")
 
         currentPlaces.clear()
         currentPlaces.addAll(sortedPlaces)
@@ -229,6 +426,7 @@ class CrewRecentPlaceManager(
             addPlaceImageToContainer(placeInfo, container, myLatitude, myLongitude)
         }
 
+        logMemoryUsage("UI 업데이트 완료")
         Log.d("CrewRecentPlaceManager", "$logPrefix - UI 업데이트 완료")
     }
 
