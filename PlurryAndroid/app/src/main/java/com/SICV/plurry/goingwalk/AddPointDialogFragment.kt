@@ -40,8 +40,8 @@ class AddPointDialogFragment : DialogFragment() {
     private lateinit var nameInputLayout: LinearLayout
     private lateinit var etPlaceName: EditText
     private lateinit var imagePreview: ImageView
-    private lateinit var btnTakePhoto: Button // 이제 이 버튼은 초기 카메라 실행 버튼 역할만 합니다.
-    private lateinit var btnRetake: Button
+    private lateinit var btnTakePhoto: Button
+    private lateinit var btnRetake: Button // '다시 찍기' 버튼을 복구했습니다.
     private lateinit var btnConfirm: Button
     private lateinit var photoActions: LinearLayout
     private lateinit var btnClose: Button
@@ -59,7 +59,7 @@ class AddPointDialogFragment : DialogFragment() {
         etPlaceName = view.findViewById(R.id.etPlaceName)
         imagePreview = view.findViewById(R.id.imagePreview)
         btnTakePhoto = view.findViewById(R.id.btnTakePhoto)
-        btnRetake = view.findViewById(R.id.btnRetake)
+        btnRetake = view.findViewById(R.id.btnRetake) // '다시 찍기' 버튼 초기화 코드를 복구했습니다.
         btnConfirm = view.findViewById(R.id.btnConfirm)
         photoActions = view.findViewById(R.id.photoActionButtons)
         btnClose = view.findViewById(R.id.btnClose)
@@ -83,10 +83,21 @@ class AddPointDialogFragment : DialogFragment() {
         // 다이얼로그가 열리자마자 카메라를 엽니다.
         openCamera()
 
-        // '다시 찍기' 버튼 클릭 리스너
-        btnRetake.setOnClickListener {
-            openCamera()
+        // 사진 미리보기 클릭 리스너를 추가하여 재촬영 여부를 묻는 Dialog를 띄웁니다.
+        imagePreview.setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setMessage("사진을 재촬영하시겠습니까?")
+                .setPositiveButton("재촬영") { dialog, which ->
+                    openCamera()
+                }
+                .setNegativeButton("취소", null) // 취소 버튼은 아무것도 하지 않고 다이얼로그만 닫습니다.
+                .show()
         }
+
+        // '다시 찍기' 버튼은 숨겨져 있으므로, 이 리스너는 호출되지 않습니다.
+        // btnRetake.setOnClickListener {
+        //     openCamera()
+        // }
 
         // '촬영 완료' 버튼 클릭 리스너
         btnConfirm.setOnClickListener {
@@ -195,10 +206,9 @@ class AddPointDialogFragment : DialogFragment() {
                                                     nameInputLayout.visibility = View.GONE
                                                     etPlaceName.visibility = View.GONE
                                                     btnTakePhoto.visibility = View.GONE
-                                                    btnRetake.visibility = View.GONE
+                                                    photoActions.visibility = View.GONE
                                                     btnConfirm.visibility = View.GONE
                                                     btnClose.visibility = View.GONE
-                                                    photoActions.visibility = View.GONE
                                                     progressLayout.visibility = View.GONE
                                                     imagePreview.visibility = View.GONE
 
@@ -226,10 +236,9 @@ class AddPointDialogFragment : DialogFragment() {
                                                                 nameInputLayout.visibility = View.GONE
                                                                 etPlaceName.visibility = View.GONE
                                                                 btnTakePhoto.visibility = View.GONE
-                                                                btnRetake.visibility = View.GONE
+                                                                photoActions.visibility = View.GONE
                                                                 btnConfirm.visibility = View.GONE
                                                                 btnClose.visibility = View.GONE
-                                                                photoActions.visibility = View.GONE
                                                                 progressLayout.visibility = View.GONE
                                                                 imagePreview.visibility = View.GONE
 
@@ -371,7 +380,11 @@ class AddPointDialogFragment : DialogFragment() {
                 etPlaceName.visibility = View.VISIBLE
                 etPlaceName.requestFocus() // 이름 입력 필드에 포커스
 
-                photoActions.visibility = View.VISIBLE // '다시 찍기', '촬영 완료' 버튼 표시
+                // '촬영 완료' 버튼이 포함된 액션 버튼 레이아웃을 보이게 합니다.
+                photoActions.visibility = View.VISIBLE
+                // 이전 요청에 따라 '다시 찍기' 버튼은 숨깁니다.
+                btnRetake.visibility = View.GONE
+
                 btnTakePhoto.visibility = View.GONE // 초기 '사진 찍기' 버튼 숨김
                 btnClose.visibility = View.VISIBLE // 닫기 버튼 표시
 
