@@ -182,13 +182,38 @@ class PointRecordDialog : DialogFragment() {
                                 }
 
                                 if (placeDocument.exists()) {
-                                    val imageTime = placeDocument.getLong("imageTime")
-                                    if (imageTime != null) {
+                                    // imageTime을 안전하게 가져오고 필요시 변환
+                                    val imageTime = try {
+                                        when (val imageTimeField = placeDocument.get("imageTime")) {
+                                            is Long -> imageTimeField
+                                            is Double -> imageTimeField.toLong()
+                                            is String -> imageTimeField.toLongOrNull() ?: 0L
+                                            is com.google.firebase.Timestamp -> {
+                                                val timestampValue = imageTimeField.toDate().time
+                                                // Timestamp를 Long으로 변환하여 DB 업데이트
+                                                db.collection("Places").document(placeId)
+                                                    .update("imageTime", timestampValue)
+                                                    .addOnSuccessListener {
+                                                        Log.d("PointRecordDialog", "imageTime을 Timestamp에서 Long으로 변환 완료: $timestampValue")
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        Log.e("PointRecordDialog", "imageTime 변환 업데이트 실패", e)
+                                                    }
+                                                timestampValue
+                                            }
+                                            else -> 0L
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("PointRecordDialog", "imageTime 처리 중 오류", e)
+                                        0L
+                                    }
+
+                                    if (imageTime > 0L) {
                                         val formattedTime = formatTimestamp(imageTime)
                                         updatedDescription += "\n탐색 시간: $formattedTime"
-                                        Log.d("PointRecordDialog", "imageTime 가져오기 성공: $imageTime -> $formattedTime")
+                                        Log.d("PointRecordDialog", "imageTime 처리 완료: $imageTime -> $formattedTime")
                                     } else {
-                                        Log.d("PointRecordDialog", "imageTime이 null입니다")
+                                        Log.d("PointRecordDialog", "유효하지 않은 imageTime")
                                     }
                                 } else {
                                     Log.d("PointRecordDialog", "Places 문서가 존재하지 않음")
