@@ -36,17 +36,16 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 
-class CrewLineMainActivity : AppCompatActivity() {
+class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdateListener {
 
     private lateinit var barChart: BarChart
     private lateinit var handler: Handler
     private lateinit var timeRunnable: Runnable
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var walkRecordAdapter: WalkRecordAdapter
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
+    private lateinit var chartManager: CrewChartManager
+    private lateinit var crewWalkManager: CrewWalkManager
 
-    private var crewWalkData = mutableListOf<WalkRecord>()
     private var currentCrewId = ""
 
     private val koreaTimeZone = TimeZone.getTimeZone("Asia/Seoul")
@@ -59,7 +58,7 @@ class CrewLineMainActivity : AppCompatActivity() {
 
     private lateinit var refreshHandler: Handler
     private lateinit var refreshRunnable: Runnable
-    private val REFRESH_INTERVAL = 5000L
+    private val REFRESH_INTERVAL = 20000L
 
     private var isJustJoined = false
     private lateinit var crewRecentPlaceManager: CrewRecentPlaceManager
@@ -155,6 +154,7 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
 
         barChart = findViewById(R.id.barChart)
+        chartManager = CrewChartManager(barChart)
         val tabLayout = findViewById<TabLayout>(R.id.tablayout)
 
         val imageButton1 = findViewById<ImageButton>(R.id.imageButton1)
@@ -163,30 +163,24 @@ class CrewLineMainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        recyclerView = findViewById<RecyclerView>(R.id.timelineRecyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-
-        val loadingData = listOf(
-            WalkRecord("로딩 중...", "${getKoreaTimeString()}", "0.0km", "0분", "0kcal")
-        )
-        walkRecordAdapter = WalkRecordAdapter(loadingData)
-        recyclerView.adapter = walkRecordAdapter
+        val recyclerView = findViewById<RecyclerView>(R.id.timelineRecyclerView)
+        crewWalkManager = CrewWalkManager(recyclerView, this)
+        crewWalkManager.setDataUpdateListener(this)
 
         if (crewId.isNotEmpty()) {
-            loadCrewWalkRecords(crewId, db)
+            crewWalkManager.loadCrewWalkRecords(crewId, db)
             loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
-        } else {
-            updateRecyclerView(emptyList())
         }
 
-        setChartData(listOf(), getDayLabels(), "시간대별")
+        chartManager.setChartData(listOf(), chartManager.getDayLabels(), "시간대별")
 
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
+                val walkData = crewWalkManager.getCrewWalkData()
                 when (tab?.position) {
-                    0 -> setChartData(getDayData(), getDayLabels(), "시간대별")
-                    1 -> setChartData(getWeekData(), getWeekLabels(), "요일별")
-                    2 -> setChartData(getMonthData(), getMonthLabels(), "일별")
+                    0 -> chartManager.setChartData(chartManager.getDayData(walkData), chartManager.getDayLabels(), "시간대별")
+                    1 -> chartManager.setChartData(chartManager.getWeekData(walkData), chartManager.getWeekLabels(), "요일별")
+                    2 -> chartManager.setChartData(chartManager.getMonthData(walkData), chartManager.getMonthLabels(), "일별")
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -317,6 +311,15 @@ class CrewLineMainActivity : AppCompatActivity() {
                                 Log.d("CrewLineMain", "사용자 crewAt 필드 업데이트 완료")
                                 isJustJoined = true
                                 addUserPlacesToCrew(crewId, uid, db)
+
+                                db.collection("Game").document("users").collection("userReward").document(uid)
+                                    .update("crewRewardItem", 0)
+                                    .addOnSuccessListener {
+                                        Log.d("CrewLineMain", "crewRewardItem 초기화 완료")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e("CrewLineMain", "crewRewardItem 초기화 실패", e)
+                                    }
                             }
                             .addOnFailureListener { e ->
                                 Log.e("CrewLineMain", "사용자 crewAt 필드 업데이트 실패", e)
@@ -464,7 +467,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                         joinTextView.visibility = android.view.View.VISIBLE
                         exitTextView.visibility = android.view.View.GONE
 
-                        loadCrewWalkRecords(crewId, db)
+                        crewWalkManager.loadCrewWalkRecords(crewId, db)
                         loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
                     }
                     .addOnFailureListener { e ->
@@ -507,176 +510,6 @@ class CrewLineMainActivity : AppCompatActivity() {
             myLongitude = myLongitude,
             limit = 10
         )
-    }
-
-    private fun loadCrewWalkRecords(crewId: String, db: FirebaseFirestore) {
-
-        if (crewId.isEmpty()) {
-            updateRecyclerView(emptyList())
-            return
-        }
-
-        val memberPath = "Crew/$crewId/member/members"
-
-        db.collection("Crew").document(crewId).collection("member").document("members").get()
-            .addOnSuccessListener { memberDoc ->
-
-                if (memberDoc.exists()) {
-                    val memberData = memberDoc.data
-
-                    if (memberData != null && memberData.isNotEmpty()) {
-                        val memberUids = memberData.keys.toList()
-                        fetchWalkRecordsForMembers(memberUids, db)
-                    } else {
-                        updateRecyclerView(emptyList())
-                    }
-                } else {
-                    updateRecyclerView(emptyList())
-                }
-            }
-            .addOnFailureListener { e ->
-                updateRecyclerView(emptyList())
-            }
-    }
-
-    private fun fetchWalkRecordsForMembers(memberUids: List<String>, db: FirebaseFirestore) {
-        val walkRecords = mutableListOf<WalkRecord>()
-        var completedRequests = 0
-
-        if (memberUids.isEmpty()) {
-            updateRecyclerView(emptyList())
-            return
-        }
-
-        for (uid in memberUids) {
-
-            db.collection("Users").document(uid).get()
-                .addOnSuccessListener { userDoc ->
-                    val userName = if (userDoc.exists()) {
-                        val name = userDoc.getString("name") ?: uid
-                        name
-                    } else {
-                        uid
-                    }
-                    val crewAtTime = if (userDoc.exists()) {
-                        userDoc.getTimestamp("crewAtTime")?.toDate()?.time
-                    } else {
-                        null
-                    }
-
-                    db.collection("Users").document(uid).collection("goWalk").get()
-                        .addOnSuccessListener { walkDocs ->
-
-                            for (walkDoc in walkDocs.documents) {
-                                try {
-
-                                    val calories = walkDoc.getLong("calories") ?: 0L
-                                    val distance = walkDoc.getDouble("distance") ?: 0.0
-                                    val startTime = try {
-                                        walkDoc.getTimestamp("startTime")?.toDate()?.time ?: 0L
-                                    } catch (e: Exception) {
-                                        0L
-                                    }
-
-                                    val endTime = try {
-                                        walkDoc.getTimestamp("endTime")?.toDate()?.time ?: 0L
-                                    } catch (e: Exception) {
-                                        0L
-                                    }
-
-                                    if (endTime > 0 && distance > 0) {
-                                        val shouldInclude = if (crewAtTime != null) {
-                                            endTime >= crewAtTime
-                                        } else {
-                                            true
-                                        }
-
-                                        if (shouldInclude) {
-                                            val distanceFormatted = String.format("%.1fkm", distance)
-                                            val walkDuration = if (endTime > startTime && startTime > 0) {
-                                                val durationMinutes = (endTime - startTime) / (1000 * 60)
-                                                "${durationMinutes}분"
-                                            } else {
-                                                "0분"
-                                            }
-
-                                            val endTimeFormatted = SimpleDateFormat("yy-MM-dd HH:mm", koreaLocale).apply {
-                                                timeZone = koreaTimeZone
-                                            }.format(Date(endTime))
-
-                                            val walkRecord = WalkRecord(
-                                                userName,
-                                                endTimeFormatted,
-                                                distanceFormatted,
-                                                walkDuration,
-                                                "${calories}kcal"
-                                            )
-
-                                            walkRecords.add(walkRecord)
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("CrewLineMain", "문서 파싱 오류: ${walkDoc.id}", e)
-                                }
-                            }
-
-                            completedRequests++
-
-                            if (completedRequests == memberUids.size) {
-                                updateRecyclerView(walkRecords)
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            completedRequests++
-
-                            if (completedRequests == memberUids.size) {
-                                updateRecyclerView(walkRecords)
-                            }
-                        }
-                }
-                .addOnFailureListener { e ->
-                    completedRequests++
-
-                    if (completedRequests == memberUids.size) {
-                        updateRecyclerView(walkRecords)
-                    }
-                }
-        }
-    }
-
-    private fun updateRecyclerView(walkRecords: List<WalkRecord>) {
-        crewWalkData.clear()
-        crewWalkData.addAll(walkRecords)
-
-        walkRecords.forEachIndexed { index, record ->
-        }
-
-        try {
-            val sortedRecords = if (walkRecords.isNotEmpty()) {
-                walkRecords.sortedByDescending {
-                    try {
-                        it.getParsedTime()?.time ?: 0L
-                    } catch (e: Exception) {
-                        0L
-                    }
-                }
-            } else {
-                listOf(WalkRecord("데이터 없음", "${getKoreaTimeString()}", "0.0km", "0분", "0kcal"))
-            }
-
-            runOnUiThread {
-                walkRecordAdapter = WalkRecordAdapter(sortedRecords)
-                recyclerView.adapter = walkRecordAdapter
-
-                refreshCurrentChart()
-            }
-        } catch (e: Exception) {
-            runOnUiThread {
-                val errorRecord = listOf(WalkRecord("오류 발생", "${getKoreaTimeString()}", "0.0km", "0분", "0kcal"))
-                walkRecordAdapter = WalkRecordAdapter(errorRecord)
-                recyclerView.adapter = walkRecordAdapter
-            }
-        }
     }
 
     private fun addUserPlacesToCrew(crewId: String, uid: String, db: FirebaseFirestore) {
@@ -752,194 +585,6 @@ class CrewLineMainActivity : AppCompatActivity() {
             }
     }
 
-    private fun refreshCurrentChart() {
-        val currentTab = findViewById<TabLayout>(R.id.tablayout).selectedTabPosition
-        when (currentTab) {
-            0 -> setChartData(getDayData(), getDayLabels(), "시간대별")
-            1 -> setChartData(getWeekData(), getWeekLabels(), "요일별")
-            2 -> setChartData(getMonthData(), getMonthLabels(), "일별")
-            else -> setChartData(getDayData(), getDayLabels(), "시간대별")
-        }
-    }
-
-    private fun setChartData(entries: List<BarEntry>, labels: List<String>, labelName: String) {
-        val dataSet = BarDataSet(entries, labelName)
-        dataSet.color = Color.parseColor("#4CAF50")
-
-        dataSet.setDrawValues(true)
-        dataSet.valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
-            override fun getFormattedValue(value: Float): String {
-                return if (value == 0f) "" else String.format("%.1f", value)
-            }
-        }
-
-        val barData = BarData(dataSet)
-        barData.barWidth = 0.9f
-
-        barChart.data = barData
-        barChart.setFitBars(true)
-        barChart.description.isEnabled = false
-
-        val xAxis = barChart.xAxis
-        xAxis.valueFormatter = IndexAxisValueFormatter(labels)
-        xAxis.position = XAxis.XAxisPosition.BOTTOM
-        xAxis.granularity = 1f
-        xAxis.setDrawGridLines(false)
-
-        barChart.axisRight.isEnabled = false
-
-        barChart.invalidate()
-    }
-
-    private fun getDayLabels() = listOf("0-4", "4-8", "8-12", "12-16", "16-20", "20-24")
-
-    private fun getDayData(): List<BarEntry> {
-        val timeSlots = FloatArray(6) { 0f }
-        val today = Calendar.getInstance(koreaTimeZone, koreaLocale)
-        val todayYear = today.get(Calendar.YEAR)
-        val todayMonth = today.get(Calendar.MONTH)
-        val todayDay = today.get(Calendar.DAY_OF_MONTH)
-
-        for (record in crewWalkData) {
-            try {
-                val time = record.getParsedTime()
-                if (time != null) {
-                    val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
-                    calendar.time = time
-
-                    if (calendar.get(Calendar.YEAR) == todayYear &&
-                        calendar.get(Calendar.MONTH) == todayMonth &&
-                        calendar.get(Calendar.DAY_OF_MONTH) == todayDay) {
-
-                        val hour = calendar.get(Calendar.HOUR_OF_DAY)
-                        val slotIndex = when (hour) {
-                            in 0..3 -> 0
-                            in 4..7 -> 1
-                            in 8..11 -> 2
-                            in 12..15 -> 3
-                            in 16..19 -> 4
-                            in 20..23 -> 5
-                            else -> 0
-                        }
-                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                        timeSlots[slotIndex] += distance
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("CrewLineMain", "시간 파싱 오류: ${record.time}", e)
-            }
-        }
-
-        return timeSlots.mapIndexed { index, value ->
-            BarEntry(index.toFloat(), value)
-        }
-    }
-
-    private fun getWeekLabels() = listOf("월", "화", "수", "목", "금", "토", "일")
-
-    private fun getWeekData(): List<BarEntry> {
-        val weeklyData = FloatArray(7) { 0f }
-        val today = Calendar.getInstance(koreaTimeZone, koreaLocale)
-
-        val startOfWeek = Calendar.getInstance(koreaTimeZone, koreaLocale)
-        startOfWeek.time = today.time
-        startOfWeek.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        startOfWeek.set(Calendar.HOUR_OF_DAY, 0)
-        startOfWeek.set(Calendar.MINUTE, 0)
-        startOfWeek.set(Calendar.SECOND, 0)
-        startOfWeek.set(Calendar.MILLISECOND, 0)
-
-        val endOfWeek = Calendar.getInstance(koreaTimeZone, koreaLocale)
-        endOfWeek.time = startOfWeek.time
-        endOfWeek.add(Calendar.DAY_OF_WEEK, 6)
-        endOfWeek.set(Calendar.HOUR_OF_DAY, 23)
-        endOfWeek.set(Calendar.MINUTE, 59)
-        endOfWeek.set(Calendar.SECOND, 59)
-
-        for (record in crewWalkData) {
-            try {
-                val time = record.getParsedTime()
-                if (time != null) {
-                    val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
-                    calendar.time = time
-
-                    if (calendar.timeInMillis >= startOfWeek.timeInMillis &&
-                        calendar.timeInMillis <= endOfWeek.timeInMillis) {
-
-                        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-                        val index = when (dayOfWeek) {
-                            Calendar.MONDAY -> 0
-                            Calendar.TUESDAY -> 1
-                            Calendar.WEDNESDAY -> 2
-                            Calendar.THURSDAY -> 3
-                            Calendar.FRIDAY -> 4
-                            Calendar.SATURDAY -> 5
-                            Calendar.SUNDAY -> 6
-                            else -> 0
-                        }
-                        val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                        weeklyData[index] += distance
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("CrewLineMain", "요일 파싱 오류: ${record.time}", e)
-            }
-        }
-
-        return weeklyData.mapIndexed { index, value -> BarEntry(index.toFloat(), value) }
-    }
-
-
-    private fun getMonthLabels(): List<String> {
-        val labels = mutableListOf<String>()
-        val calendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
-
-        val currentMonth = calendar.get(Calendar.MONTH)
-        val currentYear = calendar.get(Calendar.YEAR)
-        val maxDayOfMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-        for (day in 1..maxDayOfMonth) {
-            labels.add("${currentMonth + 1}/$day")
-        }
-
-        return labels
-    }
-
-    private fun getMonthData(): List<BarEntry> {
-        val currentCalendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
-        val currentMonth = currentCalendar.get(Calendar.MONTH)
-        val currentYear = currentCalendar.get(Calendar.YEAR)
-        val maxDayOfMonth = currentCalendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-        val monthlyData = FloatArray(maxDayOfMonth) { 0f }
-
-        for (record in crewWalkData) {
-            try {
-                val time = record.getParsedTime()
-                if (time != null) {
-                    val recordCalendar = Calendar.getInstance(koreaTimeZone, koreaLocale)
-                    recordCalendar.time = time
-
-                    val recordYear = recordCalendar.get(Calendar.YEAR)
-                    val recordMonth = recordCalendar.get(Calendar.MONTH)
-                    val recordDay = recordCalendar.get(Calendar.DAY_OF_MONTH)
-
-                    if (recordYear == currentYear && recordMonth == currentMonth) {
-                        val index = recordDay - 1
-                        if (index >= 0 && index < maxDayOfMonth) {
-                            val distance = record.distance.replace("km", "").toFloatOrNull() ?: 0f
-                            monthlyData[index] += distance
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("CrewLineMain", "월간 데이터 파싱 오류: ${record.time}", e)
-            }
-        }
-
-        return monthlyData.mapIndexed { index, value -> BarEntry(index.toFloat(), value) }
-    }
-
     private fun checkAndRequestLocationPermission() {
         if (androidx.core.app.ActivityCompat.checkSelfPermission(
                 this,
@@ -950,7 +595,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                 if (success) {
                     val crewId = intent.getStringExtra("crewId") ?: ""
                     if (crewId.isNotEmpty()) {
-                        loadCrewWalkRecords(crewId, db)
+                        crewWalkManager.loadCrewWalkRecords(crewId, db)
                     }
                 }
             }
@@ -1000,7 +645,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                     if (success) {
                         val crewId = intent.getStringExtra("crewId") ?: ""
                         if (crewId.isNotEmpty()) {
-                            loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
+                            crewWalkManager.loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
                             loadCrewPlaces(crewId, FirebaseFirestore.getInstance(), findViewById(R.id.pointButtonContainer))
                         }
                     }
@@ -1009,7 +654,7 @@ class CrewLineMainActivity : AppCompatActivity() {
                 Toast.makeText(this, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
                 val crewId = intent.getStringExtra("crewId") ?: ""
                 if (crewId.isNotEmpty()) {
-                    loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
+                    crewWalkManager.loadCrewWalkRecords(crewId, FirebaseFirestore.getInstance())
                 }
             }
         }
@@ -1048,8 +693,8 @@ class CrewLineMainActivity : AppCompatActivity() {
     private fun refreshCrewData() {
         val crewId = intent.getStringExtra("crewId") ?: ""
         if (crewId.isNotEmpty()) {
-            Log.d("CrewLineMain", "5초 새로고침 실행")
-            loadCrewWalkRecords(crewId, db)
+            Log.d("CrewLineMain", "새로고침 실행")
+            crewWalkManager.loadCrewWalkRecords(crewId, db)
 
             crewRecentPlaceManager.refreshCrewPlaces(
                 crewId = crewId,
@@ -1059,7 +704,30 @@ class CrewLineMainActivity : AppCompatActivity() {
                 myLongitude = myLongitude,
                 limit = 10
             )
+            checkAndAddNewMemberPlaces(crewId, db)
         }
+    }
+
+    // WalkDataUpdateListener 인터페이스 구현
+    override fun onWalkDataUpdated(walkRecords: List<WalkRecord>) {
+        val currentTab = findViewById<TabLayout>(R.id.tablayout).selectedTabPosition
+        chartManager.refreshCurrentChart(currentTab, walkRecords)
+    }
+
+    private fun checkAndAddNewMemberPlaces(crewId: String, db: FirebaseFirestore) {
+        db.collection("Crew").document(crewId).collection("member").document("members").get()
+            .addOnSuccessListener { memberDoc ->
+                if (memberDoc.exists()) {
+                    val memberData = memberDoc.data
+                    if (memberData != null && memberData.isNotEmpty()) {
+                        val memberUids = memberData.keys.toList()
+
+                        for (uid in memberUids) {
+                            addUserPlacesToCrew(crewId, uid, db)
+                        }
+                    }
+                }
+            }
     }
 
     override fun onPause() {
@@ -1083,6 +751,13 @@ class CrewLineMainActivity : AppCompatActivity() {
 
         if (::refreshHandler.isInitialized) {
             refreshHandler.removeCallbacks(refreshRunnable)
+        }
+
+        if (::crewWalkManager.isInitialized) {
+            crewWalkManager.clearData()
+        }
+        if (::crewRecentPlaceManager.isInitialized) {
+            crewRecentPlaceManager.clearCache()
         }
     }
 }

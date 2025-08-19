@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
@@ -8,6 +9,274 @@
     android:background="@drawable/mainactivitybg"
     tools:context=".MainActivity">
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="내 항해기록"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginStart="10dp"
+        app:layout_constraintBottom_toTopOf="@+id/mainMyWalk"
+        app:layout_constraintStart_toStartOf="@+id/mainMyWalk" />
+
+    <LinearLayout
+        android:id="@+id/mainMyWalk"
+        android:layout_width="340dp"
+        android:layout_height="70dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginTop="50dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/mainWalkCount"
+                android:textSize="20sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="000"/>
+
+            <TextView
+                android:textSize="17sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="걸음"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/mainWalkDistance"
+                android:textSize="20sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="000"/>
+
+            <TextView
+                android:textSize="17sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Km"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/mainWalkCalo"
+                android:textSize="20sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="000"/>
+
+            <TextView
+                android:textSize="17sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Kcal"/>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:text="크루 항해기록"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/mainCrewWalk"
+        app:layout_constraintStart_toStartOf="@+id/mainCrewWalk" />
+
+    <LinearLayout
+        android:id="@+id/mainCrewWalk"
+        android:layout_width="340dp"
+        android:layout_height="70dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginTop="115dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/mainMyWalk">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/mainCrewCount"
+                android:textSize="20sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="000"/>
+
+            <TextView
+                android:textSize="17sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="걸음"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/mainCrewDistance"
+                android:textSize="20sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="000"/>
+
+            <TextView
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Km"
+                android:textSize="17sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/mainCrewCalo"
+                android:textSize="20sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="000"/>
+
+            <TextView
+                android:textSize="17sp"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Kcal"/>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="알림"
+        android:textSize="20dp"
+        android:textStyle="bold"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="30dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mainCrewWalk" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="350dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="5dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView">
+    </androidx.recyclerview.widget.RecyclerView>
+
+    <RelativeLayout
+        android:layout_width="350dp"
+        android:layout_height="100dp"
+        android:layout_margin="16dp"
+        android:elevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/recyclerView">
+
+        <ImageView
+            android:id="@+id/btnPre"
+            android:layout_width="40dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="20dp"
+            android:rotation="90"
+            android:src="@drawable/downarrow"
+            android:clickable="true"
+            android:layout_centerVertical="true" />
+
+        <LinearLayout
+            android:id="@+id/mainRankLinearLayout"
+            android:layout_width="230dp"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:text="개인\n랭킹"
+                android:gravity="center"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:text="00000"
+                android:textSize="40sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginStart="10dp"/>
+
+            <TextView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:text="위"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_gravity="bottom"
+                android:layout_marginBottom="6dp"
+                android:layout_marginEnd="10dp"/>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnNext"
+            android:layout_width="40dp"
+            android:layout_height="30dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="20dp"
+            android:src="@drawable/downarrow"
+            android:clickable="true"
+            android:rotation="270"/>
+    </RelativeLayout>
 
     <Button
         android:id="@+id/b_goingWalk"

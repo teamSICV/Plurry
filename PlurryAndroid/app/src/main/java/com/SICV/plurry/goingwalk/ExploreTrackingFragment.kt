@@ -55,6 +55,7 @@ class ExploreTrackingFragment : Fragment() {
     private var arrivalDialogShown = false
     private var targetImageUrl: String? = null
     private var placeId: String? = null
+    private var targetPlaceName: String? = null // 🚀 NEW: 장소 이름 변수 추가
 
     private lateinit var fitnessOptions: FitnessOptions
     private var exploreStartTime: Long = 0L
@@ -93,6 +94,7 @@ class ExploreTrackingFragment : Fragment() {
             targetLat = it.getDouble("targetLat")
             targetLng = it.getDouble("targetLng")
             targetImageUrl = it.getString("targetImageUrl")
+            targetPlaceName = it.getString("targetPlaceName") // 🚀 NEW: 장소 이름 가져오기
         }
 
         targetImageUrl?.let { url ->
@@ -185,7 +187,8 @@ class ExploreTrackingFragment : Fragment() {
                 // 🚀 MODIFIED: isExploringActive가 true일 때만 탐색 관련 UI 업데이트
                 if (isExploringActive) {
                     val distance = calculateDistance(current.latitude, current.longitude)
-                    tvDistanceInfo.text = "남은 거리: %.1f m".format(distance)
+                    // 🚀 MODIFIED: 장소 이름을 포함하여 텍스트 업데이트
+                    tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance)
 
                     val destLoc = Location("dest").apply {
                         latitude = targetLat
@@ -339,13 +342,14 @@ class ExploreTrackingFragment : Fragment() {
     }
 
     companion object {
-        fun newInstance(placeId: String, lat: Double, lng: Double, imageUrl: String): ExploreTrackingFragment {
+        fun newInstance(placeId: String, lat: Double, lng: Double, imageUrl: String, placeName: String): ExploreTrackingFragment { // 🚀 MODIFIED: placeName 인자 추가
             return ExploreTrackingFragment().apply {
                 arguments = Bundle().apply {
                     putString("placeId", placeId)
                     putDouble("targetLat", lat)
                     putDouble("targetLng", lng)
                     putString("targetImageUrl", imageUrl)
+                    putString("targetPlaceName", placeName) // 🚀 NEW: placeName 전달
                 }
             }
         }
