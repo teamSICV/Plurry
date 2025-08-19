@@ -1,3 +1,4 @@
+// ExploreTrackingFragment.kt
 package com.SICV.plurry.goingwalk
 
 import android.Manifest
@@ -30,6 +31,7 @@ import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.TimeUnit
@@ -72,6 +74,8 @@ class ExploreTrackingFragment : Fragment() {
     private var lastLocationTime: Long = 0L
     // 🚀 NEW: 이전 위치 (속도 계산용)
     private var lastLocation: Location? = null
+    // 🚀 NEW: 경로 관리를 위한 PolylineManager 인스턴스
+    private var polylineManager: PolylineManager? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -114,6 +118,8 @@ class ExploreTrackingFragment : Fragment() {
         mapFragment = parentFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync { map ->
             googleMap = map
+            // 🚀 NEW: GoogleMap 객체가 준비되면 PolylineManager를 초기화합니다.
+            polylineManager = PolylineManager(map)
         }
 
         exploreStartTime = System.currentTimeMillis()
@@ -184,8 +190,11 @@ class ExploreTrackingFragment : Fragment() {
                 lastLocation = current
                 lastLocationTime = current.elapsedRealtimeNanos
 
-                // 🚀 MODIFIED: isExploringActive가 true일 때만 탐색 관련 UI 업데이트
+                // 🚀 MODIFIED: isExploringActive가 true일 때만 탐색 관련 UI 및 경로 업데이트
                 if (isExploringActive) {
+                    // 🚀 NEW: PolylineManager를 사용하여 현재 위치를 경로에 추가합니다.
+                    polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
+
                     val distance = calculateDistance(current.latitude, current.longitude)
                     // 🚀 MODIFIED: 장소 이름을 포함하여 텍스트 업데이트
                     tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance)
@@ -323,6 +332,8 @@ class ExploreTrackingFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        // 🚀 NEW: 프래그먼트가 소멸될 때 PolylineManager를 초기화합니다.
+        polylineManager?.clearPath()
     }
 
     fun onPhotoTaken(photoUri: android.net.Uri) {
