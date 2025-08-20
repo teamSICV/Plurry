@@ -119,13 +119,24 @@ class PointRecordDialog : DialogFragment() {
                 return@setOnClickListener
             }
 
-            val exploreConfirmDialog = ExploreConfirmDialog(placeId, lat, lng, imageUrl, this)
+            val distance = extractDistanceValue(description)
+            val exploreConfirmDialog = ExploreConfirmDialog(placeId, lat, lng, imageUrl, this, distance)
             exploreConfirmDialog.show(parentFragmentManager, "ExploreConfirmDialog")
         }
 
         return AlertDialog.Builder(requireContext())
             .setView(view)
             .create()
+    }
+
+    private fun extractDistanceFromDescription(description: String): String {
+        val lines = description.split("\n")
+        for (line in lines) {
+            if (line.startsWith("거리:")) {
+                return line.replace("거리:", "").trim()
+            }
+        }
+        return "0.00km"
     }
 
     private fun showVisitedPlaceDescription(placeId: String, placeName: String, textView: TextView) {
@@ -184,11 +195,11 @@ class PointRecordDialog : DialogFragment() {
                             val addedBy = placeDoc.getString("addedBy") ?: ""
 
                             getUserName(addedBy) { addedByName ->
-                                val distance = extractDistanceFromDescription(arguments?.getString("description") ?: "")
+                                val distanceStr = extractDistanceFromDescription(arguments?.getString("description") ?: "")
 
                                 val visitedDescription = buildString {
                                     append("추가한 유저: $addedByName\n")
-                                    append("거리: $distance\n")
+                                    append("거리: $distanceStr\n")
                                     append("탐색 시간: $formattedVisitTime")
                                 }
 
@@ -209,14 +220,15 @@ class PointRecordDialog : DialogFragment() {
             }
     }
 
-    private fun extractDistanceFromDescription(description: String): String {
+    private fun extractDistanceValue(description: String): Double {
         val lines = description.split("\n")
         for (line in lines) {
             if (line.startsWith("거리:")) {
-                return line.replace("거리:", "").trim()
+                val distanceStr = line.replace("거리:", "").replace("km", "").trim()
+                return distanceStr.toDoubleOrNull() ?: 0.0
             }
         }
-        return "0.00km"
+        return 0.0
     }
 
     private fun getUserName(userId: String, callback: (String) -> Unit) {
@@ -291,19 +303,19 @@ class PointRecordDialog : DialogFragment() {
 
                     Log.d("PointRecordDialog", "사용자 이름 가져오기 성공: $userName")
 
+                    var updatedDescription = buildString {
+                        append("추가한 유저: $userName")
+                        if (distanceLine.isNotEmpty()) {
+                            append("\n$distanceLine")
+                        }
+                    }
+
                     if (placeId.isNotEmpty()) {
                         db.collection("Places").document(placeId)
                             .get()
                             .addOnSuccessListener { placeDocument ->
-                                var updatedDescription = buildString {
-                                    append("추가한 유저: $userName")
-                                    if (distanceLine.isNotEmpty()) {
-                                        append("\n$distanceLine")
-                                    }
-                                }
-
                                 if (placeDocument.exists()) {
-                                    // imageTime을 안전하게 가져오고 필요시 변환
+                                    // imageTime 처리 로직은 그대로 유지하되, 거리 정보는 이미 포함되어 있음
                                     val imageTime = try {
                                         when (val imageTimeField = placeDocument.get("imageTime")) {
                                             is Long -> imageTimeField
@@ -311,7 +323,6 @@ class PointRecordDialog : DialogFragment() {
                                             is String -> imageTimeField.toLongOrNull() ?: 0L
                                             is com.google.firebase.Timestamp -> {
                                                 val timestampValue = imageTimeField.toDate().time
-                                                // Timestamp를 Long으로 변환하여 DB 업데이트
                                                 db.collection("Places").document(placeId)
                                                     .update("imageTime", timestampValue)
                                                     .addOnSuccessListener {
@@ -333,32 +344,15 @@ class PointRecordDialog : DialogFragment() {
                                         val formattedTime = formatTimestamp(imageTime)
                                         updatedDescription += "\n탐색 시간: $formattedTime"
                                         Log.d("PointRecordDialog", "imageTime 처리 완료: $imageTime -> $formattedTime")
-                                    } else {
-                                        Log.d("PointRecordDialog", "유효하지 않은 imageTime")
                                     }
-                                } else {
-                                    Log.d("PointRecordDialog", "Places 문서가 존재하지 않음")
                                 }
-
                                 callback(updatedDescription)
                             }
                             .addOnFailureListener { exception ->
                                 Log.e("PointRecordDialog", "imageTime 가져오기 실패", exception)
-                                val updatedDescription = buildString {
-                                    append("추가한 유저: $userName")
-                                    if (distanceLine.isNotEmpty()) {
-                                        append("\n$distanceLine")
-                                    }
-                                }
                                 callback(updatedDescription)
                             }
                     } else {
-                        val updatedDescription = buildString {
-                            append("추가한 유저: $userName")
-                            if (distanceLine.isNotEmpty()) {
-                                append("\n$distanceLine")
-                            }
-                        }
                         callback(updatedDescription)
                     }
                 }
@@ -389,7 +383,8 @@ class PointRecordDialog : DialogFragment() {
         private val lat: Double,
         private val lng: Double,
         private val imageUrl: String,
-        private val parent: DialogFragment
+        private val parent: DialogFragment,
+        private val distance: Double = 0.0
     ) : DialogFragment() {
 
         override fun onCreateDialog(savedInstanceState: Bundle?): android.app.Dialog {
@@ -399,6 +394,11 @@ class PointRecordDialog : DialogFragment() {
             val imageView = view.findViewById<ImageView>(R.id.dialogImage)
             val btnStart = view.findViewById<Button>(R.id.btnStartExplore)
             val btnCancel = view.findViewById<Button>(R.id.btnCancelExplore)
+
+            val tvDistance = view.findViewById<TextView>(R.id.tvDistance)
+            if (tvDistance != null && distance > 0.0) {
+                tvDistance.text = "거리: ${String.format("%.2f", distance)}km"
+            }
 
             Glide.with(view).load(imageUrl).into(imageView)
 
