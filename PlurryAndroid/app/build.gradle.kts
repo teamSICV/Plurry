@@ -1,3 +1,4 @@
+import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,12 +7,15 @@ plugins {
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
     id ("kotlin-kapt")
 }
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+val kakaoKey: String = localProps.getProperty("KAKAO_REST_API_KEY") ?: ""
 
 android {
     namespace = "com.SICV.plurry"
     compileSdk = 35
-
-
 
     defaultConfig {
         applicationId = "com.SICV.plurry"
@@ -28,6 +32,7 @@ android {
                 this.debugSymbolLevel = debugSymbolLevel as String
             }
         }
+        buildConfigField("String", "KAKAO_REST_API_KEY", "\"$kakaoKey\"")
 
     }
 
@@ -123,6 +128,11 @@ dependencies {
     implementation ("com.google.mediapipe:tasks-vision:0.10.7")
     //이미지 회전문제 해결
     implementation ("androidx.exifinterface:exifinterface:1.3.6")
+    //카카오맵api 설정
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
 
 
 
