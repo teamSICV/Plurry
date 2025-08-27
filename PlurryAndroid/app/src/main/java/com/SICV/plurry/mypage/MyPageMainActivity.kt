@@ -33,11 +33,14 @@ class MyPageMainActivity : AppCompatActivity() {
             .build()
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        //마이페이지 이미지랑 정보
+        val myPageData = MyPageMyData(this)
+        myPageData.loadUserData()
+
         settingButton()
 
     }
-
-
 
     private fun settingButton(){
         val logoutBtn = findViewById<TextView>(R.id.myPageLogout)
