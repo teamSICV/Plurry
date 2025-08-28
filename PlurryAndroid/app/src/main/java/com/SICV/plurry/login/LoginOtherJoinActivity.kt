@@ -57,6 +57,11 @@ class LoginOtherJoinActivity : ComponentActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        auth.signOut()
+        super.onBackPressed()
+    }
+
     private fun isPasswordValid(password: String): Boolean {
         val hasUpperCase = password.any { it.isUpperCase() }
         val hasDigit = password.any { it.isDigit() }
@@ -85,7 +90,6 @@ class LoginOtherJoinActivity : ComponentActivity() {
                                 val intent = Intent(this, LoginJoinActivity::class.java)
                                 intent.putExtra("email", email)
                                 startActivity(intent)
-                                finish()
                             }
                             .addOnFailureListener { e ->
                                 Toast.makeText(this, "사용자 정보 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -109,7 +113,6 @@ class LoginOtherJoinActivity : ComponentActivity() {
                     val intent = Intent(this, LoginJoinActivity::class.java)
                     intent.putExtra("email", auth.currentUser?.email)
                     startActivity(intent)
-                    finish()
                 }
             }
             .addOnFailureListener { e ->
@@ -120,6 +123,7 @@ class LoginOtherJoinActivity : ComponentActivity() {
 
     private fun goToMain() {
         val intent = Intent(this, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
     }
