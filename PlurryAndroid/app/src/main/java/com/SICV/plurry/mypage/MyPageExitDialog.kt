@@ -88,6 +88,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
 
         scope.launch {
             try {
+                // crew place 처리
+                handleCrewRelatedData(userId)
+
                 // goWalk 모든 문서 삭제
                 deleteUserGoWalkData(userId)
 
@@ -99,9 +102,6 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
 
                 // 프로필 이미지 삭제
                 deleteProfileImage(userId)
-
-                // 크루 관련 처리
-                handleCrewRelatedData(userId)
 
                 // userReward 문서 삭제
                 deleteUserRewardData(userId)
@@ -120,6 +120,119 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 Toast.makeText(context, "회원탈퇴 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 dismiss()
             }
+        }
+    }
+
+    private suspend fun handleCrewRelatedData(userId: String) {
+        try {
+            val userDoc = firestore.collection("Users")
+                .document(userId)
+                .get()
+                .await()
+
+            val crewId = userDoc.getString("crewAt")
+
+            if (crewId != null) {
+                // 사용자가 생성한 Places의 crewPlace 삭제
+                deleteUserCreatedPlacesFromCrewPlace(userId, crewId)
+
+                // 크루 리더인지 확인
+                val leaderDoc = firestore.collection("Crew")
+                    .document(crewId)
+                    .collection("member")
+                    .document("leader")
+                    .get()
+                    .await()
+
+                val leaderId = leaderDoc.getString("leader")
+                val isLeader = leaderId == userId
+
+                // crewReward에서 아이템 제거
+                removeCrewRewardItems(userId, crewId)
+
+                if (isLeader) {
+                    // 리더인 경우 크루 완전 삭제
+                    handleLeaderCrewDeletion(crewId)
+                } else {
+                    // 일반 멤버인 경우 멤버에서만 제거
+                    handleMemberCrewExit(userId, crewId)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling crew related data", e)
+            throw e
+        }
+    }
+
+    private suspend fun deleteUserCreatedPlacesFromCrewPlace(userId: String, crewId: String) {
+        try {
+            // 사용자가 생성한 모든 Places 조회
+            val userCreatedPlacesQuery = firestore.collection("Places")
+                .whereEqualTo("addedBy", userId)
+                .get()
+                .await()
+
+            Log.d(TAG, "Found ${userCreatedPlacesQuery.documents.size} places created by user: $userId")
+
+            // 각 장소에 대해 crewPlace에서 삭제
+            userCreatedPlacesQuery.documents.forEach { placeDoc ->
+                val placeId = placeDoc.id
+
+                try {
+                    val crewPlaceRef = firestore.collection("Crew")
+                        .document(crewId)
+                        .collection("crewPlace")
+                        .document(placeId)
+
+                    val crewPlaceDoc = crewPlaceRef.get().await()
+                    if (crewPlaceDoc.exists()) {
+                        crewPlaceRef.delete().await()
+                        Log.d(TAG, "Successfully deleted crewPlace: $placeId from crew: $crewId")
+                    } else {
+                        Log.d(TAG, "CrewPlace document does not exist: $placeId in crew: $crewId")
+                    }
+
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to delete crewPlace: $placeId from crew: $crewId", e)
+                }
+            }
+
+            // 다른 모든 크루에서도 삭제
+            userCreatedPlacesQuery.documents.forEach { placeDoc ->
+                val placeId = placeDoc.id
+
+                try {
+                    val allCrewsQuery = firestore.collection("Crew").get().await()
+
+                    allCrewsQuery.documents.forEach { crewDoc ->
+                        if (crewDoc.id != crewId) {
+                            try {
+                                val otherCrewPlaceRef = firestore.collection("Crew")
+                                    .document(crewDoc.id)
+                                    .collection("crewPlace")
+                                    .document(placeId)
+
+                                val otherCrewPlaceDoc = otherCrewPlaceRef.get().await()
+                                if (otherCrewPlaceDoc.exists()) {
+                                    otherCrewPlaceRef.delete().await()
+                                    Log.d(TAG, "Deleted crewPlace: $placeId from other crew: ${crewDoc.id}")
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to delete crewPlace: $placeId from crew: ${crewDoc.id}", e)
+                            }
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to query all crews for placeId: $placeId", e)
+                }
+            }
+
+            Log.d(TAG, "Completed deleteUserCreatedPlacesFromCrewPlace for user: $userId")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in deleteUserCreatedPlacesFromCrewPlace", e)
+            throw e
         }
     }
 
@@ -236,47 +349,6 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
         }
     }
 
-    private suspend fun handleCrewRelatedData(userId: String) {
-        try {
-            val userDoc = firestore.collection("Users")
-                .document(userId)
-                .get()
-                .await()
-
-            val crewId = userDoc.getString("crewAt")
-
-            if (crewId != null) {
-                // 크루 리더인지 확인
-                val leaderDoc = firestore.collection("Crew")
-                    .document(crewId)
-                    .collection("member")
-                    .document("leader")
-                    .get()
-                    .await()
-
-                val leaderId = leaderDoc.getString("leader")
-                val isLeader = leaderId == userId
-
-                // crewReward에서 아이템 제거
-                removeCrewRewardItems(userId, crewId)
-
-                // visitedPlaces에서 crewPlace 삭제 및 사용자 생성 장소 처리
-                deleteCrewPlacesFromVisitedPlaces(userId, crewId)
-
-                if (isLeader) {
-                    // 리더인 경우 크루 완전 삭제
-                    handleLeaderCrewDeletion(crewId)
-                } else {
-                    // 일반 멤버인 경우 멤버에서만 제거
-                    handleMemberCrewExit(userId, crewId)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error handling crew related data", e)
-            throw e
-        }
-    }
-
     private suspend fun removeCrewRewardItems(userId: String, crewId: String) {
         try {
             // 사용자의 crewRewardItem 가져오기
@@ -315,64 +387,6 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to remove crew reward items", e)
-        }
-    }
-
-    private suspend fun deleteCrewPlacesFromVisitedPlaces(userId: String, crewId: String) {
-        try {
-            val visitedPlacesRef = firestore.collection("Users")
-                .document(userId)
-                .collection("visitedPlaces")
-
-            val visitedDocs = visitedPlacesRef.get().await()
-
-            visitedDocs.documents.forEach { visitedDoc ->
-                val placeId = visitedDoc.id
-
-                // crewPlace에서 해당 placeId 삭제
-                try {
-                    firestore.collection("Crew")
-                        .document(crewId)
-                        .collection("crewPlace")
-                        .document(placeId)
-                        .delete()
-                        .await()
-
-                    Log.d(TAG, "Deleted crewPlace: $placeId from crew: $crewId")
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to delete crewPlace: $placeId", e)
-                }
-
-                // 사용자가 생성한 장소인지 확인하고 crewPlace에서 삭제
-                try {
-                    val placeDoc = firestore.collection("Places")
-                        .document(placeId)
-                        .get()
-                        .await()
-
-                    val addedBy = placeDoc.getString("addedBy")
-                    if (addedBy == userId) {
-                        // 사용자가 생성한 장소라면 모든 crewPlace에서 삭제 (다른 크루에서도)
-                        val allCrewPlacesQuery = firestore.collectionGroup("crewPlace")
-                            .whereEqualTo("placeId", placeId)
-                            .get()
-                            .await()
-
-                        allCrewPlacesQuery.documents.forEach { crewPlaceDoc ->
-                            try {
-                                crewPlaceDoc.reference.delete().await()
-                                Log.d(TAG, "Deleted user-created place from crewPlace: $placeId")
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to delete user-created crewPlace: $placeId", e)
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to check place addedBy for placeId: $placeId", e)
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to delete crew places", e)
         }
     }
 
