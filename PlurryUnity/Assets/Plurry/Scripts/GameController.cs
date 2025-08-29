@@ -67,7 +67,7 @@ public class GameController : MonoBehaviour
 
     void OnGUI()
     {
-        GUI.skin = skin;
-        GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height*4 / 5, 100, 50), displayText, "Test");
+        //GUI.skin = skin;
+        //GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height*4 / 5, 100, 50), displayText, "Test");
     }
 }
