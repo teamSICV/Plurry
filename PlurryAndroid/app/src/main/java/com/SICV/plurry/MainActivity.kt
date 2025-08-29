@@ -1,6 +1,8 @@
 package com.SICV.plurry
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -24,6 +26,9 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,6 +40,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        //  [START] 루팅 탐지 코드 추가
+        if (isRooted()) {
+            Toast.makeText(this, "루팅된 기기에서는 앱을 사용할 수 없습니다.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        // [END] 루팅 탐지 코드 추가
+
         setContentView(R.layout.activity_main)
 
         auth = FirebaseAuth.getInstance()
@@ -197,4 +211,58 @@ class MainActivity : AppCompatActivity() {
         crewRankingManager.cleanup()
         myWalkRecord.cleanup()
     }
+
+    // [START] 루팅 탐지를 위한 함수
+    private fun isRooted(): Boolean {
+        // 방법 1: su 명령어 실행 확인
+        val suProcessExists = try {
+            Runtime.getRuntime().exec("su")
+            true
+        } catch (e: Exception) {
+            false
+        }
+
+        if (suProcessExists) {
+            return true
+        }
+
+        // 방법 2: 루팅 관련 파일/폴더 존재 여부 확인
+        val rootPaths = arrayOf(
+            "/system/app/Superuser.apk",
+            "/system/xbin/su",
+            "/system/bin/su",
+            "/sbin/su",
+            "/data/local/su"
+        )
+        for (path in rootPaths) {
+            if (File(path).exists()) {
+                return true
+            }
+        }
+
+        // 방법 3: 루팅 관련 패키지 확인
+        val rootPackages = arrayOf(
+            "com.topjohnwu.magisk",
+            "eu.chainfire.supersu",
+            "com.koushikdutta.superuser"
+        )
+        val packageManager = packageManager
+        for (pkg in rootPackages) {
+            try {
+                packageManager.getPackageInfo(pkg, 0)
+                return true
+            } catch (e: Exception) {
+                // 패키지가 설치되지 않음
+            }
+        }
+
+        // 방법 4: 빌드 태그 확인
+        val buildTags = Build.TAGS
+        if (buildTags != null && buildTags.contains("test-keys")) {
+            return true
+        }
+
+        return false
+    }
+    // [END] 루팅 탐지를 위한 함수
 }
