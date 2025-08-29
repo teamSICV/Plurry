@@ -13,6 +13,7 @@ import com.SICV.plurry.crewstep.CrewLineChooseActivity
 import com.SICV.plurry.crewstep.CrewLineMainActivity
 import com.SICV.plurry.goingwalk.GoingWalkMainActivity
 import com.SICV.plurry.login.LoginMainActivity
+import com.SICV.plurry.mypage.MyPageMainActivity
 import com.SICV.plurry.pointrecord.PointRecordMainActivity
 import com.SICV.plurry.raising.RaisingMainActivity
 import com.SICV.plurry.ranking.MainCrewRankingManager
@@ -68,7 +69,7 @@ class MainActivity : AppCompatActivity() {
         val buttonPointRecord = findViewById<Button>(R.id.b_pointRecord)
         val buttonCrewLine = findViewById<Button>(R.id.b_crewLine)
         val buttonRaising = findViewById<Button>(R.id.b_raising)
-        val buttonLogout = findViewById<Button>(R.id.btnLogout)
+        val buttonMyPage = findViewById<Button>(R.id.btnMyPage)
 
         buttonGoingWalk.setOnClickListener{
             val intent = Intent(this, GoingWalkMainActivity::class.java)
@@ -89,8 +90,9 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        buttonLogout.setOnClickListener{
-            signOut()
+        buttonMyPage.setOnClickListener{
+            val intent = Intent(this, MyPageMainActivity::class.java)
+            startActivity(intent)
         }
     }
 

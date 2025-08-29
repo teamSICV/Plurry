@@ -77,6 +77,11 @@ class LoginJoinActivity : ComponentActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        auth.signOut()
+        super.onBackPressed()
+    }
+
     private fun openImageChooser() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         intent.type = "image/*"
@@ -194,6 +199,7 @@ class LoginJoinActivity : ComponentActivity() {
 
     private fun goToMain() {
         val intent = Intent(this, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
     }

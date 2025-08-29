@@ -169,7 +169,6 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
 
         if (crewId.isNotEmpty()) {
             crewWalkManager.loadCrewWalkRecords(crewId, db)
-            loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
         }
 
         chartManager.setChartData(listOf(), chartManager.getDayLabels(), "시간대별")
@@ -619,13 +618,27 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
                     myLatitude = location.latitude
                     myLongitude = location.longitude
                     Log.d("CrewLineMain", "현재 위치: $myLatitude, $myLongitude")
+
+                    val crewId = intent.getStringExtra("crewId") ?: ""
+                    if (crewId.isNotEmpty()) {
+                        loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                    }
+
                     callback(true)
                 } else {
                     Log.w("CrewLineMain", "위치 정보를 가져올 수 없습니다.")
+                    val crewId = intent.getStringExtra("crewId") ?: ""
+                    if (crewId.isNotEmpty()) {
+                        loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                    }
                     callback(false)
                 }
             }.addOnFailureListener { e ->
                 Log.e("CrewLineMain", "위치 정보 가져오기 실패", e)
+                val crewId = intent.getStringExtra("crewId") ?: ""
+                if (crewId.isNotEmpty()) {
+                    loadCrewPlaces(crewId, db, findViewById(R.id.pointButtonContainer))
+                }
                 callback(false)
             }
         } else {
