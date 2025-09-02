@@ -25,11 +25,11 @@ public class CameraMove : MonoBehaviour
 
 
     [SerializeField]
-    private float minDist;
+    private float minDist = -5f;
     [SerializeField]
-    private float maxDist;
+    private float maxDist = -12f;
     [SerializeField]
-    private float fieldOfView;
+    private float cameraDist;
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -38,7 +38,7 @@ public class CameraMove : MonoBehaviour
         this.dir = this.mainCameraPos.localPosition.normalized;
         this.dist = this.mainCameraPos.localPosition.magnitude;
 
-        fieldOfView = this.mainCameraDist.GetComponent<Camera>().fieldOfView;
+        cameraDist = mainCameraDist.GetComponent<Transform>().position.z;
     }
 
     // Update is called once per frame
@@ -69,8 +69,8 @@ public class CameraMove : MonoBehaviour
 
     private void MoveDistance(float distance)
     {
-        fieldOfView -= distance * this.zoomSensitivity;
-        fieldOfView = Mathf.Clamp(fieldOfView, minDist, maxDist);
-        this.mainCameraDist.GetComponent<Camera>().fieldOfView = fieldOfView;
+        //cameraDist -= distance * this.zoomSensitivity;
+        //cameraDist = Mathf.Clamp(cameraDist, minDist, maxDist);
+        //mainCameraPos.position = new Vector3(0,0,cameraDist);
     }
 }
