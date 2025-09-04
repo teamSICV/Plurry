@@ -6,6 +6,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/img_bg_crew2"
     tools:context=".crewstep.CrewLineMakeCrewActivity">
 
     <ImageView
@@ -13,10 +14,11 @@
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:src="@drawable/back"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="20dp"
-        android:layout_marginStart="16dp"/>
+        app:tint="@color/crewlist_orange"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -24,6 +26,7 @@
         android:layout_marginStart="70dp"
         android:text="크루 이미지 선택"
         android:layout_marginTop="32dp"
+        android:textColor="@color/crewlist_orange"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -52,21 +55,27 @@
 
     <Button
         android:id="@+id/findLocation"
-        android:layout_width="200dp"
-        android:layout_height="60dp"
+        android:layout_width="250dp"
+        android:layout_height="80dp"
         android:text="주요 활동 위치 설정"
         android:drawableLeft="@drawable/location"
         android:layout_marginTop="30dp"
+        android:background="@drawable/img_btn_record"
+        android:paddingHorizontal="50dp"
+        app:backgroundTint="@null"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/editCrewName" />
 
     <Button
         android:id="@+id/btnMakeCrew"
-        android:layout_width="150dp"
-        android:layout_height="wrap_content"
+        android:layout_width="250dp"
+        android:layout_height="80dp"
         android:text="크루 생성"
         android:layout_marginTop="40dp"
+        android:background="@drawable/img_btn_record"
+        android:paddingHorizontal="50dp"
+        app:backgroundTint="@null"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/findLocation" />

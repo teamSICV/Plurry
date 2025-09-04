@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="#FFFFFF"
+    android:background="@drawable/img_frame_record"
     android:gravity="center">
 
     <TextView
@@ -44,8 +45,10 @@
     <Button
         android:id="@+id/btnConfirmWalkEnd"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="100dp"
         android:text="확인"
-        android:backgroundTint="#438cf3"
-        android:textColor="#FFFFFF" />
+        android:background="@drawable/img_btn_record2"
+        android:textColor="#FFFFFF"
+        app:backgroundTint="@null" />
+
 </LinearLayout>

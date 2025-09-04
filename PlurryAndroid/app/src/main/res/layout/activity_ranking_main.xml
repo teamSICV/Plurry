@@ -5,36 +5,80 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/img_bg_ranking"
     tools:context=".ranking.RankingMainActivity">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/rankingBackBtn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="20dp"
+            android:clickable="true"
+            android:src="@drawable/back"
+            app:tint="#ffffff"/>
+
+        <TextView
+            android:id="@+id/partName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="25dp"
+            android:text="부문 이름"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:textSize="20sp"
+            android:textColor="#FFFFFF"/>
+    </RelativeLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_marginTop="80dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
 
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <ImageView
-                android:id="@+id/rankingBackBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="20dp"
-                android:clickable="true"
-                android:src="@drawable/back" />
+        <LinearLayout
+            android:layout_width="260dp"
+            android:layout_height="50dp"
+            android:layout_marginHorizontal="25dp"
+            android:orientation="horizontal"
+            app:backgroundTint="#ffffff"
+            android:gravity="center_horizontal">
 
             <TextView
-                android:id="@+id/partName"
-                android:layout_width="match_parent"
+                android:id="@+id/rankingMe"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="25dp"
-                android:text="부문 이름"
-                android:textStyle="bold"
-                android:textAlignment="center"
-                android:textSize="20sp" />
-        </RelativeLayout>
+                android:clickable="true"
+                android:padding="14dp"
+                android:text="개인"
+                android:textSize="15dp"
+                android:textColor="@color/white"/>
+
+            <TextView
+                android:id="@+id/rankingCrewMe"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:padding="14dp"
+                android:text="크루 기여도"
+                android:textColor="@color/white"
+                android:textSize="15dp" />
+
+            <TextView
+                android:id="@+id/rankingCrew"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:padding="14dp"
+                android:text="크루"
+                android:textColor="@color/white"
+                android:textSize="15dp" />
+        </LinearLayout>
 
         <FrameLayout
             android:layout_width="280dp"
@@ -45,7 +89,7 @@
                 android:layout_width="280dp"
                 android:layout_height="250dp"
                 android:layout_marginTop="53dp"
-                android:src="@drawable/ranking" />
+                android:src="@drawable/img_frame_podium" />
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/rankingImg1"
@@ -62,7 +106,8 @@
                 android:layout_gravity="top|center_horizontal"
                 android:layout_marginTop="107dp"
                 android:gravity="center"
-                android:text="1등 이름"/>
+                android:text="1등 이름"
+                android:textColor="#FFFFFF"/>
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/rankingImg2"
@@ -81,7 +126,8 @@
                 android:layout_gravity="bottom|start"
                 android:layout_marginStart="8dp"
                 android:layout_marginBottom="87dp"
-                android:text="2등 이름"/>
+                android:text="2등 이름"
+                android:textColor="#FFFFFF"/>
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/rankingImg3"
@@ -100,50 +146,17 @@
                 android:layout_gravity="bottom|end"
                 android:layout_marginEnd="8dp"
                 android:layout_marginBottom="75dp"
-                android:text="3등 이름"/>
+                android:text="3등 이름"
+                android:textColor="#FFFFFF"/>
         </FrameLayout>
-
-        <LinearLayout
-            android:layout_width="260dp"
-            android:layout_height="50dp"
-            android:layout_marginHorizontal="25dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/rankingMe"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:clickable="true"
-                android:padding="14dp"
-                android:text="개인"
-                android:textSize="15dp" />
-
-            <TextView
-                android:id="@+id/rankingCrewMe"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:clickable="true"
-                android:padding="14dp"
-                android:text="크루 기여도"
-                android:textColor="@color/gray"
-                android:textSize="15dp" />
-
-            <TextView
-                android:id="@+id/rankingCrew"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:clickable="true"
-                android:padding="14dp"
-                android:text="크루"
-                android:textColor="@color/gray"
-                android:textSize="15dp" />
-        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rankingRecyclerview"
-            android:layout_width="350dp"
-            android:layout_height="300dp"
-            android:layout_gravity="center" />
+            android:layout_width="match_parent"
+            android:layout_height="400dp"
+            android:layout_gravity="center"
+            android:background="@drawable/img_frame_ranking"
+            android:layout_marginTop="25dp"/>
 
         <androidx.cardview.widget.CardView
             android:layout_width="350dp"
