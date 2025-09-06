@@ -35,7 +35,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:text="일반 보상 아이템 1개 지급"
-            android:textColor="#438cf3"
+            android:textColor="#957343"
             android:textSize="16sp"
             />
 
@@ -56,42 +56,46 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:gravity="center"
-        android:orientation="horizontal">
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/imagePreview"
+            android:layout_width="250dp"
+            android:layout_height="180dp"
+            android:layout_marginBottom="16dp"
+            android:scaleType="centerCrop"
+            android:visibility="visible" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:background="#000000" />
 
         <EditText
             android:id="@+id/etPlaceName"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_weight="1"
             android:enabled="true"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:hint="포인트 장소 이름 입력"
             android:padding="8dp"
             android:textColor="#000000"
-            android:textColorHint="#B0B0B0"
+            android:textColorHint="#9D7946"
+            android:background="@null"
+            android:gravity="center"
             tools:ignore="InefficientWeight" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:background="#000000" />
 
         <!-- 이름 입력 완료 버튼은 더 이상 필요 없으므로 제거됨 -->
     </LinearLayout>
 
     <!-- 사진 미리보기 -->
-    <ImageView
-        android:id="@+id/imagePreview"
-        android:layout_width="250dp"
-        android:layout_height="180dp"
-        android:layout_marginBottom="16dp"
-        android:scaleType="centerCrop"
-        android:visibility="visible" />
 
-    <!-- 사진 찍기 버튼 (초기부터 보임) -->
-<!--    <Button-->
-<!--        android:id="@+id/btnTakePhoto"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:backgroundTint="#438cf3"-->
-<!--        android:text="사진 찍기"-->
-<!--        android:textColor="#FFFFFF" />-->
 
     <!-- 사진 관련 액션 버튼 -->
     <LinearLayout
@@ -103,11 +107,6 @@
         android:orientation="horizontal"
         android:visibility="visible">
 
-<!--        <Button-->
-<!--            android:id="@+id/btnRetake"-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="재촬영" />-->
         <Button
             android:id="@+id/btnClose"
             android:layout_width="100dp"
@@ -150,7 +149,5 @@
             android:text="로딩 중입니다..."
             android:textColor="#000000" />
     </LinearLayout>
-
-    <!-- 실행 취소 버튼 -->
 
 </LinearLayout>
