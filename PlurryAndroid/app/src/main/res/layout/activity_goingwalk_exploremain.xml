@@ -4,7 +4,8 @@
     android:id="@+id/exploreMainLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/transparent">
+    android:background="@color/black">
+<!--    android:background="@android:color/transparent">-->
 
     <!-- 실시간 정보 박스 -->
     <LinearLayout
@@ -73,25 +74,32 @@
     <!-- 탐색 종료 버튼 -->
     <Button
         android:id="@+id/btnExitExplore"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="탐색 종료"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="190dp"
-        android:backgroundTint="#438cf3"
-        android:textColor="#000000"
-        android:elevation="6dp" />
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="32dp"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:layout_gravity="bottom|start"
+        android:background="@drawable/img_icon_walk1"
+        app:backgroundTint="@null"
+        app:layout_constraintHorizontal_bias="0.1"/>
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="150dp"
+        android:src="@drawable/img_frame_arrow"/>
 
     <!-- 방향 화살표 이미지 -->
     <ImageView
         android:id="@+id/arrowImageView"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="100dp"
-        android:src="@drawable/ic_arrow"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="150dp"
+        android:src="@drawable/img_icon_arrow"
         android:contentDescription="방향 화살표" />
 
 </FrameLayout>
