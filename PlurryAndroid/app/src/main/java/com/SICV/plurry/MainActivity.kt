@@ -44,11 +44,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // [START] 루팅 및 무결성 탐지 코드 추가
-        if (isCompromised()) {
-            Toast.makeText(this, "보안 위반이 감지되었습니다. 앱을 종료합니다.", Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
+//        if (isCompromised()) {
+//            Toast.makeText(this, "보안 위반이 감지되었습니다. 앱을 종료합니다.", Toast.LENGTH_LONG).show()
+//            finish()
+//            return
+//        }
         // [END] 루팅 및 무결성 탐지 코드 추가
 
         setContentView(R.layout.activity_main)
@@ -215,6 +215,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // [START] 루팅 및 무결성 탐지 로직
+    /*
     private fun isCompromised(): Boolean {
         // 루팅 탐지
         if (checkRootMethod1() || checkRootMethod2() || checkRootMethod3()) {
@@ -341,7 +342,7 @@ class MainActivity : AppCompatActivity() {
             val base64Signature = Base64.encodeToString(digest, Base64.NO_WRAP)
 
             // 여기에 실제 앱의 디버그 키 또는 릴리즈 키의 해시 값을 Base64 형식으로 입력해야 함.
-            val correctSignature = "D+vpIYYNQ9PzjHAfC/9SNllsLQmUr7Hajs7d8CyptGk="
+            val correctSignature = "앱 출시후에 릴리즈 키 입력"
 
             if (base64Signature != correctSignature) {
                 Log.e("IntegrityCheck", "App signature mismatch!")
@@ -364,5 +365,6 @@ class MainActivity : AppCompatActivity() {
         }
         return false
     }
+    */
     // [END] 루팅 및 무결성 탐지 로직
 }
