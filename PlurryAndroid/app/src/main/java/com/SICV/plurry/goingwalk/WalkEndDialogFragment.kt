@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue // FieldValue 임포트 추가
 import java.util.Date
 import kotlin.math.floor // floor 함수 임포트 추가
+import com.SICV.plurry.crewstep.CrewGameManager
 
 class WalkEndDialogFragment : DialogFragment() {
 
@@ -79,6 +80,31 @@ class WalkEndDialogFragment : DialogFragment() {
                     // 계정 생성 시 'currentRaisingAmount' 필드가 항상 존재한다고 가정합니다.
                 }
         }
+
+        // 3. 크루 게임 데이터 업데이트 (재시도 로직은 CrewGameManager에서 처리)
+        db.collection("Users").document(userId).get()
+            .addOnSuccessListener { userDoc ->
+                val crewAt = userDoc.getString("crewAt")
+                if(!crewAt.isNullOrEmpty()){
+                    CrewGameManager.updateCrewWalkData(
+                        crewId = crewAt,
+                        distance = distance.toDouble(),
+                        steps = steps,
+                        calories = calories.toDouble()
+                    ){success ->
+                        if(success){
+                            android.util.Log.d("WalkEndDialog","크루 데이터 업데이트 성공")
+                        }else{
+                            android.util.Log.d("WalkEndDialog", "크루 데이터 업데이트 실패")
+                        }
+                    }
+                }else{
+                    android.util.Log.d("WalkEndDialog","사용자가 크루에 가입되어 있지 않음")
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("WalkEndDialog", "사용자 크루 정보 조회 실패: ${e.message}")
+            }
 
 
         btnConfirm.setOnClickListener {

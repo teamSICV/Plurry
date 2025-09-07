@@ -67,13 +67,19 @@ class LoginMainActivity : ComponentActivity() {
         btnOtherLogin.visibility = View.GONE
 
         btnLogin.setOnClickListener {
-            googleSignInWithCredentialManager()
+            signOutAndTryAgain()
         }
 
         btnOtherLogin.setOnClickListener {
-            btnOtherLogin.setOnClickListener {
-                val intent = Intent(this, LoginOtherJoinActivity::class.java)
-                startActivity(intent)}
+            val intent = Intent(this, LoginOtherJoinActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun signOutAndTryAgain() {
+        auth.signOut()
+        googleSignInClient.signOut().addOnCompleteListener {
+            googleSignInWithCredentialManager()
         }
     }
 
@@ -191,7 +197,6 @@ class LoginMainActivity : ComponentActivity() {
     private fun goToLoginJoin() {
         val intent = Intent(this, LoginJoinActivity::class.java)
         startActivity(intent)
-        finish()
     }
 
     private fun goToMain() {

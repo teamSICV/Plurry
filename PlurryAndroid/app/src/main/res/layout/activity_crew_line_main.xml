@@ -5,12 +5,68 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/img_bg_crew"
     tools:context=".crewstep.CrewLineMainActivity">
+
+    <RelativeLayout
+        android:id="@+id/crewHeader"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:background="@color/gray_box"
+        android:padding="10dp">
+
+        <ImageView
+            android:id="@+id/crewBackButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/back"
+            android:clickable="true"
+            app:tint="@color/crew_pink"/>
+
+        <TextView
+            android:id="@+id/textView3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginTop="5dp"
+            android:text="도봉(크루예시이름)"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:textSize="20sp"
+            android:textColor="@color/crew_pink"/>
+
+        <TextView
+            android:id="@+id/joinCrewMember"
+            android:layout_width="100dp"
+            android:layout_height="50dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:textAlignment="center"
+            android:clickable="true"
+            android:text="크루 가입"
+            android:textSize="14sp"
+            android:padding="15dp"
+            android:textColor="@color/crew_orange"/>
+
+        <TextView
+            android:id="@+id/ExitCrewMember"
+            android:layout_width="100dp"
+            android:layout_height="50dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:textAlignment="center"
+            android:clickable="true"
+            android:text="크루 탈퇴"
+            android:textSize="14sp"
+            android:padding="15dp"
+            android:textColor="@color/crew_orange"/>
+    </RelativeLayout>
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
+        android:layout_marginTop="80dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.0"
@@ -19,169 +75,134 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <ImageView
-                    android:id="@+id/crewBackButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/back"
-                    android:clickable="true"/>
-
-                <TextView
-                    android:id="@+id/textView3"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:layout_marginTop="5dp"
-                    android:text="도봉(크루예시이름)"
-                    android:textStyle="bold"
-                    android:textAlignment="center"
-                    android:textSize="20sp" />
-
-                <TextView
-                    android:id="@+id/joinCrewMember"
-                    android:layout_width="100dp"
-                    android:layout_height="50dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:textAlignment="center"
-                    android:clickable="true"
-                    android:text="크루 가입"
-                    android:textSize="14sp"
-                    android:padding="15dp"/>
-
-                <TextView
-                    android:id="@+id/ExitCrewMember"
-                    android:layout_width="100dp"
-                    android:layout_height="50dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:textAlignment="center"
-                    android:clickable="true"
-                    android:text="크루 탈퇴"
-                    android:textSize="14sp"
-                    android:padding="15dp"/>
-
-
-            </RelativeLayout>
-
-            <com.google.android.material.tabs.TabLayout
-                android:id="@+id/tablayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:tabGravity="fill"
-                app:tabMode="fixed"
-                tools:layout_editor_absoluteX="0dp"
-                tools:layout_editor_absoluteY="79dp">
-
-                <com.google.android.material.tabs.TabItem
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="일간" />
-
-                <com.google.android.material.tabs.TabItem
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="주간" />
-
-                <com.google.android.material.tabs.TabItem
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="월간" />
-            </com.google.android.material.tabs.TabLayout>
+            android:orientation="vertical">
 
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="250dp"
                 android:layout_margin="12dp"
-                app:cardCornerRadius="12dp">
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="@color/gray_box">
 
-                <androidx.constraintlayout.widget.ConstraintLayout
+                <com.google.android.material.tabs.TabLayout
+                    android:id="@+id/tablayout"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="50dp"
+                    android:background="@null"
+                    app:tabGravity="fill"
+                    app:tabMode="fixed"
+                    tools:layout_editor_absoluteX="0dp"
+                    tools:layout_editor_absoluteY="79dp">
 
-                    <com.github.mikephil.charting.charts.BarChart
-                        android:id="@+id/barChart"
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
-                        android:layout_margin="12dp"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent" />
+                    <com.google.android.material.tabs.TabItem
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="일간"
+                        app:tabTextColor="@color/crew_pink"
+                        app:tabSelectedTextColor="@color/crew_pink"
+                        app:backgroundTint="@null"/>
 
-                    <ImageView
-                        android:id="@+id/rankingButton"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:src="@drawable/btnraking"
-                        android:clickable="true"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        android:layout_margin="8dp"/>
+                    <com.google.android.material.tabs.TabItem
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="주간"
+                        app:tabTextColor="@color/crew_pink"
+                        app:tabSelectedTextColor="@color/crew_pink"
+                        app:backgroundTint="@null"/>
 
-                </androidx.constraintlayout.widget.ConstraintLayout>
+                    <com.google.android.material.tabs.TabItem
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="월간"
+                        app:tabTextColor="@color/crew_pink"
+                        app:tabSelectedTextColor="@color/crew_pink"
+                        app:backgroundTint="@null"/>
+                </com.google.android.material.tabs.TabLayout>
+
+                <com.github.mikephil.charting.charts.BarChart
+                    android:id="@+id/barChart"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="50dp"
+                    app:backgroundTint="@null"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
             </androidx.cardview.widget.CardView>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="10dp"
-                android:layout_marginTop="2dp">
-
-                <TextView
-                    android:id="@+id/textView4"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="장소포인트 기록"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/morePointBtn"
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="더보기"
-                    android:textSize="14sp"
-                    android:padding="5dp"
-                    android:clickable="true"
-                    android:gravity="end"
-                    android:layout_gravity="center_vertical"/>
-            </LinearLayout>
-
-
-            <HorizontalScrollView
-                android:layout_width="409dp"
-                android:layout_height="120dp"
-                tools:layout_editor_absoluteX="1dp"
-                tools:layout_editor_absoluteY="341dp">
+                android:orientation="vertical"
+                android:background="@color/gray_box"
+                android:layout_marginBottom="20dp">
 
                 <LinearLayout
-                    android:id="@+id/pointButtonContainer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:orientation="horizontal">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp"
+                    android:layout_marginTop="2dp">
 
-                    <ImageButton
-                        android:id="@+id/imageButton1"
-                        android:layout_width="100dp"
-                        android:layout_height="120dp"
-                        android:layout_marginEnd="8dp"
-                        android:background="@null"
-                        android:contentDescription="point_record"
-                        android:src="@drawable/photo"
-                        android:scaleType="centerCrop"/>
+                    <TextView
+                        android:id="@+id/textView4"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="장소포인트 기록"
+                        android:textSize="16sp"
+                        android:textColor="@color/crew_pink"/>
 
+                    <TextView
+                        android:id="@+id/morePointBtn"
+                        android:layout_width="80dp"
+                        android:layout_height="wrap_content"
+                        android:text="더보기"
+                        android:textSize="14sp"
+                        android:padding="5dp"
+                        android:clickable="true"
+                        android:gravity="end"
+                        android:layout_gravity="center_vertical"
+                        android:textColor="@color/crew_orange"/>
                 </LinearLayout>
-            </HorizontalScrollView>
+
+
+                <HorizontalScrollView
+                    android:layout_width="409dp"
+                    android:layout_height="120dp"
+                    tools:layout_editor_absoluteX="1dp"
+                    tools:layout_editor_absoluteY="341dp">
+
+                    <LinearLayout
+                        android:id="@+id/pointButtonContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/imageButton1"
+                            android:layout_width="100dp"
+                            android:layout_height="120dp"
+                            android:layout_marginEnd="8dp"
+                            android:background="@null"
+                            android:contentDescription="point_record"
+                            android:src="@drawable/placeholder"
+                            android:scaleType="centerCrop"/>
+
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+
+            </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/gray_box">
 
             <TextView
                 android:id="@+id/timeTextView"
@@ -190,7 +211,8 @@
                 android:textSize="16sp"
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp"
-                android:text="--:--:-- 업데이트" />
+                android:text="--:--:-- 업데이트"
+                android:textColor="@color/crew_pink"/>
 
             <TextView
                 android:layout_width="match_parent"
@@ -198,7 +220,8 @@
                 android:text=" 크루원     산책종료     산책거리   산책시간   칼로리  "
                 android:gravity="center"
                 android:textSize="16sp"
-                android:padding="8dp" />
+                android:padding="8dp"
+                android:textColor="@color/crew_orange"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/timelineRecyclerView"
@@ -207,6 +230,23 @@
                 android:contentDescription="timeline"/>
 
         </LinearLayout>
+
+        </LinearLayout>
+
     </ScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/rankingButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:elevation="8dp"
+        app:srcCompat="@drawable/img_icon_trophy"
+        app:backgroundTint="@color/crew_orange"
+        app:tint="@color/black"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -33,6 +33,7 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var showBtn: Button
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
+    private lateinit var visitedPlacesLoader: VisitedPlacesLoader
     private var currentUserLocation: LatLng? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -154,6 +155,9 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         this.googleMap = googleMap
+
+        visitedPlacesLoader = VisitedPlacesLoader(googleMap, auth, db, currentUserLocation)
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED) {
             googleMap.isMyLocationEnabled = true
@@ -165,7 +169,7 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
         googleMap.setOnMarkerClickListener { marker ->
             val tag = marker.tag as? PlaceData
             if (tag != null) {
-                showPointRecordDialog(tag.imageUrl, tag.name, tag.description, tag.placeId, tag.lat, tag.lng)
+                showPointRecordDialog(tag.imageUrl, tag.name, tag.description, tag.placeId, tag.lat, tag.lng, tag.isVisited)
             }
             true
         }
@@ -180,7 +184,10 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
                         currentUserLocation = userLocation
                         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 15f))
 
+                        visitedPlacesLoader = VisitedPlacesLoader(googleMap, auth, db, currentUserLocation)
+
                         loadUserPlaces()
+                        loadVisitedPlaces()
                     }
                 })
         } else {
@@ -241,6 +248,10 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
             }
     }
 
+    private fun loadVisitedPlaces() {
+        visitedPlacesLoader.loadVisitedPlaces()
+    }
+
     private fun calculateDistance(from: LatLng?, to: LatLng): Double {
         if (from == null) return 0.0
 
@@ -258,8 +269,8 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
         return earthRadius * c
     }
 
-    private fun showPointRecordDialog(imageUrl: String, name: String, description: String, placeId: String, lat: Double, lng: Double) {
-        val dialog = PointRecordDialog.newInstance(imageUrl, name, description, placeId, lat, lng)
+    private fun showPointRecordDialog(imageUrl: String, name: String, description: String, placeId: String, lat: Double, lng: Double, isVisited: Boolean = false) {
+        val dialog = PointRecordDialog.newInstance(imageUrl, name, description, placeId, lat, lng, "", isVisited)
         dialog.show(supportFragmentManager, "PointRecordDialog")
     }
 
@@ -280,6 +291,7 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
         val description: String,
         val placeId: String = "",
         val lat: Double = 0.0,
-        val lng: Double = 0.0
+        val lng: Double = 0.0,
+        val isVisited: Boolean = false
     )
 }

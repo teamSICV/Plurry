@@ -17,7 +17,7 @@
             android:layout_height="150dp"
             android:gravity="center"
             android:layout_marginTop="90dp"
-            android:text="리더가 크루를 탈퇴하면\n크루 및 데이터가 삭제되며\n되돌릴 수 없습니다.\n\n크루를 삭제하시겠습니까?"
+            android:text="@string/crew_exit_leader"
             android:textAlignment="center"
             android:textSize="17sp"
             app:layout_constraintEnd_toEndOf="parent"

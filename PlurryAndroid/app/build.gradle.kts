@@ -56,6 +56,11 @@ android {
         compose = true
         buildConfig = true
     }
+    sourceSets {
+        getByName("main") {
+            res.srcDirs("src/main/res", "src/main/theme")
+        }
+    }
 }
 
 secrets {

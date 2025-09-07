@@ -6,7 +6,8 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".pointrecord.PointRecordMainActivity">
+    tools:context=".pointrecord.PointRecordMainActivity"
+    android:background="@drawable/img_bg_record">
 
     <TextView
         android:id="@+id/myPointText"
@@ -35,11 +36,12 @@
     <Button
         android:id="@+id/showCrewBottomBtn"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="100dp"
         android:layout_marginHorizontal="10dp"
         android:layout_marginBottom="20dp"
-        android:backgroundTint="@color/cardview_dark_background"
+        android:background="@drawable/img_btn_record2"
         android:text="장소 포인트 정보 보기"
+        app:backgroundTint="@null"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/white"
+    android:background="@drawable/img_frame_record"
     android:padding="24dp">
 
     <LinearLayout
@@ -38,20 +39,22 @@
 
             <Button
                 android:id="@+id/btnConfirmRadius"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="100dp"
+                android:layout_height="80dp"
                 android:text="확인"
-                android:background="#438cf3"
-                android:layout_marginStart="12dp" />
+                android:background="@drawable/img_btn_record2"
+                android:layout_marginStart="12dp"
+                app:backgroundTint="@null"/>
 
             <!-- NEW: 크루 탐색 버튼 -->
             <Button
                 android:id="@+id/btnCrewExplore"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="110dp"
+                android:layout_height="80dp"
                 android:text="크루 탐색"
-                android:background="#438cf3"
-                android:layout_marginStart="12dp" />
+                android:background="@drawable/img_btn_record2"
+                android:layout_marginStart="12dp"
+                app:backgroundTint="@null"/>
         </LinearLayout>
 
         <!-- 장소 목록 -->
