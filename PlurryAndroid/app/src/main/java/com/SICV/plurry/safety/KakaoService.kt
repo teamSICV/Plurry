@@ -5,19 +5,14 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-private fun authHeader(): String = "KakaoAK ${AppBuildConfig.KAKAO_REST_API_KEY}"
+
 object KakaoService {
     private val logger = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BASIC
     }
+
     private val client = OkHttpClient.Builder()
         .addInterceptor(logger)
-        .addInterceptor { chain ->
-            val req = chain.request().newBuilder()
-                .addHeader("Authorization", authHeader())
-                .build()
-            chain.proceed(req)
-        }
         .build()
 
     private val retrofit = Retrofit.Builder()
@@ -28,5 +23,7 @@ object KakaoService {
 
     val api: KakaoLocalApi = retrofit.create(KakaoLocalApi::class.java)
 
-
+    // 헤더 값 생성기
+    fun authHeader(): String = "KakaoAK ${AppBuildConfig.KAKAO_REST_API_KEY}"
 }
+
