@@ -36,6 +36,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
+// ⬇️ [안전도] 추가 import
+import androidx.lifecycle.ViewModelProvider
+import com.SICV.plurry.di.RetrofitModule
+import com.SICV.plurry.safety.SafetyRepo
+import com.SICV.plurry.safety.viewmodel.SafetyVMFactory
+import com.SICV.plurry.safety.viewmodel.SafetyViewModel
+
 
 class ExploreTrackingFragment : Fragment() {
 
@@ -76,6 +83,12 @@ class ExploreTrackingFragment : Fragment() {
     private var lastLocation: Location? = null
     // 🚀 NEW: 경로 관리를 위한 PolylineManager 인스턴스
     private var polylineManager: PolylineManager? = null
+
+    // ⬇️ [안전도] ViewModel/상태 저장 (추가)
+    private lateinit var safetyViewModel: SafetyViewModel
+    private var lastSafetyEvalLoc: Location? = null
+    private var lastSafetyEvalTime: Long = 0L
+    private var latestSafetyLine: String = ""   // " · 안전도 72 (CAUTION)" 형태로 UI에 붙여쓸 문자열
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -138,6 +151,25 @@ class ExploreTrackingFragment : Fragment() {
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
+        // ⬇️ [안전도] ViewModel 생성 & 옵저버 등록 (추가)
+        val safetyRepo = SafetyRepo(
+            kakao = RetrofitModule.kakaoApi,
+            safetyService = RetrofitModule.safetyService,
+            kakaoApiKey = "KakaoAK {a670ee4833315dafcd56da98e48b2a26}" // ← 실제 키로 교체
+        )
+        safetyViewModel = ViewModelProvider(
+            this,
+            SafetyVMFactory(safetyRepo)
+        )[SafetyViewModel::class.java]
+
+        safetyViewModel.safety.observe(viewLifecycleOwner) { detail ->
+            detail ?: return@observe
+            latestSafetyLine = " · 안전도 ${detail.score} (${detail.level})"
+            if (detail.level.name == "DANGER") {
+                Toast.makeText(requireContext(), "이 구간 안전도 낮음. 밝은 길로 우회 권장!", Toast.LENGTH_LONG).show()
+            }
+        }
+
         startLocationTracking()
         return view
     }
@@ -192,12 +224,26 @@ class ExploreTrackingFragment : Fragment() {
 
                 // 🚀 MODIFIED: isExploringActive가 true일 때만 탐색 관련 UI 및 경로 업데이트
                 if (isExploringActive) {
+                    // ⬇️ [안전도] 평가 디바운스: 200m 이동 또는 30초 경과 시 1회 평가 (추가)
+                    val now = System.currentTimeMillis()
+                    val needEval = when {
+                        lastSafetyEvalLoc == null -> true
+                        current.distanceTo(lastSafetyEvalLoc!!) >= 200f -> true
+                        (now - lastSafetyEvalTime) >= 30_000L -> true
+                        else -> false
+                    }
+                    if (needEval) {
+                        safetyViewModel.evaluate(current.latitude, current.longitude)
+                        lastSafetyEvalLoc = current
+                        lastSafetyEvalTime = now
+                    }
                     // 🚀 NEW: PolylineManager를 사용하여 현재 위치를 경로에 추가합니다.
                     polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
 
                     val distance = calculateDistance(current.latitude, current.longitude)
-                    // 🚀 MODIFIED: 장소 이름을 포함하여 텍스트 업데이트
-                    tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance)
+                    // 🚀 MODIFIED: 장소 이름 + 안전도 라인까지 한 번에 표시 (변경)
+                    tvDistanceInfo.text =
+                        "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance) + latestSafetyLine
 
                     val destLoc = Location("dest").apply {
                         latitude = targetLat
