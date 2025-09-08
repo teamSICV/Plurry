@@ -4,14 +4,16 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".raising.RaisingItemActivity">
+    android:layout_height="wrap_content"
+    tools:context=".raising.RaisingItemActivity"
+    android:background="@drawable/img_frame_box">
 
     <Button
         android:id="@+id/b_quit"
-        android:layout_width="60dp"
+        android:layout_width="40dp"
         android:layout_height="48dp"
-        android:text="Q"
+        android:background="@drawable/back"
+        app:backgroundTint="@color/crew_orange"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.045"
@@ -19,77 +21,100 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.02" />
 
-    <Button
-        android:id="@+id/b_normal"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/l_boxes"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Noraml"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.3"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/b_quit">
 
-    <Button
-        android:id="@+id/b_crew"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Crew"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.7"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        <Button
+            android:id="@+id/b_normal"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:text="일반\n보상"
+            android:background="@drawable/img_icon_box"
+            app:backgroundTint="@null"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_normal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0"
-        android:textAlignment="center"
-        app:layout_constraintBottom_toTopOf="@+id/b_normal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.342"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.99" />
+        <View
+            android:id="@+id/tv_normal_bg"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="@color/crew_pink"
+            app:layout_constraintTop_toTopOf="@id/b_normal"
+            app:layout_constraintBottom_toBottomOf="@id/b_normal"
+            app:layout_constraintStart_toStartOf="@id/b_normal"
+            app:layout_constraintEnd_toEndOf="@id/b_normal"
+            app:layout_constraintHorizontal_bias="0.99"
+            app:layout_constraintVertical_bias="0.99"/>
 
-    <TextView
-        android:id="@+id/tv_crew"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0"
-        android:textAlignment="center"
-        app:layout_constraintBottom_toTopOf="@+id/b_crew"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.66"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.99" />
+        <TextView
+            android:id="@+id/tv_normal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textAlignment="center"
+            app:layout_constraintTop_toTopOf="@id/tv_normal_bg"
+            app:layout_constraintBottom_toBottomOf="@id/tv_normal_bg"
+            app:layout_constraintStart_toStartOf="@id/tv_normal_bg"
+            app:layout_constraintEnd_toEndOf="@id/tv_normal_bg" />
 
-    <TextView
-        android:id="@+id/tv_opentitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="BoxOpened"
-        android:textAlignment="center"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.7" />
+        <Button
+            android:id="@+id/b_crew"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:text="크루\n보상"
+            android:background="@drawable/img_icon_box"
+            app:backgroundTint="@null"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.7"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/tv_crew_bg"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:background="@color/crew_pink"
+            app:layout_constraintTop_toTopOf="@id/b_crew"
+            app:layout_constraintBottom_toBottomOf="@id/b_crew"
+            app:layout_constraintStart_toStartOf="@id/b_crew"
+            app:layout_constraintEnd_toEndOf="@id/b_crew"
+            app:layout_constraintHorizontal_bias="0.99"
+            app:layout_constraintVertical_bias="0.99"/>
+
+        <TextView
+            android:id="@+id/tv_crew"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textAlignment="center"
+            app:layout_constraintTop_toTopOf="@id/tv_crew_bg"
+            app:layout_constraintEnd_toEndOf="@id/tv_crew_bg"
+            app:layout_constraintStart_toStartOf="@id/tv_crew_bg"
+            app:layout_constraintBottom_toBottomOf="@id/tv_crew_bg" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
 
     <TextView
         android:id="@+id/tv_openamount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
-        android:text="BoxOpened"
+        android:layout_marginBottom="50dp"
+        android:text="00"
         android:textAlignment="center"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:textColor="@color/crewlist_orange"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_opentitle"
-        app:layout_constraintVertical_bias="0.01" />
+        app:layout_constraintTop_toBottomOf="@id/l_boxes"
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

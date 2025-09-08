@@ -32,9 +32,9 @@ class RaisingItemActivity : AppCompatActivity() {
         setFinishOnTouchOutside(true)
         window.setLayout(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        window.setGravity(Gravity.CENTER)
+        window.setGravity(Gravity.BOTTOM)
 
         currentNormalItemAmount = intent.getIntExtra("currentNormalItemAmount", 0)
         currentCrewItemAmount = intent.getIntExtra("currentCrewItemAmount", 0)
