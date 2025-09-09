@@ -13,7 +13,7 @@
         android:orientation="vertical"
         android:background="#CCFFFFFF"
         android:padding="8dp"
-        android:layout_marginTop="300dp"
+        android:layout_marginTop="200dp"
         android:layout_gravity="top"
         android:elevation="8dp">
 
