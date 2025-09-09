@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/img_bg_record"
     tools:context=".raising.RaisingStoryActivity">
 
     <TextView
@@ -21,9 +22,9 @@
 
     <Button
         android:id="@+id/b_quit"
-        android:layout_width="60dp"
-        android:layout_height="48dp"
-        android:text="Q"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/back"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.045"
@@ -44,9 +45,10 @@
     <LinearLayout
         android:id="@+id/storyContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="50dp"
         android:orientation="vertical"
-        android:padding="30dp" />
+        android:padding="30dp"
+        android:background="@drawable/img_btn_record"/>
 
     </ScrollView>
 

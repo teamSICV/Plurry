@@ -27,6 +27,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.google.firebase.firestore.FieldValue
 import android.util.Log
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 
 class AddPointDialogFragment : DialogFragment() {
 
@@ -40,8 +42,8 @@ class AddPointDialogFragment : DialogFragment() {
     private lateinit var nameInputLayout: LinearLayout
     private lateinit var etPlaceName: EditText
     private lateinit var imagePreview: ImageView
-    private lateinit var btnTakePhoto: Button
-    private lateinit var btnRetake: Button // '다시 찍기' 버튼을 복구했습니다.
+    //private lateinit var btnTakePhoto: Button
+    //private lateinit var btnRetake: Button // '다시 찍기' 버튼을 복구했습니다.
     private lateinit var btnConfirm: Button
     private lateinit var photoActions: LinearLayout
     private lateinit var btnClose: Button
@@ -58,8 +60,8 @@ class AddPointDialogFragment : DialogFragment() {
         nameInputLayout = view.findViewById(R.id.nameInputLayout)
         etPlaceName = view.findViewById(R.id.etPlaceName)
         imagePreview = view.findViewById(R.id.imagePreview)
-        btnTakePhoto = view.findViewById(R.id.btnTakePhoto)
-        btnRetake = view.findViewById(R.id.btnRetake) // '다시 찍기' 버튼 초기화 코드를 복구했습니다.
+        //btnTakePhoto = view.findViewById(R.id.btnTakePhoto)
+        //btnRetake = view.findViewById(R.id.btnRetake) // '다시 찍기' 버튼 초기화 코드를 복구했습니다.
         btnConfirm = view.findViewById(R.id.btnConfirm)
         photoActions = view.findViewById(R.id.photoActionButtons)
         btnClose = view.findViewById(R.id.btnClose)
@@ -75,7 +77,7 @@ class AddPointDialogFragment : DialogFragment() {
         etPlaceName.visibility = View.GONE
         imagePreview.visibility = View.GONE
         photoActions.visibility = View.GONE
-        btnTakePhoto.visibility = View.GONE // 초기에는 이 버튼도 숨깁니다.
+        //btnTakePhoto.visibility = View.GONE // 초기에는 이 버튼도 숨깁니다.
         btnClose.visibility = View.GONE // 닫기 버튼은 완료 화면에서 나타납니다.
         completionLayout.visibility = View.GONE
         progressLayout.visibility = View.GONE
@@ -205,7 +207,7 @@ class AddPointDialogFragment : DialogFragment() {
                                                     // 모든 이전 UI 요소 숨김
                                                     nameInputLayout.visibility = View.GONE
                                                     etPlaceName.visibility = View.GONE
-                                                    btnTakePhoto.visibility = View.GONE
+                                                    //btnTakePhoto.visibility = View.GONE
                                                     photoActions.visibility = View.GONE
                                                     btnConfirm.visibility = View.GONE
                                                     btnClose.visibility = View.GONE
@@ -235,7 +237,7 @@ class AddPointDialogFragment : DialogFragment() {
                                                                 // 모든 이전 UI 요소 숨김
                                                                 nameInputLayout.visibility = View.GONE
                                                                 etPlaceName.visibility = View.GONE
-                                                                btnTakePhoto.visibility = View.GONE
+                                                                //btnTakePhoto.visibility = View.GONE
                                                                 photoActions.visibility = View.GONE
                                                                 btnConfirm.visibility = View.GONE
                                                                 btnClose.visibility = View.GONE
@@ -312,7 +314,12 @@ class AddPointDialogFragment : DialogFragment() {
             dismiss()
         }
 
-        return builder.create()
+        //배경투명화
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        return dialog
+
+        //return builder.create()
     }
 
     override fun onRequestPermissionsResult(
@@ -383,9 +390,9 @@ class AddPointDialogFragment : DialogFragment() {
                 // '촬영 완료' 버튼이 포함된 액션 버튼 레이아웃을 보이게 합니다.
                 photoActions.visibility = View.VISIBLE
                 // 이전 요청에 따라 '다시 찍기' 버튼은 숨깁니다.
-                btnRetake.visibility = View.GONE
+                //btnRetake.visibility = View.GONE
 
-                btnTakePhoto.visibility = View.GONE // 초기 '사진 찍기' 버튼 숨김
+                //btnTakePhoto.visibility = View.GONE // 초기 '사진 찍기' 버튼 숨김
                 btnClose.visibility = View.VISIBLE // 닫기 버튼 표시
 
             } else if (resultCode == Activity.RESULT_CANCELED) {

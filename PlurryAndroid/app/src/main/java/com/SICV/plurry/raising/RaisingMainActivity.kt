@@ -199,15 +199,25 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         val txtcurrentRaisingPoint = findViewById<TextView>(R.id.t_raisingPoint)
         val txtcurrentRaisingAmount = findViewById<TextView>(R.id.t_raisingAmount)
         val txtcurrentLevel = findViewById<TextView>(R.id.t_level)
+        val gageRaisingPoint = findViewById<View>(R.id.g_raise)
 
         if(currentRaisingAmount > 0) {
             currentRaisingPoint += 1
             currentRaisingAmount -= 1
+
+            animateCoin()
         }
-        txtcurrentRaisingPoint.text = currentRaisingPoint.toString()
+        txtcurrentRaisingPoint.text = (currentRaisingPoint % 100).toString()
         txtcurrentRaisingAmount.text = currentRaisingAmount.toString()
         currentStoryLevel = currentRaisingPoint / 100
         txtcurrentLevel.text = currentStoryLevel.toString()
+        val density = resources.displayMetrics.density
+        var gWidthPx = (((currentRaisingPoint % 100) / 100.0) * 250 * density).toInt()
+        if(gWidthPx==0) {
+            gWidthPx=1
+        }
+        gageRaisingPoint.layoutParams.width = gWidthPx
+        gageRaisingPoint.requestLayout()
 
         //Call Unity
         SendMessageToUnity( "UnityProcessGrowing" )
@@ -218,6 +228,28 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
             ProcessGrowing()
             handler.postDelayed({ GrowingRepeat() }, 100)
         }
+    }
+
+    private fun animateCoin() {
+        val btnGrowing = findViewById<Button>(R.id.b_growing)
+        val txtRaisingPoint = findViewById<TextView>(R.id.t_raisingPoint)
+
+        val imgCoin = ImageView(this).apply {
+            setImageResource(R.drawable.img_icon_coin)
+            layoutParams = ViewGroup.LayoutParams(80, 80)
+            x = btnGrowing.x
+            y = btnGrowing.y
+            visibility = View.VISIBLE
+        }
+
+        androidUIContainer.addView(imgCoin)
+
+        imgCoin.animate()
+            .translationX(txtRaisingPoint.x - btnGrowing.x)
+            .translationY(txtRaisingPoint.y - btnGrowing.y)
+            .setDuration(500)
+            .withEndAction { androidUIContainer.removeView(imgCoin) }
+            .start()
     }
 
 /* *********

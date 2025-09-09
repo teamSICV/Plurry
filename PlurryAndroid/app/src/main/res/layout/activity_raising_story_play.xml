@@ -5,13 +5,14 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/img_bg_record"
     tools:context=".raising.RaisingStoryPlayActivity">
 
     <Button
         android:id="@+id/b_quit"
         android:layout_width="60dp"
         android:layout_height="48dp"
-        android:text="Q"
+        android:background="@drawable/back"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.045"

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@android:color/white"
+    android:background="@drawable/img_frame_record"
     android:padding="24dp">
 
     <LinearLayout
@@ -34,44 +35,44 @@
             android:id="@+id/tvRewardInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
             android:text="일반 보상 아이템 지급\n크루 보상 아이템 지급"
             android:textColor="#333333"
             android:textSize="16sp"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:visibility="gone" />
+            android:visibility="visible" />
 
         <TextView
             android:id="@+id/tvStatsInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
             android:text="걸음: 0 걸음\n거리: 0.00 km\n칼로리: 0.0 kcal"
             android:textColor="#666666"
             android:textSize="14sp"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:visibility="gone" />
+            android:visibility="visible" />
 
         <!-- 🆕 이미지 비교 레이아웃 (success 모드에서만 표시) -->
         <LinearLayout
             android:id="@+id/layoutImageComparison"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:layout_marginTop="16dp"
-            android:padding="12dp"
             android:background="#F8F9FA"
-            android:visibility="gone">
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="visible">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="📸 이미지 비교 결과"
-                android:textSize="16sp"
-                android:textStyle="bold"
+                android:layout_marginBottom="12dp"
                 android:gravity="center"
+                android:text="📸 이미지 비교 결과"
                 android:textColor="#333333"
-                android:layout_marginBottom="12dp" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -83,26 +84,26 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginEnd="6dp">
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="🎯 목표 장소"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp"
                         android:gravity="center"
+                        android:text="🎯 목표 장소"
                         android:textColor="#555555"
-                        android:layout_marginBottom="4dp" />
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
                     <ImageView
                         android:id="@+id/ivReferenceImage"
                         android:layout_width="match_parent"
                         android:layout_height="100dp"
-                        android:scaleType="centerCrop"
-                        android:background="#DDDDDD" />
+                        android:background="#DDDDDD"
+                        android:scaleType="centerCrop" />
 
                 </LinearLayout>
 
@@ -110,26 +111,26 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
                     android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="6dp">
+                    android:orientation="vertical">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="📷 촬영한 사진"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp"
                         android:gravity="center"
+                        android:text="📷 촬영한 사진"
                         android:textColor="#555555"
-                        android:layout_marginBottom="4dp" />
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
                     <ImageView
                         android:id="@+id/ivUserImage"
                         android:layout_width="match_parent"
                         android:layout_height="100dp"
-                        android:scaleType="centerCrop"
-                        android:background="#DDDDDD" />
+                        android:background="#DDDDDD"
+                        android:scaleType="centerCrop" />
 
                 </LinearLayout>
 
@@ -140,31 +141,37 @@
                 android:id="@+id/tvSimilarity"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="유사도: 85%"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:gravity="center"
                 android:layout_marginTop="12dp"
-                android:padding="8dp"
                 android:background="#E8F5E8"
-                android:textColor="#2E7D32" />
+                android:gravity="center"
+                android:padding="8dp"
+                android:text="유사도: 85%"
+                android:textColor="#2E7D32"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
 
         <Button
             android:id="@+id/btnMainAction"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="100dp"
             android:text="촬영하기"
-            android:layout_marginTop="20dp" />
+            android:layout_marginTop="20dp"
+            android:background="@drawable/img_btn_record2"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@null"/>
 
         <Button
             android:id="@+id/btnSecondaryAction"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="탐색 종료"
+            android:layout_height="100dp"
             android:layout_marginTop="12dp"
-            android:visibility="gone" />
+            android:background="@drawable/img_btn_record2"
+            android:text="탐색 종료"
+            android:textColor="#FFFFFF"
+            android:visibility="visible"
+            app:backgroundTint="@null" />
 
     </LinearLayout>
 </ScrollView>
