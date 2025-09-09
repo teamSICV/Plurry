@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import com.SICV.plurry.R
+import com.SICV.plurry.security.AndroidSecurityValidator
 
 class MyPageNameDialog(
     context: Context,
@@ -25,19 +26,20 @@ class MyPageNameDialog(
         val editText = findViewById<EditText>(R.id.NameEditText)
         val changeButton = findViewById<Button>(R.id.myPageEditName)
 
+        // 보안 검증 추가
+        val securityValidator = AndroidSecurityValidator()
+
         editText.setText(currentName)
         editText.selectAll()
 
         changeButton.setOnClickListener {
             val newName = editText.text.toString().trim()
 
-            if (newName.isEmpty()) {
-                Toast.makeText(context, "닉네임을 입력해주세요.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            // 보안 검증 적용
+            val validationResult = securityValidator.validateNickname(newName)
 
-            if (newName.length > 10) {
-                Toast.makeText(context, "닉네임은 10자 이하로 입력해주세요.", Toast.LENGTH_SHORT).show()
+            if (!validationResult.isValid) {
+                Toast.makeText(context, validationResult.message, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 

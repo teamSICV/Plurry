@@ -85,6 +85,7 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
         }
 
         val userId = currentUser.uid
+        Log.w("MyPageExitDialog", "회원탈퇴 시도 - UserID: $userId")
 
         scope.launch {
             try {
@@ -115,8 +116,10 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 // Authentication에서 사용자 계정 삭제
                 deleteAuthenticationAccount()
 
+                Log.w("MyPageExitDialog", "회원탈퇴 완료 - UserID: $userId")
+
             } catch (e: Exception) {
-                Log.e(TAG, "사용자 데이터 삭제 중 오류 발생: ${e.message}", e)
+                Log.e("MyPageExitDialog", "회원탈퇴 중 보안 오류: ${e.message}", e)
                 Toast.makeText(context, "회원탈퇴 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 dismiss()
             }
