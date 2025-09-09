@@ -4,7 +4,9 @@ import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Button
+import android.widget.TextView
 import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingCrewTotal
 import com.google.firebase.auth.FirebaseAuth
@@ -35,41 +37,42 @@ class CrewExit(
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (isLeader) {
-            setContentView(R.layout.activity_crew_leader_exit)
-        } else {
-            setContentView(R.layout.activity_crew_exit)
-        }
+        setContentView(R.layout.activity_crew_exit)
 
         setCancelable(false)
         setCanceledOnTouchOutside(false)
 
+        setupUI()
         setupButtons()
     }
 
-    private fun setupButtons() {
+    private fun setupUI() {
+        val crewMemberExitText = findViewById<TextView>(R.id.crewMemberExit)
+        val crewLeaderExitText = findViewById<TextView>(R.id.crewLeaderExit)
+
         if (isLeader) {
-            val btnConfirm = findViewById<Button>(R.id.btnLeaderExitOk)
-            val btnCancel = findViewById<Button>(R.id.btnLeaderExitBack)
-
-            btnConfirm.setOnClickListener {
-                handleLeaderExit()
-            }
-
-            btnCancel.setOnClickListener {
-                dismiss()
-            }
+            crewMemberExitText.visibility = View.GONE
+            crewLeaderExitText.visibility = View.VISIBLE
         } else {
-            val btnConfirm = findViewById<Button>(R.id.btnExitOk)
-            val btnCancel = findViewById<Button>(R.id.btnExitBack)
+            crewMemberExitText.visibility = View.VISIBLE
+            crewLeaderExitText.visibility = View.GONE
+        }
+    }
 
-            btnConfirm.setOnClickListener {
+    private fun setupButtons() {
+        val btnConfirm = findViewById<Button>(R.id.btnExitOk)
+        val btnCancel = findViewById<Button>(R.id.btnExitBack)
+
+        btnConfirm.setOnClickListener {
+            if (isLeader) {
+                handleLeaderExit()
+            } else {
                 handleCrewExit()
             }
+        }
 
-            btnCancel.setOnClickListener {
-                dismiss()
-            }
+        btnCancel.setOnClickListener {
+            dismiss()
         }
     }
 
@@ -122,6 +125,47 @@ class CrewExit(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting crew: $crewId", e)
+            }
+        }
+    }
+
+    private fun handleCrewExit() {
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId == null) {
+            Log.e(TAG, "Current user ID is null")
+            onConfirm()
+            dismiss()
+            return
+        }
+
+        scope.launch {
+            try {
+                val userDoc = firestore.collection("Users")
+                    .document(currentUserId)
+                    .get()
+                    .await()
+
+                val currentCrewId = userDoc.getString("crewAt")
+
+                if (currentCrewId != null) {
+                    Log.d(TAG, "User $currentUserId is leaving crew $currentCrewId")
+
+                    onConfirm()
+
+                    delay(500)
+                    crewTotalManager.manualRecalculateCrewScore(currentCrewId)
+
+                    Log.d(TAG, "Crew score recalculation triggered for crew: $currentCrewId")
+                } else {
+                    Log.w(TAG, "User is not in any crew")
+                    onConfirm()
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error handling crew exit", e)
+                onConfirm()
+            } finally {
+                dismiss()
             }
         }
     }
@@ -256,47 +300,6 @@ class CrewExit(
 
         result.prefixes.forEach { subfolder ->
             deleteStorageFolder(subfolder)
-        }
-    }
-
-    private fun handleCrewExit() {
-        val currentUserId = auth.currentUser?.uid
-        if (currentUserId == null) {
-            Log.e(TAG, "Current user ID is null")
-            onConfirm()
-            dismiss()
-            return
-        }
-
-        scope.launch {
-            try {
-                val userDoc = firestore.collection("Users")
-                    .document(currentUserId)
-                    .get()
-                    .await()
-
-                val currentCrewId = userDoc.getString("crewAt")
-
-                if (currentCrewId != null) {
-                    Log.d(TAG, "User $currentUserId is leaving crew $currentCrewId")
-
-                    onConfirm()
-
-                    delay(500)
-                    crewTotalManager.manualRecalculateCrewScore(currentCrewId)
-
-                    Log.d(TAG, "Crew score recalculation triggered for crew: $currentCrewId")
-                } else {
-                    Log.w(TAG, "User is not in any crew")
-                    onConfirm()
-                }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error handling crew exit", e)
-                onConfirm()
-            } finally {
-                dismiss()
-            }
         }
     }
 }

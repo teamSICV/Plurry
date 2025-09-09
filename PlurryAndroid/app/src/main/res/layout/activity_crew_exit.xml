@@ -24,6 +24,19 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <TextView
+            android:id="@+id/crewLeaderExit"
+            android:layout_width="250dp"
+            android:layout_height="150dp"
+            android:gravity="center"
+            android:layout_marginTop="90dp"
+            android:text="@string/crew_exit_leader"
+            android:textAlignment="center"
+            android:textSize="17sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <Button
             android:id="@+id/btnExitBack"
             android:layout_width="100dp"

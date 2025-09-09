@@ -391,14 +391,8 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
                 val leaderId = leaderDoc.getString("leader")
                 val isLeader = leaderId == uid
 
-                val exitDialog = if (isLeader) {
-                    CrewExit(this, true, crewId) {
-                        performExitCrew(crewId, db)
-                    }
-                } else {
-                    CrewExit(this, false, crewId) {
-                        performExitCrew(crewId, db)
-                    }
+                val exitDialog = CrewExit(this, isLeader, crewId) {
+                    performExitCrew(crewId, db)
                 }
                 exitDialog.show()
             }
