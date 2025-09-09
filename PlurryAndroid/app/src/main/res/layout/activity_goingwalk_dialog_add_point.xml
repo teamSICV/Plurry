@@ -17,7 +17,7 @@
         android:layout_marginBottom="16dp"
         android:gravity="center"
         android:orientation="vertical"
-        android:visibility="visible">
+        android:visibility="invisible">
 
         <TextView
             android:id="@+id/tvCompletionTitle"
@@ -36,8 +36,7 @@
             android:layout_marginBottom="16dp"
             android:text="일반 보상 아이템 1개 지급"
             android:textColor="#957343"
-            android:textSize="16sp"
-            />
+            android:textSize="16sp" />
 
         <Button
             android:id="@+id/btnDone"
@@ -46,7 +45,7 @@
             android:background="@drawable/img_btn_record"
             android:text="종료"
             android:textColor="#FFFFFF"
-            app:backgroundTint="@null"/>
+            app:backgroundTint="@null" />
     </LinearLayout>
 
     <!-- 포인트 장소 이름 입력 -->
@@ -135,7 +134,7 @@
         android:gravity="center"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:visibility="visible">
+        android:visibility="invisible">
 
         <ProgressBar
             android:layout_width="wrap_content"
