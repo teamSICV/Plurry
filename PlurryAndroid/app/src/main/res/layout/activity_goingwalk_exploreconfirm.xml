@@ -99,21 +99,18 @@
 
         <Button
             android:id="@+id/btnCancelExplore"
-            android:layout_width="wrap_content"
-            android:layout_height="100dp"
+            android:layout_width="120dp"
+            android:layout_height="80dp"
+            android:layout_marginEnd="50dp"
             android:text="다시 선택"
             android:background="@drawable/img_btn_record2"
             android:textColor="#FFFFFF"
             app:backgroundTint="@null"/>
 
-        <Space
-            android:layout_width="32dp"
-            android:layout_height="wrap_content" />
-
         <Button
             android:id="@+id/btnStartExplore"
-            android:layout_width="wrap_content"
-            android:layout_height="100dp"
+            android:layout_width="120dp"
+            android:layout_height="80dp"
             android:text="탐색 시작"
             android:background="@drawable/img_btn_record2"
             android:textColor="#FFFFFF"
