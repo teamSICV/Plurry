@@ -16,7 +16,7 @@ public class DestroyMark : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        //Debug.Log("Overrap : " +  other.tag);
+        Debug.Log("Overrap : " +  other.tag);
         if (other.tag == "Player")
         {
             Destroy(this.gameObject);

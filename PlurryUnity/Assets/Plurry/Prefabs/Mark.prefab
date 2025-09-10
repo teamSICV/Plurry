@@ -14667,7 +14667,7 @@ GameObject:
   - component: {fileID: 5687575389619463175}
   m_Layer: 0
   m_Name: Mark
-  m_TagString: Untagged
+  m_TagString: Mark
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -19716,7 +19716,7 @@ Light:
   serializedVersion: 11
   m_Type: 2
   m_Color: {r: 0.6392157, g: 0.8980392, b: 0.9372549, a: 0.8627451}
-  m_Intensity: 0
+  m_Intensity: 0.67792547
   m_Range: 4
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208

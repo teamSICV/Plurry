@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Playables;
 
 # if UNITY_EDITOR
 using UnityEditor.Experimental.GraphView;
@@ -16,6 +17,8 @@ public class CharacterMove : MonoBehaviour
     private PRAniminstance animintance;
     private CharacterController characterController;
 
+    public bool bisCanPlayerInput = true;
+
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -29,15 +32,29 @@ public class CharacterMove : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //Get Input
-        if (Input.touchCount == 1)
+        if(bisCanPlayerInput)
         {
-            UnityEngine.Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
+            //Get Input
+            if (Input.touchCount == 1)
             {
-                TouchRay(touch.position);
-            } 
+                UnityEngine.Touch touch = Input.GetTouch(0);
+                if (touch.phase == TouchPhase.Began)
+                {
+                    TouchRay(touch.position);
+                }
+            }
         }
+        else
+        {
+#if UNITY_ANDROID && UNITY_EDITOR
+            //For Debug
+            if (Input.touchCount == 1)
+            {
+                GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerState>().SendMessage("EndPlayerState");
+            }
+#endif
+        }
+
 
         if (isCo)
         {
@@ -46,6 +63,23 @@ public class CharacterMove : MonoBehaviour
         else
         {
             animintance.bisIdle = true;
+        }
+    }
+
+    public void StopWalking()
+    {
+        if (isCo)
+        {
+            isCo = false;
+            StopCoroutine(coroutine);
+            //GameObject pinObject = GameObject.Find("Mark(Clone)");
+            //Destroy(pinObject);
+
+            GameObject[] pinObjects = GameObject.FindGameObjectsWithTag("Mark");
+            foreach (GameObject pinObject in pinObjects)
+            {
+                Destroy(pinObject);
+            }
         }
     }
 
@@ -61,13 +95,7 @@ public class CharacterMove : MonoBehaviour
             //Debug.Log("Raycast Hitted : " + hit.transform.tag);
             if (hit.transform.tag == "Floor")
             {
-                if (isCo)
-                {
-                    isCo = false;
-                    StopCoroutine(coroutine);
-                    GameObject pinObject = GameObject.Find("Mark(Clone)");
-                    Destroy(pinObject);
-                }
+                StopWalking();
 
                 coroutine = StartCoroutine(MoveCharacter(hit.point));
                 GameObject.Instantiate(pinPoint, hit.point, Quaternion.Euler(0f, 0f, 0f));
