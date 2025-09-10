@@ -2,13 +2,15 @@ using UnityEngine;
 
 public class GameController : MonoBehaviour
 {
-    private string displayText = "Unity Callback test";
+    //private string displayText = "Unity Callback test";
     public GUISkin skin;
     string androidFunctionName;
+    private PlayerState playerState;
 
     void Start()
     {
         androidFunctionName = "";
+        playerState = GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerState>();
     }
 
 
@@ -44,22 +46,26 @@ public class GameController : MonoBehaviour
     //Call Back Section
     private void UnityProcessGrowing()
     {
-        displayText = "Growing success";
+        //displayText = "Growing success";
+        playerState.SendMessage("EndPlayerState");
     }
 
     private void UnityProcessStory()
     {
-        displayText = "Story success";
+        //displayText = "Story success";
+        playerState.SendMessage("EndPlayerState");
     }
 
     private void UnityProcessRanking()
     {
-        displayText = "Ranking success";
+        //displayText = "Ranking success";
+        playerState.SendMessage("EndPlayerState");
     }
 
     private void UnityProcessItem()
     {
-        displayText = "Item success";
+        //displayText = "Item success";
+        playerState.SendMessage("EndPlayerState");
     }
 
 
