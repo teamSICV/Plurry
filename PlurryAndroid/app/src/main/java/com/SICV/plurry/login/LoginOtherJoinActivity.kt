@@ -15,7 +15,7 @@ import java.security.MessageDigest
 
 class LoginOtherJoinActivity : ComponentActivity() {
 
-    private lateinit var editEmail: EditText
+    /*private lateinit var editEmail: EditText
     private lateinit var editPassword: EditText
     private lateinit var btnJoinNext: Button
     private lateinit var auth: FirebaseAuth
@@ -132,5 +132,5 @@ class LoginOtherJoinActivity : ComponentActivity() {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(password.toByteArray(Charsets.UTF_8))
         return hashBytes.joinToString("") { "%02x".format(it) }
-    }
+    }*/
 }

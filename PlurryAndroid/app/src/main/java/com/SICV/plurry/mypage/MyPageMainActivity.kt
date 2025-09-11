@@ -11,6 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.SICV.plurry.R
 import com.SICV.plurry.login.LoginMainActivity
+import com.SICV.plurry.security.AndroidSecurityValidator
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -24,6 +25,8 @@ class MyPageMainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mypage_main)
+
+        Log.i("MyPageMainActivity", "마이페이지 접근")
 
         auth = FirebaseAuth.getInstance()
 
@@ -57,6 +60,7 @@ class MyPageMainActivity : AppCompatActivity() {
     }
 
     private fun signOut(){
+        Log.i("MyPageMainActivity", "사용자 로그아웃 시도")
         auth.signOut()
 
         googleSignInClient.signOut().addOnCompleteListener(this) {task ->

@@ -4,8 +4,7 @@
     android:id="@+id/exploreMainLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
-<!--    android:background="@android:color/transparent">-->
+    android:background="@android:color/transparent">
 
     <!-- ✅ 안전도 배너 추가 (화면 상단 고정) -->
     <include
@@ -22,7 +21,7 @@
         android:orientation="vertical"
         android:background="#CCFFFFFF"
         android:padding="8dp"
-        android:layout_marginTop="60dp"
+        android:layout_marginTop="200dp"
         android:layout_gravity="top"
         android:elevation="8dp">
 

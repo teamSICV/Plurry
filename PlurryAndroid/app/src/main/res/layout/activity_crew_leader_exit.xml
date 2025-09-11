@@ -5,45 +5,45 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="300dp"
-        android:layout_height="500dp"
-        android:layout_gravity="center"
-        android:background="@color/white">
+<!--    <androidx.constraintlayout.widget.ConstraintLayout-->
+<!--        android:layout_width="300dp"-->
+<!--        android:layout_height="500dp"-->
+<!--        android:layout_gravity="center"-->
+<!--        android:background="@color/white">-->
 
-        <TextView
-            android:id="@+id/crewLeaderExit"
-            android:layout_width="250dp"
-            android:layout_height="150dp"
-            android:gravity="center"
-            android:layout_marginTop="90dp"
-            android:text="@string/crew_exit_leader"
-            android:textAlignment="center"
-            android:textSize="17sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+<!--        <TextView-->
+<!--            android:id="@+id/crewLeaderExit"-->
+<!--            android:layout_width="250dp"-->
+<!--            android:layout_height="150dp"-->
+<!--            android:gravity="center"-->
+<!--            android:layout_marginTop="90dp"-->
+<!--            android:text="@string/crew_exit_leader"-->
+<!--            android:textAlignment="center"-->
+<!--            android:textSize="17sp"-->
+<!--            app:layout_constraintEnd_toEndOf="parent"-->
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent" />-->
 
-        <Button
-            android:id="@+id/btnLeaderExitBack"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="30dp"
-            android:text="취소"
-            android:layout_marginTop="300dp"
+<!--        <Button-->
+<!--            android:id="@+id/btnLeaderExitBack"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginStart="30dp"-->
+<!--            android:text="취소"-->
+<!--            android:layout_marginTop="300dp"-->
 
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent" />-->
 
-        <Button
-            android:id="@+id/btnLeaderExitOk"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="30dp"
-            android:text="확인"
-            android:layout_marginTop="300dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+<!--        <Button-->
+<!--            android:id="@+id/btnLeaderExitOk"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginEnd="30dp"-->
+<!--            android:text="확인"-->
+<!--            android:layout_marginTop="300dp"-->
+<!--            app:layout_constraintEnd_toEndOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent" />-->
+<!--    </androidx.constraintlayout.widget.ConstraintLayout>-->
 
 </FrameLayout>

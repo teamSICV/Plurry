@@ -32,7 +32,7 @@ class LoginMainActivity : ComponentActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var credentialManager: CredentialManager
-    private lateinit var btnOtherLogin: Button
+    /*private lateinit var btnOtherLogin: Button*/
     private lateinit var googleSignInClient: GoogleSignInClient
 
     private val RC_SIGN_IN = 9001
@@ -46,12 +46,12 @@ class LoginMainActivity : ComponentActivity() {
 
         checkCurrentUser()
 
-        val skipLogin = findViewById<TextView>(R.id.SkipLogin)
+        /*val skipLogin = findViewById<TextView>(R.id.SkipLogin)
 
         skipLogin.setOnClickListener{
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
-        }
+        }*/
 
         // GoogleSignInOptions for fallback
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -62,18 +62,18 @@ class LoginMainActivity : ComponentActivity() {
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         val btnLogin = findViewById<Button>(R.id.BtnLogin)
-        btnOtherLogin = findViewById(R.id.BtnOtherLogin)
+        /*btnOtherLogin = findViewById(R.id.BtnOtherLogin)*/
 
-        btnOtherLogin.visibility = View.GONE
+        /*btnOtherLogin.visibility = View.GONE*/
 
         btnLogin.setOnClickListener {
             signOutAndTryAgain()
         }
 
-        btnOtherLogin.setOnClickListener {
+        /*btnOtherLogin.setOnClickListener {
             val intent = Intent(this, LoginOtherJoinActivity::class.java)
             startActivity(intent)
-        }
+        }*/
     }
 
     private fun signOutAndTryAgain() {
@@ -125,20 +125,20 @@ class LoginMainActivity : ComponentActivity() {
             } catch (e: GetCredentialException) {
                 Log.e("Login", "CredentialManager 실패: ${e.message}")
                 showLoginError()
-                btnOtherLogin.visibility = View.VISIBLE
-                googleSignInWithIntent()
+                /*btnOtherLogin.visibility = View.VISIBLE*/
+                /*googleSignInWithIntent()*/
             } catch (e: Exception) {
                 Log.e("Login", "CredentialManager 에러: ${e.message}")
                 showLoginError()
-                btnOtherLogin.visibility = View.VISIBLE
+                /*btnOtherLogin.visibility = View.VISIBLE*/
             }
         }
     }
 
-    private fun googleSignInWithIntent() {
+    /*private fun googleSignInWithIntent() {
         val signInIntent = googleSignInClient.signInIntent
         startActivityForResult(signInIntent, RC_SIGN_IN)
-    }
+    }*/
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
