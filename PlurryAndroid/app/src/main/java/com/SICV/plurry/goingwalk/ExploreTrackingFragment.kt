@@ -21,7 +21,13 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.SICV.plurry.R
+import com.SICV.plurry.di.RetrofitModule
+import com.SICV.plurry.safety.SafetyRepo
+import com.SICV.plurry.safety.viewmodel.SafetyVMFactory
+import com.SICV.plurry.safety.viewmodel.SafetyViewModel
+import com.SICV.plurry.safety.BottomSheet
 import com.bumptech.glide.Glide
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
@@ -32,17 +38,10 @@ import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
-// ⬇️ [안전도] 추가 import
-import androidx.lifecycle.ViewModelProvider
-import com.SICV.plurry.di.RetrofitModule
-import com.SICV.plurry.safety.SafetyRepo
-import com.SICV.plurry.safety.viewmodel.SafetyVMFactory
-import com.SICV.plurry.safety.viewmodel.SafetyViewModel
-import com.SICV.plurry.safety.BottomSheet
 
 class ExploreTrackingFragment : Fragment() {
 
@@ -52,8 +51,6 @@ class ExploreTrackingFragment : Fragment() {
     private lateinit var arrowImageView: ImageView
     private lateinit var imgTargetPreview: ImageView
     private lateinit var btnExitExplore: Button
-    private lateinit var mapFragment: SupportMapFragment
-    // 🚀 NEW: 속도 경고 메시지 TextView
     private lateinit var tvSpeedWarning: TextView
 
     private var googleMap: com.google.android.gms.maps.GoogleMap? = null
@@ -64,35 +61,26 @@ class ExploreTrackingFragment : Fragment() {
     private var arrivalDialogShown = false
     private var targetImageUrl: String? = null
     private var placeId: String? = null
-    private var targetPlaceName: String? = null // 🚀 NEW: 장소 이름 변수 추가
+    private var targetPlaceName: String? = null
 
     private lateinit var fitnessOptions: FitnessOptions
     private var exploreStartTime: Long = 0L
 
-    // Firebase Firestore 인스턴스 (더 이상 여기서 직접 저장하지 않으므로, 이 인스턴스는 필요 없을 수 있습니다.
-    // 하지만 다른 용도로 사용될 가능성이 있어 일단 유지합니다.)
     private lateinit var db: FirebaseFirestore
-    // Firebase Auth 인스턴스 (사용자별 데이터 저장 시 필요)
     private lateinit var auth: FirebaseAuth
 
-    // 🚀 NEW: 탐색 기능 활성화 여부
     private var isExploringActive = true
-    // 🚀 NEW: 이전 위치 업데이트 시간 (속도 계산용)
     private var lastLocationTime: Long = 0L
-    // 🚀 NEW: 이전 위치 (속도 계산용)
     private var lastLocation: Location? = null
-    // 🚀 NEW: 경로 관리를 위한 PolylineManager 인스턴스
     private var polylineManager: PolylineManager? = null
 
-    // ⬇️ [안전도] ViewModel/상태 저장 (추가)
+    // 안전도 관련
     private lateinit var safetyViewModel: SafetyViewModel
     private var lastSafetyEvalLoc: Location? = null
     private var lastSafetyEvalTime: Long = 0L
-    private var latestSafetyLine: String = ""   // " · 안전도 72 (CAUTION)" 형태로 UI에 붙여쓸 문자열
-    // 배너 뷰 참조
-    private lateinit var safetyBanner: View
-    private lateinit var safetyBannerText: TextView
-
+    private var latestSafetyLine: String = ""
+    private var safetyBanner: View? = null
+    private var safetyBannerText: TextView? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -100,16 +88,16 @@ class ExploreTrackingFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.activity_goingwalk_exploremain, container, false)
-        // 배너 바인딩
-        safetyBanner = view.findViewById(R.id.safetyBanner)
-        safetyBannerText = view.findViewById(R.id.safetyBannerText)
 
         tvDistanceInfo = view.findViewById(R.id.tvDistanceInfo)
         arrowImageView = view.findViewById(R.id.arrowImageView)
         imgTargetPreview = view.findViewById(R.id.imgTargetPreview)
         btnExitExplore = view.findViewById(R.id.btnExitExplore)
-        // 🚀 NEW: tvSpeedWarning 초기화
         tvSpeedWarning = view.findViewById(R.id.tvSpeedWarning)
+
+        // 안전도 배너 (nullable 처리)
+        safetyBanner = view.findViewById(R.id.safetyBanner)
+        safetyBannerText = view.findViewById(R.id.safetyBannerText)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
@@ -118,13 +106,11 @@ class ExploreTrackingFragment : Fragment() {
             targetLat = it.getDouble("targetLat")
             targetLng = it.getDouble("targetLng")
             targetImageUrl = it.getString("targetImageUrl")
-            targetPlaceName = it.getString("targetPlaceName") // 🚀 NEW: 장소 이름 가져오기
+            targetPlaceName = it.getString("targetPlaceName")
         }
 
         targetImageUrl?.let { url ->
-            Glide.with(this)
-                .load(url)
-                .into(imgTargetPreview)
+            Glide.with(this).load(url).into(imgTargetPreview)
         }
 
         btnExitExplore.setOnClickListener {
@@ -135,10 +121,10 @@ class ExploreTrackingFragment : Fragment() {
             override fun handleOnBackPressed() {}
         })
 
-        mapFragment = parentFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync { map ->
+        // 맵 프래그먼트 (없어도 앱 안 죽게 처리)
+        val mapFrag = childFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+        mapFrag?.getMapAsync { map ->
             googleMap = map
-            // 🚀 NEW: GoogleMap 객체가 준비되면 PolylineManager를 초기화합니다.
             polylineManager = PolylineManager(map)
         }
 
@@ -154,33 +140,33 @@ class ExploreTrackingFragment : Fragment() {
         Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_DISTANCE_DELTA)
         Fitness.getRecordingClient(requireContext(), account).subscribe(DataType.TYPE_CALORIES_EXPENDED)
 
-        // Firebase 초기화 (다른 용도로 사용될 가능성 있어 유지)
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
-        // ⬇️ [안전도] ViewModel 생성
+        // 안전도 ViewModel 생성
         val safetyRepo = SafetyRepo(
             kakao = RetrofitModule.kakaoApi,
             safetyService = RetrofitModule.safetyService,
-            kakaoApiKey = "KakaoAK {a670ee4833315dafcd56da98e48b2a26}" // ← 실제 키로 교체
+            kakaoApiKey = "KakaoAK a670ee4833315dafcd56da98e48b2a26" // ← 실제 키로 교체
         )
-        safetyViewModel = ViewModelProvider(
-            this,
-            SafetyVMFactory(safetyRepo)
-        )[SafetyViewModel::class.java]
+        safetyViewModel = ViewModelProvider(this, SafetyVMFactory(safetyRepo))[SafetyViewModel::class.java]
 
         safetyViewModel.safety.observe(viewLifecycleOwner) { detail ->
-            detail ?: return@observe
-            latestSafetyLine = " · 안전도 ${detail.score} (${detail.level})"
-            if (detail.level.name == "DANGER") {
-                // 문구 업데이트 + 배너 표시
-                safetyBannerText.text = "안전도 ${detail.score} (낮음). 밝은 길로 우회하세요."
-                safetyBanner.visibility = View.VISIBLE
-                BottomSheet().show(parentFragmentManager, "safety_detour")
-            } else {
-                safetyBanner.visibility = View.GONE
-            }
+            if (detail == null) return@observe
+            val levelName = detail.level?.name ?: "UNKNOWN"
+            latestSafetyLine = " · 안전도 ${detail.score} ($levelName)"
 
+            if (levelName == "DANGER") {
+                safetyBannerText?.text = "안전도 ${detail.score} (낮음). 밝은 길로 우회하세요."
+                safetyBanner?.visibility = View.VISIBLE
+
+                val fm = parentFragmentManager
+                if (isAdded && !isDetached && fm.findFragmentByTag("safety_detour") == null) {
+                    BottomSheet().show(fm, "safety_detour")
+                }
+            } else {
+                safetyBanner?.visibility = View.GONE
+            }
         }
 
         startLocationTracking()
@@ -189,8 +175,8 @@ class ExploreTrackingFragment : Fragment() {
 
     private fun startLocationTracking() {
         val request = LocationRequest.create().apply {
-            interval = 2000 // 🚀 수정: 속도 감지를 위해 interval을 더 짧게 설정
-            fastestInterval = 1000 // 🚀 수정: 속도 감지를 위해 fastestInterval을 더 짧게 설정
+            interval = 2000
+            fastestInterval = 1000
             priority = Priority.PRIORITY_HIGH_ACCURACY
         }
 
@@ -198,36 +184,28 @@ class ExploreTrackingFragment : Fragment() {
             override fun onLocationResult(result: LocationResult) {
                 val current = result.lastLocation ?: return
 
-                // 🚀 NEW: 속도 감지 및 탐색 기능 제어 로직
+                // 속도 감지
                 if (lastLocation != null && lastLocationTime != 0L) {
                     val timeDeltaSeconds = (current.elapsedRealtimeNanos - lastLocationTime) / 1_000_000_000.0
                     val distanceDeltaMeters = current.distanceTo(lastLocation!!)
-
-                    // 초당 미터 (m/s)
                     val speedMs = if (timeDeltaSeconds > 0) (distanceDeltaMeters / timeDeltaSeconds) else 0.0
-                    // 시속 킬로미터 (km/h)
                     val speedKmh = speedMs * 3.6
 
-                    Log.d("ExploreTrackingFragment", "현재 속도: %.2f km/h".format(speedKmh))
-
-                    // 시속 30km 이상일 경우
                     if (speedKmh >= 30.0) {
                         if (isExploringActive) {
-                            isExploringActive = false // 탐색 기능 비활성화
-                            tvSpeedWarning.visibility = View.VISIBLE // 경고 메시지 표시
-                            tvDistanceInfo.visibility = View.GONE // 거리 정보 숨김
-                            arrowImageView.visibility = View.GONE // 화살표 숨김
+                            isExploringActive = false
+                            tvSpeedWarning.visibility = View.VISIBLE
+                            tvDistanceInfo.visibility = View.GONE
+                            arrowImageView.visibility = View.GONE
                             Toast.makeText(requireContext(), "이동수단에서 내린 후 진행해주세요.", Toast.LENGTH_LONG).show()
-                            Log.d("ExploreTrackingFragment", "속도 제한 초과: 탐색 기능 중지.")
                         }
                     } else {
                         if (!isExploringActive) {
-                            isExploringActive = true // 탐색 기능 재활성화
-                            tvSpeedWarning.visibility = View.GONE // 경고 메시지 숨김
-                            tvDistanceInfo.visibility = View.VISIBLE // 거리 정보 다시 표시
-                            arrowImageView.visibility = View.VISIBLE // 화살표 다시 표시
+                            isExploringActive = true
+                            tvSpeedWarning.visibility = View.GONE
+                            tvDistanceInfo.visibility = View.VISIBLE
+                            arrowImageView.visibility = View.VISIBLE
                             Toast.makeText(requireContext(), "탐색을 재개합니다.", Toast.LENGTH_SHORT).show()
-                            Log.d("ExploreTrackingFragment", "속도 정상: 탐색 기능 재개.")
                         }
                     }
                 }
@@ -235,9 +213,8 @@ class ExploreTrackingFragment : Fragment() {
                 lastLocation = current
                 lastLocationTime = current.elapsedRealtimeNanos
 
-                // 🚀 MODIFIED: isExploringActive가 true일 때만 탐색 관련 UI 및 경로 업데이트
                 if (isExploringActive) {
-                    // ⬇️ [안전도] 평가 디바운스: 200m 이동 또는 30초 경과 시 1회 평가 (추가)
+                    // 안전도 평가 (200m 이동 or 30초마다)
                     val now = System.currentTimeMillis()
                     val needEval = when {
                         lastSafetyEvalLoc == null -> true
@@ -250,11 +227,10 @@ class ExploreTrackingFragment : Fragment() {
                         lastSafetyEvalLoc = current
                         lastSafetyEvalTime = now
                     }
-                    // 🚀 NEW: PolylineManager를 사용하여 현재 위치를 경로에 추가합니다.
+
                     polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
 
                     val distance = calculateDistance(current.latitude, current.longitude)
-                    // 🚀 MODIFIED: 장소 이름 + 안전도 라인까지 한 번에 표시 (변경)
                     tvDistanceInfo.text =
                         "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance) + latestSafetyLine
 
@@ -262,8 +238,7 @@ class ExploreTrackingFragment : Fragment() {
                         latitude = targetLat
                         longitude = targetLng
                     }
-                    val bearing = calculateBearing(current, destLoc)
-                    arrowImageView.rotation = bearing
+                    arrowImageView.rotation = calculateBearing(current, destLoc)
 
                     val roundedLevel = (distance / 100).toInt()
                     if (roundedLevel < lastVibrationLevel) {
@@ -273,13 +248,6 @@ class ExploreTrackingFragment : Fragment() {
 
                     val currentLevel50m = (distance / 50).toInt()
                     if (currentLevel50m != lastLoggedDistanceLevel) {
-                        if (lastLoggedDistanceLevel != -1) {
-                            if (currentLevel50m < lastLoggedDistanceLevel) {
-                                Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
-                            } else {
-                                Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
-                            }
-                        }
                         lastLoggedDistanceLevel = currentLevel50m
                     }
 
@@ -302,11 +270,7 @@ class ExploreTrackingFragment : Fragment() {
     }
 
     private fun onArriveAtPlace() {
-        // 🚀 MODIFIED: 탐색이 비활성화 상태일 때는 도착 처리하지 않음
-        if (!isExploringActive) {
-            Log.d("ExploreTrackingFragment", "탐색 기능이 비활성화되어 도착 처리를 건너뜁니다.")
-            return
-        }
+        if (!isExploringActive) return
 
         val endTime = System.currentTimeMillis()
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
@@ -338,18 +302,11 @@ class ExploreTrackingFragment : Fragment() {
                     }
                 }
 
-                Log.d("GoogleFit", "탐색 중 측정 결과 - 거리: ${"%.2f".format(totalDistance / 1000)}km, 걸음: $totalSteps, 칼로리: ${"%.1f".format(totalCalories)}kcal")
-
                 targetImageUrl?.let { imageUrl ->
-                    // 탐색 결과 다이얼로그를 띄울 때 운동 데이터를 함께 전달합니다.
-                    // 이 데이터는 사진 비교 성공 시 Firebase에 저장될 것입니다.
                     ExploreResultDialogFragment
                         .newInstance("confirm", imageUrl, placeId ?: "", totalSteps, totalDistance, totalCalories)
                         .show(parentFragmentManager, "explore_confirm")
                 }
-            }
-            .addOnFailureListener {
-                Log.e("GoogleFit", "탐색 GoogleFit 데이터 로딩 실패", it)
             }
     }
 
@@ -370,7 +327,6 @@ class ExploreTrackingFragment : Fragment() {
         val startLng = Math.toRadians(start.longitude)
         val endLat = Math.toRadians(end.latitude)
         val endLng = Math.toRadians(end.longitude)
-
         val dLng = endLng - startLng
         val y = sin(dLng) * cos(endLat)
         val x = cos(startLat) * sin(endLat) - sin(startLat) * cos(endLat) * cos(dLng)
@@ -391,35 +347,26 @@ class ExploreTrackingFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         fusedLocationClient.removeLocationUpdates(locationCallback)
-        // 🚀 NEW: 프래그먼트가 소멸될 때 PolylineManager를 초기화합니다.
         polylineManager?.clearPath()
     }
 
     fun onPhotoTaken(photoUri: android.net.Uri) {
-        Log.d("Explore", "onPhotoTaken 호출됨! URI: $photoUri")
-
         targetImageUrl?.let { url ->
-            Log.d("Explore", "imageUrl 전달됨: $url")
-
             ExploreResultDialogFragment
                 .newInstance("fail", url, placeId ?: "")
                 .show(parentFragmentManager, "explore_result")
-
-            Log.d("Explore", "팝업 show() 호출 완료!")
-        } ?: run {
-            Log.e("Explore", "targetImageUrl 이 null이야!!")
         }
     }
 
     companion object {
-        fun newInstance(placeId: String, lat: Double, lng: Double, imageUrl: String, placeName: String): ExploreTrackingFragment { // 🚀 MODIFIED: placeName 인자 추가
+        fun newInstance(placeId: String, lat: Double, lng: Double, imageUrl: String, placeName: String): ExploreTrackingFragment {
             return ExploreTrackingFragment().apply {
                 arguments = Bundle().apply {
                     putString("placeId", placeId)
                     putDouble("targetLat", lat)
                     putDouble("targetLng", lng)
                     putString("targetImageUrl", imageUrl)
-                    putString("targetPlaceName", placeName) // 🚀 NEW: placeName 전달
+                    putString("targetPlaceName", placeName)
                 }
             }
         }
