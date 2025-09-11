@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.Toast
@@ -61,7 +62,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
         Handler(Looper.getMainLooper()).postDelayed({
             findViewById<ImageView>(R.id.img_loading).visibility = View.GONE
-        }, 5000)
+        }, 7000)
 
         handleIntent(intent)
     }
@@ -110,7 +111,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
                         currentNormalItemAmount = document.getLong("userRewardItem")?.toInt() ?: -1
                         //currentCrewItemAmount = document.getLong("crewRewardItem")?.toInt() ?: -1
 
-                        Toast.makeText(this, "데이터 로드 성공", Toast.LENGTH_SHORT).show()
+                        //Toast.makeText(this, "데이터 로드 성공", Toast.LENGTH_SHORT).show()
                         setupUIElements()
                     } else {
                         Toast.makeText(this, "사용자 데이터를 찾을 수 없습니다: $userId", Toast.LENGTH_SHORT).show()
@@ -397,6 +398,76 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
         updatePopupTextViews(popupView)
     }
 
+
+/* *********
+*
+* PopupScript
+*
+* *********/
+
+    private fun ShowScriptPopup(paramX: Float, paramY: Float) {
+        runOnUiThread {
+            // 기존 팝업이 있다면 제거
+            val existingPopup = androidUIContainer.findViewWithTag<View>("scriptPopup")
+            if (existingPopup != null) {
+                androidUIContainer.removeView(existingPopup)
+            }
+
+            // 레이아웃 inflate
+            val inflater = LayoutInflater.from(this)
+            val popupView = inflater.inflate(R.layout.popup_raising_character_script, androidUIContainer, false)
+
+            // 태그 설정
+            popupView.tag = "scriptPopup"
+
+            // 픽셀을 dp로 변환
+            val density = resources.displayMetrics.density
+            var dpX = 530
+            var dpY = 980
+            
+            val layoutParams = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+
+            // 좌측 상단을 기준으로 마진 설정
+            layoutParams.leftMargin = dpX
+            layoutParams.topMargin = dpY
+
+            // 제약 조건 설정 (부모의 왼쪽 상단에 고정)
+            layoutParams.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+
+            // 컨테이너에 추가
+            androidUIContainer.addView(popupView, layoutParams)
+            //Log.d("PopupScript", "Popup shown at margins(1): (${dpX}, ${dpY})")
+
+            // 뷰가 그려진 후 크기를 측정해서 중앙 정렬
+            popupView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+                override fun onGlobalLayout() {
+                    popupView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                    dpX -= (popupView.width / 2).toInt()
+                    dpY -= popupView.height.toInt()
+
+                    layoutParams.leftMargin = dpX
+                    layoutParams.topMargin = dpY
+                    popupView.layoutParams = layoutParams
+
+                    //Log.d("PopupScript", "Popup shown at margins(2): (${dpX}, ${dpY})")
+                }
+            })
+
+            // 3초 후 자동 제거
+            Handler(Looper.getMainLooper()).postDelayed({
+                androidUIContainer.removeView(popupView)
+            }, 3000)
+
+        }
+    }
+
+
+
 /* ***********************************************
 *
 *    Unity Call
@@ -449,6 +520,12 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     private fun UnityItemTriggerExit()
     {
         Log.d("UnityToAndroid", "UnityItemTriggerExit call")
+    }
+
+    private fun UnityPopUpScript(paramX : Float, paramY : Float)
+    {
+        Log.d("UnityToAndroid", "UnityPopUpScript call ${paramX}, ${paramY}")
+        ShowScriptPopup(paramX, paramY)
     }
 
 

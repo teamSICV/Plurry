@@ -9,6 +9,7 @@ public class PRAniminstance : MonoBehaviour
     private int isIdleHash;
     private int isGrowingHash;
     private int isItemHash;
+    private int greetingHash;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -19,6 +20,7 @@ public class PRAniminstance : MonoBehaviour
         isIdleHash = Animator.StringToHash("IsIdle");
         isGrowingHash = Animator.StringToHash("IsGrowing");
         isItemHash = Animator.StringToHash("IsItem");
+        greetingHash = Animator.StringToHash("Greeting");
     }
 
     // Update is called once per frame
@@ -27,5 +29,10 @@ public class PRAniminstance : MonoBehaviour
         animator.SetBool(isIdleHash, bisIdle);
         animator.SetBool(isGrowingHash, bisGrowing);
         animator.SetBool(isItemHash, bisItem);
+    }
+
+    public void PlayGreeting()
+    {
+        animator.SetTrigger(greetingHash);
     }
 }

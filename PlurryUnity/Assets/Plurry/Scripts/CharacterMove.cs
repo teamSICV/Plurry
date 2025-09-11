@@ -87,13 +87,35 @@ public class CharacterMove : MonoBehaviour
     {
         Ray ray = Camera.main.ScreenPointToRay(position);
         RaycastHit hit;
-        int floorLayer = LayerMask.GetMask("Floor");
+        int floorLayer = LayerMask.GetMask("Floor", "Player");
 
         //if (Physics.Raycast(ray, out hit))
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, floorLayer))
         {
             //Debug.Log("Raycast Hitted : " + hit.transform.tag);
-            if (hit.transform.tag == "Floor")
+
+            if (hit.transform.tag == "Player")
+            {
+                StopWalking();
+                bisCanPlayerInput = false;
+
+                // 카메라 방향으로 캐릭터 회전
+                Vector3 cameraPosition = Camera.main.transform.position;
+                Vector3 playerPosition = hit.transform.position;
+
+                // Y축 회전만 계산 (Yaw)
+                Vector3 directionToCamera = cameraPosition - playerPosition;
+                directionToCamera.y = 0; // Y축 제거해서 수평 회전만
+
+                if (directionToCamera != Vector3.zero)
+                {
+                    player.transform.rotation = Quaternion.LookRotation(directionToCamera);
+                }
+
+                GameObject.FindGameObjectWithTag("Script").GetComponent<FloatCharacterScript>().SendMessage("SendScriptLocation");
+                animintance.SendMessage("PlayGreeting");
+            }
+            else if (hit.transform.tag == "Floor")
             {
                 StopWalking();
 
