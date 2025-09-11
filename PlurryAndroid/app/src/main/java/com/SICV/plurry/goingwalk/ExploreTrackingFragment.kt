@@ -42,7 +42,7 @@ import com.SICV.plurry.di.RetrofitModule
 import com.SICV.plurry.safety.SafetyRepo
 import com.SICV.plurry.safety.viewmodel.SafetyVMFactory
 import com.SICV.plurry.safety.viewmodel.SafetyViewModel
-
+import com.SICV.plurry.safety.BottomSheet
 
 class ExploreTrackingFragment : Fragment() {
 
@@ -176,10 +176,11 @@ class ExploreTrackingFragment : Fragment() {
                 // 문구 업데이트 + 배너 표시
                 safetyBannerText.text = "안전도 ${detail.score} (낮음). 밝은 길로 우회하세요."
                 safetyBanner.visibility = View.VISIBLE
+                BottomSheet().show(parentFragmentManager, "safety_detour")
             } else {
-                // 안전하면 숨김
                 safetyBanner.visibility = View.GONE
             }
+
         }
 
         startLocationTracking()
