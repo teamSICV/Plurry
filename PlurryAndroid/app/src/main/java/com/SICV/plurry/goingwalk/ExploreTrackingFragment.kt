@@ -89,6 +89,10 @@ class ExploreTrackingFragment : Fragment() {
     private var lastSafetyEvalLoc: Location? = null
     private var lastSafetyEvalTime: Long = 0L
     private var latestSafetyLine: String = ""   // " · 안전도 72 (CAUTION)" 형태로 UI에 붙여쓸 문자열
+    // 배너 뷰 참조
+    private lateinit var safetyBanner: View
+    private lateinit var safetyBannerText: TextView
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -96,6 +100,9 @@ class ExploreTrackingFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.activity_goingwalk_exploremain, container, false)
+        // 배너 바인딩
+        safetyBanner = view.findViewById(R.id.safetyBanner)
+        safetyBannerText = view.findViewById(R.id.safetyBannerText)
 
         tvDistanceInfo = view.findViewById(R.id.tvDistanceInfo)
         arrowImageView = view.findViewById(R.id.arrowImageView)
@@ -151,7 +158,7 @@ class ExploreTrackingFragment : Fragment() {
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
-        // ⬇️ [안전도] ViewModel 생성 & 옵저버 등록 (추가)
+        // ⬇️ [안전도] ViewModel 생성
         val safetyRepo = SafetyRepo(
             kakao = RetrofitModule.kakaoApi,
             safetyService = RetrofitModule.safetyService,
@@ -166,7 +173,12 @@ class ExploreTrackingFragment : Fragment() {
             detail ?: return@observe
             latestSafetyLine = " · 안전도 ${detail.score} (${detail.level})"
             if (detail.level.name == "DANGER") {
-                Toast.makeText(requireContext(), "이 구간 안전도 낮음. 밝은 길로 우회 권장!", Toast.LENGTH_LONG).show()
+                // 문구 업데이트 + 배너 표시
+                safetyBannerText.text = "안전도 ${detail.score} (낮음). 밝은 길로 우회하세요."
+                safetyBanner.visibility = View.VISIBLE
+            } else {
+                // 안전하면 숨김
+                safetyBanner.visibility = View.GONE
             }
         }
 
