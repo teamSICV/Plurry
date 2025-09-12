@@ -16,7 +16,7 @@
             android:layout_height="150dp"
             android:gravity="center"
             android:layout_marginTop="90dp"
-            android:text="사용자의 모든 데이터가 삭제되며,\n복구할 수 없습니다.\n탈퇴하시겠습니까?"
+            android:text="사용자의 모든 데이터가\n즉시 삭제되며,\n복구할 수 없습니다.\n\n탈퇴하시겠습니까?"
             android:textAlignment="center"
             android:textSize="17sp"
             app:layout_constraintEnd_toEndOf="parent"
