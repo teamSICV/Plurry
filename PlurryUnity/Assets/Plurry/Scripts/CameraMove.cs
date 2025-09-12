@@ -101,6 +101,15 @@ public class CameraMove : MonoBehaviour
 
                 break;
 
+            case "Story":
+                //Debug.Log(StateName + "카메라 상태 시작");
+
+                transform.position = new Vector3(1.61f, 1.4f, -1.3f);
+                mainCameraTrans.localRotation = Quaternion.Euler(37.7f, 103.21f, -57.57f);
+                mainCameraTrans.localPosition = new Vector3(-1.2f, 2.8f, 1.48f);
+
+                break;
+
             default:
                 break;
         }

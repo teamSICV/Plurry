@@ -25,6 +25,9 @@ public class PlayerState : MonoBehaviour
 
     public void SetPlayerState(string StateName)
     {
+        //string LogMessage = "SetPlayerState Begin - " + StateName;
+        //GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SendDebugLogToAndroid", LogMessage);
+
         Vector3 targetPos;
         Vector3 moveVector;
 
@@ -47,6 +50,7 @@ public class PlayerState : MonoBehaviour
                 animintance.bisIdle = false;
                 animintance.bisGrowing = true;
                 animintance.bisItem = false;
+                animintance.bisStory = false;
 
                 break;
 
@@ -63,6 +67,24 @@ public class PlayerState : MonoBehaviour
                 animintance.bisIdle = false;
                 animintance.bisGrowing = false;
                 animintance.bisItem = true;
+                animintance.bisStory = false;
+
+                break;
+
+            case "Story":
+                Debug.Log(StateName + "상태 시작");
+                GetComponent<CharacterMove>().SendMessage("StopWalking");
+
+                PlayerTransform.rotation = Quaternion.Euler(0, 81f, 0f);
+
+                targetPos = new Vector3(2.5f, 0f, -0.5f);
+                moveVector = targetPos - transform.position;
+                GetComponent<CharacterController>().Move(moveVector);
+
+                animintance.bisIdle = false;
+                animintance.bisGrowing = false;
+                animintance.bisItem = false;
+                animintance.bisStory = true;
 
                 break;
 
@@ -74,12 +96,23 @@ public class PlayerState : MonoBehaviour
 
     public void EndPlayerState()
     {
-        characterMove.bisCanPlayerInput = true;
-
         animintance.bisIdle = true;
         animintance.bisGrowing = false;
         animintance.bisItem = false;
+        animintance.bisStory = false;
 
         cameraMove.SendMessage("EndCameraState");
+
+        Invoke("EnablePlayerInput", 0.5f);
+    }
+
+    private void EnablePlayerInput()
+    {
+        //string LogMessage = "EnablePlayerInput Begin";
+        //GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SendDebugLogToAndroid", LogMessage);
+
+        characterMove.bisCanPlayerInput = true;
     }
 }
+
+
