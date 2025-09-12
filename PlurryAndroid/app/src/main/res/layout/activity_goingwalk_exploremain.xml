@@ -74,7 +74,7 @@
     <Button
         android:id="@+id/btnExitExplore"
         android:layout_marginStart="32dp"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="150dp"
         android:layout_width="70dp"
         android:layout_height="70dp"
         android:layout_gravity="bottom|start"
@@ -82,12 +82,22 @@
         app:backgroundTint="@null"
         app:layout_constraintHorizontal_bias="0.1"/>
 
+    <TextView
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:text="탐색종료"
+        android:textColor="@color/black"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="24dp"
+        android:layout_marginBottom="110dp"
+        android:textAlignment="center"/>
+
     <ImageView
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="24dp"
-        android:layout_marginBottom="150dp"
+        android:layout_marginBottom="250dp"
         android:src="@drawable/img_frame_arrow"/>
 
     <!-- 방향 화살표 이미지 -->
@@ -97,7 +107,7 @@
         android:layout_height="80dp"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="24dp"
-        android:layout_marginBottom="150dp"
+        android:layout_marginBottom="250dp"
         android:src="@drawable/img_icon_arrow"
         android:contentDescription="방향 화살표" />
 
