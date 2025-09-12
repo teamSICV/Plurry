@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Playables;
 
 # if UNITY_EDITOR
 using UnityEditor.Experimental.GraphView;
@@ -16,6 +17,8 @@ public class CharacterMove : MonoBehaviour
     private PRAniminstance animintance;
     private CharacterController characterController;
 
+    public bool bisCanPlayerInput = true;
+
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -29,15 +32,29 @@ public class CharacterMove : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //Get Input
-        if (Input.touchCount == 1)
+        if(bisCanPlayerInput)
         {
-            UnityEngine.Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
+            //Get Input
+            if (Input.touchCount == 1)
             {
-                TouchRay(touch.position);
-            } 
+                UnityEngine.Touch touch = Input.GetTouch(0);
+                if (touch.phase == TouchPhase.Began)
+                {
+                    TouchRay(touch.position);
+                }
+            }
         }
+        else
+        {
+#if UNITY_ANDROID && UNITY_EDITOR
+            //For Debug
+            if (Input.touchCount == 1)
+            {
+                GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerState>().SendMessage("EndPlayerState");
+            }
+#endif
+        }
+
 
         if (isCo)
         {
@@ -49,25 +66,58 @@ public class CharacterMove : MonoBehaviour
         }
     }
 
+    public void StopWalking()
+    {
+        if (isCo)
+        {
+            isCo = false;
+            StopCoroutine(coroutine);
+            //GameObject pinObject = GameObject.Find("Mark(Clone)");
+            //Destroy(pinObject);
+
+            GameObject[] pinObjects = GameObject.FindGameObjectsWithTag("Mark");
+            foreach (GameObject pinObject in pinObjects)
+            {
+                Destroy(pinObject);
+            }
+        }
+    }
+
     private void TouchRay(Vector2 position)
     {
         Ray ray = Camera.main.ScreenPointToRay(position);
         RaycastHit hit;
-        int floorLayer = LayerMask.GetMask("Floor");
+        int floorLayer = LayerMask.GetMask("Floor", "Player");
 
         //if (Physics.Raycast(ray, out hit))
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, floorLayer))
         {
             //Debug.Log("Raycast Hitted : " + hit.transform.tag);
-            if (hit.transform.tag == "Floor")
+
+            if (hit.transform.tag == "Player")
             {
-                if (isCo)
+                StopWalking();
+                bisCanPlayerInput = false;
+
+                // 카메라 방향으로 캐릭터 회전
+                Vector3 cameraPosition = Camera.main.transform.position;
+                Vector3 playerPosition = hit.transform.position;
+
+                // Y축 회전만 계산 (Yaw)
+                Vector3 directionToCamera = cameraPosition - playerPosition;
+                directionToCamera.y = 0; // Y축 제거해서 수평 회전만
+
+                if (directionToCamera != Vector3.zero)
                 {
-                    isCo = false;
-                    StopCoroutine(coroutine);
-                    GameObject pinObject = GameObject.Find("Mark(Clone)");
-                    Destroy(pinObject);
+                    player.transform.rotation = Quaternion.LookRotation(directionToCamera);
                 }
+
+                GameObject.FindGameObjectWithTag("Script").GetComponent<FloatCharacterScript>().SendMessage("SendScriptLocation");
+                animintance.SendMessage("PlayGreeting");
+            }
+            else if (hit.transform.tag == "Floor")
+            {
+                StopWalking();
 
                 coroutine = StartCoroutine(MoveCharacter(hit.point));
                 GameObject.Instantiate(pinPoint, hit.point, Quaternion.Euler(0f, 0f, 0f));

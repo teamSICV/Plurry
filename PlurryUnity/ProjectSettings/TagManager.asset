@@ -11,6 +11,8 @@ TagManager:
   - Ranking
   - Item
   - Roof
+  - Mark
+  - Script
   layers:
   - Default
   - TransparentFX
