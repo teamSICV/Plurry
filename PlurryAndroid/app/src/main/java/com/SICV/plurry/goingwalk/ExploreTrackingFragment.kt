@@ -224,7 +224,7 @@ class ExploreTrackingFragment : Fragment() {
                         lastLoggedDistanceLevel = currentLevel50m
                     }
 
-                    if (distance < 50 && !arrivalDialogShown) {
+                    if (distance < 30 && !arrivalDialogShown) {
                         arrivalDialogShown = true
                         onArriveAtPlace()
                     }

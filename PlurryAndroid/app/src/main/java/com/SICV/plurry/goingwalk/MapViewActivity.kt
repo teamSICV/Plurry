@@ -148,14 +148,10 @@ class MapViewActivity : AppCompatActivity() {
         btnRefreshLocation.setOnClickListener { refreshLocation() }
 
         btnAddPoint.setOnClickListener {
-            // AddPointDialogFragment는 이 코드에 포함되어 있지 않으므로,
-            // 해당 Fragment가 프로젝트에 정의되어 있어야 합니다.
             AddPointDialogFragment().show(supportFragmentManager, "AddPointDialog")
         }
 
         btnExplore.setOnClickListener {
-            // PointSelectFragment는 이 코드에 포함되어 있지 않으므로,
-            // 해당 Fragment가 프로젝트에 정의되어 있어야 합니다.
             PointSelectFragment().show(supportFragmentManager, "PointSelectDialog")
         }
 
@@ -395,7 +391,7 @@ class MapViewActivity : AppCompatActivity() {
 
                 Log.d("GoogleFit", "걸음 수: $totalSteps, 거리: $distanceText km, 칼로리: $calorieText kcal")
 
-                walkInfoText.text = "거리: ${distanceText}km | 걸음: ${totalSteps} 걸음 | 칼로리: ${calorieText}kcal"
+                walkInfoText.text = "${distanceText}km | ${totalSteps} 걸음 | ${calorieText}kcal"
             }
             .addOnFailureListener {
                 Log.e("GoogleFit", "피트니스 데이터 읽기 실패", it)
@@ -404,8 +400,6 @@ class MapViewActivity : AppCompatActivity() {
 
     private fun startExploreMode(placeId: String, lat: Double, lng: Double, imageUrl: String, placeName: String) { // 🚀 MODIFIED: placeName 파라미터 추가
         try {
-            // ExploreTrackingFragment 클래스가 정의되어 있어야 합니다.
-            // 이 코드를 실행하기 전에 해당 Fragment가 프로젝트에 정의되어 있는지 확인해주세요.
             val fragment = ExploreTrackingFragment.newInstance(placeId, lat, lng, imageUrl, placeName) // 🚀 MODIFIED: placeName 전달
 
             supportFragmentManager.beginTransaction()
