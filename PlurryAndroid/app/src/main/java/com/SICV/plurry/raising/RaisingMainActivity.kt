@@ -18,7 +18,9 @@ import android.widget.ImageView
 import android.widget.Toast
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import com.SICV.plurry.MainActivity
 import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingMainActivity
 import com.unity3d.player.UnityPlayerGameActivity
@@ -41,9 +43,16 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     private var currentCrewItemAmount : Int = -1;
 
     private lateinit var androidUIContainer: ViewGroup
+    private lateinit var rankingActivityLauncher: ActivityResultLauncher<Intent>
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        rankingActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            // RankingMainActivity에서 돌아왔을 때 실행
+            SendMessageToUnity("UnityProcessRanking")
+        }
 
         try {
             val rootLayout = findViewById<android.widget.FrameLayout>(contentViewId)
@@ -59,7 +68,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
             rootLayout.addView(androidUIContainer, layoutParams)
 
         } catch (e: Exception) {
-            Log.e("MainUnityGameActivity", "Error adding Android UI overlay", e)
+            Log.e("LogLS", "Error adding Android UI overlay", e)
         }
 
         loadUserDataFromFirebase()
@@ -148,7 +157,20 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
         //QuitButton
         val btnQuit = findViewById<Button>(R.id.b_quit)
-        btnQuit.setOnClickListener { onUnityPlayerUnloaded() }
+        btnQuit.setOnClickListener {
+            // 홈 버튼 누른 것처럼 앱 전체를 백그라운드로
+            val homeIntent = Intent(Intent.ACTION_MAIN)
+            homeIntent.addCategory(Intent.CATEGORY_HOME)
+            homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(homeIntent)
+
+            // 그리고 MainActivity 시작
+            Handler(Looper.getMainLooper()).postDelayed({
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                startActivity(intent)
+            }, 500)
+        }
 
         //Raising
         val btnGrowing = findViewById<Button>(R.id.b_growing)
@@ -177,14 +199,14 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     }
 
     private fun setupPopupOutsideTouchClose(popupView: View, callUnityFunction: String) {
-        Log.d("LogLS", "setupPopupOutsideTouchClose called")
+        //Log.d("LogLS", "setupPopupOutsideTouchClose called")
 
         // parent 영역에 터치 리스너 설정
         val parentLayout = popupView.findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.parent)
         val mainLayout = popupView.findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.main)
 
         parentLayout.setOnTouchListener { _, event ->
-            Log.d("LogLS", "Touch event received on parent: ${event.action}")
+            //Log.d("LogLS", "Touch event received on parent: ${event.action}")
 
             if (event.action == MotionEvent.ACTION_DOWN) {
                 // main 영역인지 확인
@@ -195,20 +217,17 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
                 val mainRight = mainLeft + mainLayout.width
                 val mainBottom = mainTop + mainLayout.height
 
-                Log.d("LogLS", "Touch coordinates: (${event.rawX}, ${event.rawY})")
-                Log.d("LogLS", "Main bounds: left=$mainLeft, top=$mainTop, right=$mainRight, bottom=$mainBottom")
+                //Log.d("LogLS", "Touch coordinates: (${event.rawX}, ${event.rawY})")
+                //Log.d("LogLS", "Main bounds: left=$mainLeft, top=$mainTop, right=$mainRight, bottom=$mainBottom")
 
                 // 터치 좌표가 main 영역 외부인 경우 팝업 닫기
                 if (event.rawX < mainLeft || event.rawX > mainRight ||
                     event.rawY < mainTop || event.rawY > mainBottom) {
-                    Log.d("LogLS", "Touched Outside Main Layout")
                     androidUIContainer.removeView(popupView)
                     isStoryDialogShowing = false
                     isDialogShowing = false // Item 팝업도 고려
                     SendMessageToUnity(callUnityFunction)
                     return@setOnTouchListener true
-                } else {
-                    Log.d("LogLS", "Touched Inside Main Layout")
                 }
             }
             false
@@ -265,8 +284,11 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
             // 터치 리스너 제거
             androidUIContainer.setOnTouchListener(null)
         }
+
         //Call Unity
+        //Log.d("LogLS", "UnityProcessGrowing Send Begin")
         SendMessageToUnity( "UnityProcessGrowing" )
+        //Log.d("LogLS", "UnityProcessGrowing Send End")
     }
 
     private fun ProcessGrowing() {
@@ -421,7 +443,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 * *********/
     private fun ShowRankingPopup() {
         val intent = Intent(this, RankingMainActivity::class.java)
-        startActivity(intent)
+        rankingActivityLauncher.launch(intent)
     }
 
 /* *********
@@ -519,7 +541,7 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 *
 * *********/
 
-    private fun ShowScriptPopup(paramX: Float, paramY: Float) {
+    private fun ShowScriptPopup() {
         runOnUiThread {
             // 기존 팝업이 있다면 제거
             val existingPopup = androidUIContainer.findViewWithTag<View>("scriptPopup")
@@ -588,58 +610,63 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 *
 * *************************************************/
     //Unity Call
-    private fun UnityGrowingTriggerEnter() {
+    public fun UnityGrowingTriggerEnter() {
         //Log.d("LogLS", "UnityGrowingTriggerEnter call")
 
         SetGrowingButtonVisible()
     }
 
-    private fun UnityStoryTriggerEnter() {
+    public fun UnityStoryTriggerEnter() {
         //Log.d("LogLS", "UnityStoryTriggerEnter call")
 
         ShowStoryPopup()
         //SendMessageToUnity( "UnityProcessStory" )
     }
 
-    private fun UnityRankingTriggerEnter() {
-        Log.d("LogLS", "UnityRankingTriggerEnter call")
+    public fun UnityRankingTriggerEnter() {
+        //Log.d("LogLS", "UnityRankingTriggerEnter call")
 
         ShowRankingPopup()
         //SendMessageToUnity( "UnityProcessRanking" )
     }
 
-    private fun UnityItemTriggerEnter() {
+    public fun UnityItemTriggerEnter() {
         //Log.d("LogLS", "UnityItemTriggerEnter call")
 
         ShowItemPopup()
     }
 
-    private fun UnityGrowingTriggerExit()
+    public fun UnityGrowingTriggerExit()
     {
-        Log.d("LogLS", "UnityGrowingTriggerExit call")
+        //Log.d("LogLS", "UnityGrowingTriggerExit call")
 
-        SetGrowingButtonGone()
+        //SetGrowingButtonGone()
     }
 
-    private fun UnityStoryTriggerExit()
+    public fun UnityStoryTriggerExit()
     {
-        Log.d("LogLS", "UnityStoryTriggerExit call")
+        //Log.d("LogLS", "UnityStoryTriggerExit call")
     }
 
-    private fun UnityRankingTriggerExit()
+    public fun UnityRankingTriggerExit()
     {
-        Log.d("LogLS", "UnityRankingTriggerExit call")
+        //Log.d("LogLS", "UnityRankingTriggerExit call")
     }
 
-    private fun UnityItemTriggerExit()
+    public fun UnityItemTriggerExit()
     {
-        Log.d("LogLS", "UnityItemTriggerExit call")
+        //Log.d("LogLS", "UnityItemTriggerExit call")
     }
 
-    private fun UnityPopUpScript(paramX : Float, paramY : Float)
+    public fun UnityPopUpScript()
     {
-        Log.d("LogLS", "UnityPopUpScript call ${paramX}, ${paramY}")
-        ShowScriptPopup(paramX, paramY)
+        //Log.d("LogLS", "UnityPopUpScript call")
+        ShowScriptPopup()
+    }
+
+    public fun UnityDebugLog(debugLog : String)
+    {
+        Log.d("LogLS", "UnityDebugLog : ${debugLog}")
     }
 
 

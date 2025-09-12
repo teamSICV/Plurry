@@ -22,6 +22,6 @@ public class FloatCharacterScript : MonoBehaviour
     {
         Vector3 screenPosition = Camera.main.WorldToScreenPoint(scriptTarget.transform.position);
         Vector2 paramVector = new Vector2(screenPosition.x, screenPosition.y);
-        gameController.SendCommendToAndroidWithVector2("UnityPopUpScript", paramVector);
+        gameController.SendMessage("SendCommendToAndroid", "UnityPopUpScript");
     }
 }
