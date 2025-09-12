@@ -46,11 +46,12 @@ public class CharacterMove : MonoBehaviour
         }
         else
         {
-#if UNITY_ANDROID && UNITY_EDITOR
+#if UNITY_EDITOR
             //For Debug
             if (Input.touchCount == 1)
             {
                 GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerState>().SendMessage("EndPlayerState");
+                GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SetDebugText", "EndPlayerState");
             }
 #endif
         }
@@ -68,23 +69,29 @@ public class CharacterMove : MonoBehaviour
 
     public void StopWalking()
     {
+        //string LogMessage = "StopWalking Begin";
+        //GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SendDebugLogToAndroid", LogMessage);
+
+        GameObject[] pinObjects = GameObject.FindGameObjectsWithTag("Mark");
+        foreach (GameObject pinObject in pinObjects)
+        {
+            Destroy(pinObject);
+        }
+
         if (isCo)
         {
             isCo = false;
             StopCoroutine(coroutine);
             //GameObject pinObject = GameObject.Find("Mark(Clone)");
             //Destroy(pinObject);
-
-            GameObject[] pinObjects = GameObject.FindGameObjectsWithTag("Mark");
-            foreach (GameObject pinObject in pinObjects)
-            {
-                Destroy(pinObject);
-            }
         }
     }
 
     private void TouchRay(Vector2 position)
     {
+        //string LogMessage = "TouchRay Begin";
+        //GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SendDebugLogToAndroid", LogMessage);
+
         Ray ray = Camera.main.ScreenPointToRay(position);
         RaycastHit hit;
         int floorLayer = LayerMask.GetMask("Floor", "Player");
