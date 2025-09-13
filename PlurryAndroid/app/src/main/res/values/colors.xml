@@ -20,6 +20,6 @@
     <color name="txt_brown_dark">#FF604827</color>
 
     <color name="grey_box">#80050609</color>
-    <color name="white_box">#80FFFFFF</color>
+    <color name="white_box">#CCFFFFFF</color>
 
 </resources>
