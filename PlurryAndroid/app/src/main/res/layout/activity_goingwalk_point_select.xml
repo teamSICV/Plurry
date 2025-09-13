@@ -19,7 +19,7 @@
             android:text="거리 선택"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="#000000"
+            android:textColor="@color/txt_brown_dark"
             android:layout_marginBottom="8dp" />
 
         <!-- Spinner + 확인 버튼 수평 정렬 -->
@@ -34,25 +34,25 @@
                 android:id="@+id/spinnerRadius"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#000000"
-                android:popupBackground="@android:color/white" />
+                android:textColor="@color/txt_black"
+                android:popupBackground="@color/txt_brown_light" />
 
             <Button
                 android:id="@+id/btnConfirmRadius"
-                android:layout_width="100dp"
-                android:layout_height="80dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="확인"
-                android:background="@drawable/img_btn_record2"
+                android:background="@drawable/img_btn_brown_dark"
                 android:layout_marginStart="12dp"
                 app:backgroundTint="@null"/>
 
             <!-- NEW: 크루 탐색 버튼 -->
             <Button
                 android:id="@+id/btnCrewExplore"
-                android:layout_width="110dp"
-                android:layout_height="80dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="크루 탐색"
-                android:background="@drawable/img_btn_record2"
+                android:background="@drawable/img_btn_brown_dark"
                 android:layout_marginStart="12dp"
                 app:backgroundTint="@null"/>
         </LinearLayout>

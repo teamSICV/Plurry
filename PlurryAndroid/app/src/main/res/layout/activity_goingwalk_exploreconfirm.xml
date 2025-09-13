@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:text="크루"
         android:textColor="@android:color/white"
-        android:background="@color/pirate_brown"
+        android:background="@color/txt_brown_dark"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:paddingTop="4dp"
@@ -36,7 +36,8 @@
         android:layout_marginBottom="16dp"
         android:layout_gravity="center_horizontal"
         android:text="장소 이름"
-        tools:text="장소 이름"/>
+        android:textColor="@color/txt_brown_dark"
+        tools:text="장소 이름" />
 
     <ImageView
         android:id="@+id/dialogImage"
@@ -53,7 +54,7 @@
         android:layout_height="wrap_content"
         android:text="거리 : 0.0km"
         android:textSize="14sp"
-        android:textColor="@android:color/black"
+        android:textColor="@color/txt_brown_dark"
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="8dp"
         tools:text="거리 : 1.7km"/>
@@ -87,7 +88,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="16dp"
-        android:textColor="@android:color/black"
+        android:textColor="@color/txt_brown_dark"
         android:textSize="14sp"
         android:visibility="visible" />
 
@@ -99,20 +100,20 @@
 
         <Button
             android:id="@+id/btnCancelExplore"
-            android:layout_width="120dp"
-            android:layout_height="80dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginEnd="50dp"
             android:text="다시 선택"
-            android:background="@drawable/img_btn_record2"
+            android:background="@drawable/img_btn_brown_dark"
             android:textColor="#FFFFFF"
             app:backgroundTint="@null"/>
 
         <Button
             android:id="@+id/btnStartExplore"
-            android:layout_width="120dp"
-            android:layout_height="80dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="탐색 시작"
-            android:background="@drawable/img_btn_record2"
+            android:background="@drawable/img_btn_brown_dark"
             android:textColor="#FFFFFF"
             app:backgroundTint="@null"/>
     </LinearLayout>
