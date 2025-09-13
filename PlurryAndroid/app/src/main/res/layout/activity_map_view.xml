@@ -36,11 +36,12 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="100dp"
         android:background="@drawable/img_frame_papirus"
         android:gravity="center"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:paddingHorizontal="80dp"
+        android:paddingVertical="20dp"
+        android:layout_marginTop="20dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -62,13 +63,19 @@
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:background="@drawable/img_icon_locate"
+        android:layout_marginEnd="20dp"
         app:backgroundTint="@null"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.75"
-        app:layout_constraintHorizontal_bias="0.9"/>
+        app:layout_constraintVertical_bias="0.7" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="위치새로고침"
+        app:layout_constraintTop_toBottomOf="@id/btnRefreshLocation"
+        app:layout_constraintEnd_toEndOf="@id/btnRefreshLocation"/>
 
     <Button
         android:id="@+id/btnAddPoint"
@@ -81,6 +88,14 @@
         app:layout_constraintEnd_toEndOf="@+id/btnRefreshLocation"
         app:layout_constraintTop_toBottomOf="@+id/btnRefreshLocation" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="서명 추가하기"
+        app:layout_constraintTop_toBottomOf="@id/btnAddPoint"
+        app:layout_constraintStart_toStartOf="@id/btnAddPoint"
+        app:layout_constraintEnd_toEndOf="@id/btnAddPoint"/>
+
     <Button
         android:id="@+id/btnExplore"
         android:layout_width="70dp"
@@ -91,26 +106,34 @@
         app:layout_constraintBottom_toBottomOf="@+id/btnEndWalk"
         app:layout_constraintEnd_toEndOf="@+id/btnAddPoint" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="탐색하기"
+        app:layout_constraintTop_toBottomOf="@id/btnExplore"
+        app:layout_constraintStart_toStartOf="@id/btnExplore"
+        app:layout_constraintEnd_toEndOf="@id/btnExplore"/>
+
     <Button
         android:id="@+id/btnEndWalk"
-        android:layout_marginBottom="32dp"
         android:layout_width="70dp"
         android:layout_height="70dp"
         android:background="@drawable/img_icon_walk1"
+        android:layout_marginStart="32dp"
         app:backgroundTint="@null"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintHorizontal_bias="0.1"/>
+        app:layout_constraintVertical_bias="0.95"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
-        android:layout_width="80dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="산책종료"
-        android:textColor="@color/black"
+        android:textColor="@color/txt_black"
         android:textAlignment="center"
-        android:layout_marginStart="24dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnEndWalk"/>
+        app:layout_constraintTop_toBottomOf="@id/btnEndWalk"
+        app:layout_constraintStart_toStartOf="@id/btnEndWalk"
+        app:layout_constraintEnd_toEndOf="@id/btnEndWalk"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
