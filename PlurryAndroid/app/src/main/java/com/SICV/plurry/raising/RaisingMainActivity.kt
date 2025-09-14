@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.SICV.plurry.MainActivity
 import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingMainActivity
@@ -395,26 +396,20 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
         // 스토리 버튼들 동적 생성
         for (i in 0 until storyCount) {
-            val storyButton = Button(this).apply {
-                text = "스토리 ${i + 1}"
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(16, 8, 16, 8)
-                }
+            // XML 레이아웃을 inflate해서 버튼 생성
+            val storyButton = LayoutInflater.from(this)
+                .inflate(R.layout.raising_story_btn, storyContainer, false) as Button
 
-                if (i < currentStoryLevel) {
-                    setBackgroundColor(Color.BLUE)
-                    setOnClickListener {
-                        // 스토리 플레이 팝업 표시
-                        showStoryPlayPopup(i + 1)
-                    }
-                } else {
-                    setBackgroundColor(Color.GRAY)
-                    setOnClickListener {
-                        Toast.makeText(this@RaisingMainActivity, "레벨이 낮습니다!", Toast.LENGTH_SHORT).show()
-                    }
+            storyButton.text = "스토리 ${i + 1}"
+
+            if (i < currentStoryLevel) {
+                storyButton.setOnClickListener {
+                    showStoryPlayPopup(i + 1)
+                }
+            } else {
+                storyButton.backgroundTintList = ContextCompat.getColorStateList(this, R.color.btn_grey_light)
+                storyButton.setOnClickListener {
+                    Toast.makeText(this@RaisingMainActivity, "레벨이 낮습니다!", Toast.LENGTH_SHORT).show()
                 }
             }
             storyContainer.addView(storyButton)
@@ -422,13 +417,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     }
 
     private fun showStoryPlayPopup(storyNumber: Int) {
-        // 여기서 RaisingStoryPlayActivity 대신 다른 처리를 하거나
-        // 필요하다면 RaisingStoryPlayActivity도 팝업으로 변환할 수 있음
-
-        // 일단 간단하게 Toast로 처리
-        Toast.makeText(this, "스토리 $storyNumber 선택됨", Toast.LENGTH_SHORT).show()
-
-        // 또는 실제 RaisingStoryPlayActivity 실행
          val intent = Intent(this, RaisingStoryPlayActivity::class.java)
          intent.putExtra("currentStory", storyNumber)
          startActivity(intent)
