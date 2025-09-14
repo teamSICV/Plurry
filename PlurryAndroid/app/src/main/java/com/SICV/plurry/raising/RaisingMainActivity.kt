@@ -566,31 +566,29 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
 
-            // 좌측 상단을 기준으로 마진 설정
-            layoutParams.leftMargin = dpX
-            layoutParams.topMargin = dpY
-
             // 제약 조건 설정 (부모의 왼쪽 상단에 고정)
-            layoutParams.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
             layoutParams.topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.bottomToBottom = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+
+            layoutParams.horizontalBias = 0.5f
+            layoutParams.verticalBias = 0.45f
 
             // 컨테이너에 추가
             androidUIContainer.addView(popupView, layoutParams)
-            //Log.d("PopupScript", "Popup shown at margins(1): (${dpX}, ${dpY})")
 
-            // 뷰가 그려진 후 크기를 측정해서 중앙 정렬
+            // 뷰가 그려진 후 크기를 측정해서 마진 적용
             popupView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     popupView.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
-                    dpX -= (popupView.width / 2).toInt()
-                    dpY -= popupView.height.toInt()
-
-                    layoutParams.leftMargin = dpX
-                    layoutParams.topMargin = dpY
+                    // 마진 적용
+                    layoutParams.bottomMargin = (popupView.height * 1.2).toInt()
                     popupView.layoutParams = layoutParams
 
-                    //Log.d("PopupScript", "Popup shown at margins(2): (${dpX}, ${dpY})")
+                    //Log.d("LogLS", "View size: ${popupView.width}x${popupView.height}px")
+                    //Log.d("LogLS", "Applied margins: bottom=${layoutParams.bottomMargin}dp")
                 }
             })
 
