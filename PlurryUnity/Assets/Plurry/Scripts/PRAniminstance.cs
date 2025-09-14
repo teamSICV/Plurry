@@ -17,7 +17,6 @@ public class PRAniminstance : MonoBehaviour
     void Start()
     {
         animator = GetComponent<Animator>();
-        //ownerController = GetComponent<CharacterController>();
 
         isIdleHash = Animator.StringToHash("IsIdle");
         isGrowingHash = Animator.StringToHash("IsGrowing");

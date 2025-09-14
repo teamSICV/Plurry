@@ -115,8 +115,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
                 .get()
                 .addOnSuccessListener { document ->
                     if (document.exists()) {
-                        //Log.d("FirebaseDebug", "currentRaisingPoint: ${document.get("currentRaisingPoint")}")
-                        //Log.d("FirebaseDebug", "필드 타입: ${document.get("currentRaisingPoint")?.javaClass?.simpleName}")
 
                         currentRaisingPoint = document.getLong("currentRaisingPoint")?.toInt() ?: -1
                         currentRaisingAmount = document.getLong("currentRaisingAmount")?.toInt() ?: -1
@@ -664,7 +662,17 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
     public fun UnityDebugLog(debugLog : String)
     {
-        Log.d("LogLS", "UnityDebugLog : ${debugLog}")
+        Log.d("LogLS-Unity", debugLog)
+    }
+
+    public fun UnityDebugWarning(debugLog : String)
+    {
+        Log.w("LogLS-Unity", debugLog)
+    }
+
+    public fun UnityDebugError(debugLog : String)
+    {
+        Log.e("LogLS-Unity", debugLog)
     }
 
 
@@ -678,7 +686,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     {
         try {
             UnityPlayer.UnitySendMessage("GameController", inFunctionName, "")
-            //Log.d("AndroidToUnity", "Message sent successfully")
         } catch (e: Exception) {
             Log.e("LogLS", "Failed to send message: ${e.message}")
         }
