@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.SICV.plurry.MainActivity
 import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingMainActivity
@@ -115,8 +116,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
                 .get()
                 .addOnSuccessListener { document ->
                     if (document.exists()) {
-                        //Log.d("FirebaseDebug", "currentRaisingPoint: ${document.get("currentRaisingPoint")}")
-                        //Log.d("FirebaseDebug", "필드 타입: ${document.get("currentRaisingPoint")?.javaClass?.simpleName}")
 
                         currentRaisingPoint = document.getLong("currentRaisingPoint")?.toInt() ?: -1
                         currentRaisingAmount = document.getLong("currentRaisingAmount")?.toInt() ?: -1
@@ -397,26 +396,20 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
         // 스토리 버튼들 동적 생성
         for (i in 0 until storyCount) {
-            val storyButton = Button(this).apply {
-                text = "스토리 ${i + 1}"
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(16, 8, 16, 8)
-                }
+            // XML 레이아웃을 inflate해서 버튼 생성
+            val storyButton = LayoutInflater.from(this)
+                .inflate(R.layout.raising_story_btn, storyContainer, false) as Button
 
-                if (i < currentStoryLevel) {
-                    setBackgroundColor(Color.BLUE)
-                    setOnClickListener {
-                        // 스토리 플레이 팝업 표시
-                        showStoryPlayPopup(i + 1)
-                    }
-                } else {
-                    setBackgroundColor(Color.GRAY)
-                    setOnClickListener {
-                        Toast.makeText(this@RaisingMainActivity, "레벨이 낮습니다!", Toast.LENGTH_SHORT).show()
-                    }
+            storyButton.text = "스토리 ${i + 1}"
+
+            if (i < currentStoryLevel) {
+                storyButton.setOnClickListener {
+                    showStoryPlayPopup(i + 1)
+                }
+            } else {
+                storyButton.backgroundTintList = ContextCompat.getColorStateList(this, R.color.btn_grey_light)
+                storyButton.setOnClickListener {
+                    Toast.makeText(this@RaisingMainActivity, "레벨이 낮습니다!", Toast.LENGTH_SHORT).show()
                 }
             }
             storyContainer.addView(storyButton)
@@ -424,13 +417,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     }
 
     private fun showStoryPlayPopup(storyNumber: Int) {
-        // 여기서 RaisingStoryPlayActivity 대신 다른 처리를 하거나
-        // 필요하다면 RaisingStoryPlayActivity도 팝업으로 변환할 수 있음
-
-        // 일단 간단하게 Toast로 처리
-        Toast.makeText(this, "스토리 $storyNumber 선택됨", Toast.LENGTH_SHORT).show()
-
-        // 또는 실제 RaisingStoryPlayActivity 실행
          val intent = Intent(this, RaisingStoryPlayActivity::class.java)
          intent.putExtra("currentStory", storyNumber)
          startActivity(intent)
@@ -566,31 +552,29 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
 
-            // 좌측 상단을 기준으로 마진 설정
-            layoutParams.leftMargin = dpX
-            layoutParams.topMargin = dpY
-
             // 제약 조건 설정 (부모의 왼쪽 상단에 고정)
-            layoutParams.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
             layoutParams.topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.bottomToBottom = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            layoutParams.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+
+            layoutParams.horizontalBias = 0.5f
+            layoutParams.verticalBias = 0.45f
 
             // 컨테이너에 추가
             androidUIContainer.addView(popupView, layoutParams)
-            //Log.d("PopupScript", "Popup shown at margins(1): (${dpX}, ${dpY})")
 
-            // 뷰가 그려진 후 크기를 측정해서 중앙 정렬
+            // 뷰가 그려진 후 크기를 측정해서 마진 적용
             popupView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
                     popupView.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
-                    dpX -= (popupView.width / 2).toInt()
-                    dpY -= popupView.height.toInt()
-
-                    layoutParams.leftMargin = dpX
-                    layoutParams.topMargin = dpY
+                    // 마진 적용
+                    layoutParams.bottomMargin = (popupView.height * 1.2).toInt()
                     popupView.layoutParams = layoutParams
 
-                    //Log.d("PopupScript", "Popup shown at margins(2): (${dpX}, ${dpY})")
+                    //Log.d("LogLS", "View size: ${popupView.width}x${popupView.height}px")
+                    //Log.d("LogLS", "Applied margins: bottom=${layoutParams.bottomMargin}dp")
                 }
             })
 
@@ -666,7 +650,17 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
 
     public fun UnityDebugLog(debugLog : String)
     {
-        Log.d("LogLS", "UnityDebugLog : ${debugLog}")
+        Log.d("LogLS-Unity", debugLog)
+    }
+
+    public fun UnityDebugWarning(debugLog : String)
+    {
+        Log.w("LogLS-Unity", debugLog)
+    }
+
+    public fun UnityDebugError(debugLog : String)
+    {
+        Log.e("LogLS-Unity", debugLog)
     }
 
 
@@ -680,7 +674,6 @@ class RaisingMainActivity : UnityPlayerGameActivity() {
     {
         try {
             UnityPlayer.UnitySendMessage("GameController", inFunctionName, "")
-            //Log.d("AndroidToUnity", "Message sent successfully")
         } catch (e: Exception) {
             Log.e("LogLS", "Failed to send message: ${e.message}")
         }

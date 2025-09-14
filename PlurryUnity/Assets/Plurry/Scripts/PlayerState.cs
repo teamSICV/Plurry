@@ -25,9 +25,6 @@ public class PlayerState : MonoBehaviour
 
     public void SetPlayerState(string StateName)
     {
-        //string LogMessage = "SetPlayerState Begin - " + StateName;
-        //GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SendDebugLogToAndroid", LogMessage);
-
         Vector3 targetPos;
         Vector3 moveVector;
 
@@ -38,7 +35,7 @@ public class PlayerState : MonoBehaviour
         switch (StateName)
         {
             case "Growing":
-                //Debug.Log(StateName + "상태 시작");
+                //LogLS.Log(StateName + "상태 시작");
                 GetComponent<CharacterMove>().SendMessage("StopWalking");
 
                 PlayerTransform.rotation = Quaternion.Euler(0, -40f, 0f);
@@ -55,7 +52,7 @@ public class PlayerState : MonoBehaviour
                 break;
 
             case "Item":
-                //Debug.Log(StateName + "상태 시작");
+                //LogLS.Log(StateName + "상태 시작");
                 GetComponent<CharacterMove>().SendMessage("StopWalking");
 
                 PlayerTransform.rotation = Quaternion.Euler(0, -70f, 0f);
@@ -72,7 +69,7 @@ public class PlayerState : MonoBehaviour
                 break;
 
             case "Story":
-                Debug.Log(StateName + "상태 시작");
+                //LogLS.Log(StateName + "상태 시작");
                 GetComponent<CharacterMove>().SendMessage("StopWalking");
 
                 PlayerTransform.rotation = Quaternion.Euler(0, 81f, 0f);
@@ -108,9 +105,6 @@ public class PlayerState : MonoBehaviour
 
     private void EnablePlayerInput()
     {
-        //string LogMessage = "EnablePlayerInput Begin";
-        //GameObject.FindGameObjectWithTag("GameController").GetComponent<GameController>().SendMessage("SendDebugLogToAndroid", LogMessage);
-
         characterMove.bisCanPlayerInput = true;
     }
 }
