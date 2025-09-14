@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/exploreMainLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- 실시간 정보 박스 -->
+        <LinearLayout
+            android:id="@+id/l_finding_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:elevation="8dp"
+            android:orientation="vertical"
+            android:background="@color/white_box"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintVertical_bias="0.15">
+
+            <!-- 🚀 NEW: 장소 이름을 표시할 TextView -->
+            <TextView
+                android:id="@+id/tvPlaceName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="장소 이름"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/txt_black"
+                android:layout_marginBottom="4dp"
+                android:visibility="gone" /> <!-- 초기에는 숨김, 코드에서 설정 -->
+
+            <!-- 거리 + 이미지 -->
+            <LinearLayout
+                android:id="@+id/layoutDistanceInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvDistanceInfo"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="남은 거리: --- m"
+                    android:textSize="18sp"
+                    android:textColor="#000000" />
+
+                <ImageView
+                    android:id="@+id/imgTargetPreview"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_marginStart="8dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="목표 장소 이미지" />
+            </LinearLayout>
+
+            <!-- 🚀 NEW: 속도 경고 메시지 TextView -->
+            <TextView
+                android:id="@+id/tvSpeedWarning"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="이동수단에서 내린 후 진행해주세요."
+                android:textColor="@android:color/holo_red_dark"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+
+        <!-- 탐색 종료 버튼 -->
+        <Button
+            android:id="@+id/btnExitExplore"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:background="@drawable/img_icon_walk1"
+            android:layout_marginStart="32dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintVertical_bias="0.8"
+            app:layout_constraintStart_toStartOf="parent"
+            app:backgroundTint="@null" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="탐색종료"
+            android:textColor="@color/txt_black"
+            android:textAlignment="center"
+            app:layout_constraintTop_toBottomOf="@id/btnExitExplore"
+            app:layout_constraintStart_toStartOf="@id/btnExitExplore"
+            app:layout_constraintEnd_toEndOf="@id/btnExitExplore"/>
+
+        <ImageView
+            android:id="@+id/img_arrow_bg"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/img_frame_arrow"
+            android:layout_marginTop="50dp"
+            app:layout_constraintTop_toBottomOf="@id/l_finding_info"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- 방향 화살표 이미지 -->
+        <ImageView
+            android:id="@+id/arrowImageView"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/img_icon_arrow"
+            android:contentDescription="방향 화살표"
+            app:layout_constraintTop_toTopOf="@id/img_arrow_bg"
+            app:layout_constraintStart_toStartOf="@id/img_arrow_bg"/>
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

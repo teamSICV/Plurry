@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/img_bg_crew2"
+    tools:context=".crewstep.CrewLineChooseActivity">
+
+    <ImageView
+        android:id="@+id/crewChooseBackBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="20dp"
+        android:clickable="true"
+        android:src="@drawable/back"
+        app:tint="@color/txt_orange_light"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/CREWText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="CREW"
+        android:textSize="25sp"
+        android:textStyle="bold"
+        android:textColor="@color/txt_orange_light"
+        android:layout_marginStart="15dp"
+        app:layout_constraintStart_toEndOf="@id/crewChooseBackBtn"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/makeCrew"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="크루 만들기"
+        android:textColor="@color/txt_orange_light"
+        android:clickable="true"
+        android:padding="20dp"
+        android:layout_marginBottom="20dp"
+        android:layout_marginEnd="20dp"
+        app:layout_constraintBottom_toTopOf="@+id/chooseCrewRecyclerView"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/chooseCrewRecyclerView"
+        android:layout_width="350dp"
+        android:layout_height="500dp"
+        android:layout_marginTop="60dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/CREWText">
+
+    </androidx.recyclerview.widget.RecyclerView>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

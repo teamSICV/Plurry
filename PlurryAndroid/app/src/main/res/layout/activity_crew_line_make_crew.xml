@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/img_bg_crew2"
+    tools:context=".crewstep.CrewLineMakeCrewActivity">
+
+    <ImageView
+        android:id="@+id/crewMakeBackBtn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/back"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/txt_orange_vivid"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="70dp"
+        android:text="크루 이미지 선택"
+        android:layout_marginTop="32dp"
+        android:textColor="@color/txt_orange_vivid"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/crewProfile"
+        android:layout_width="180dp"
+        android:layout_height="180dp"
+        android:padding="40dp"
+        android:layout_marginTop="110dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/icons8"
+        android:clickable="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/editCrewName"
+        android:layout_width="300dp"
+        android:layout_height="70dp"
+        android:padding="20dp"
+        android:hint="크루명 입력"
+        android:textColor="@color/txt_brown_light"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/crewProfile" />
+
+    <Button
+        android:id="@+id/findLocation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="주요 활동 위치 설정"
+        android:drawableLeft="@drawable/location"
+        android:layout_marginTop="30dp"
+        android:background="@drawable/img_btn_brown_light"
+        android:paddingHorizontal="50dp"
+        app:backgroundTint="@null"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/editCrewName" />
+
+    <Button
+        android:id="@+id/btnMakeCrew"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="크루 생성"
+        android:layout_marginTop="40dp"
+        android:background="@drawable/img_btn_brown_light"
+        android:paddingHorizontal="50dp"
+        app:backgroundTint="@null"
+        app:layout_constraintEnd_toEndOf="@id/findLocation"
+        app:layout_constraintStart_toStartOf="@id/findLocation"
+        app:layout_constraintTop_toBottomOf="@id/findLocation" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="24dp"
+    android:background="@drawable/img_frame_record">
+
+    <!-- 🚀 NEW: 크루 라벨 -->
+    <TextView
+        android:id="@+id/tvCrewLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="크루"
+        android:textColor="@android:color/white"
+        android:background="@color/txt_brown_dark"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:layout_gravity="left"
+        android:layout_marginBottom="8dp"
+        android:elevation="4dp"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+
+    <!-- 🚀 NEW: 장소 이름 TextView -->
+    <TextView
+        android:id="@+id/tvPlaceName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:layout_marginBottom="16dp"
+        android:layout_gravity="center_horizontal"
+        android:text="장소 이름"
+        android:textColor="@color/txt_brown_dark"
+        tools:text="장소 이름" />
+
+    <ImageView
+        android:id="@+id/dialogImage"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_launcher_background"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- 🚀 NEW: 거리 표시 TextView -->
+    <TextView
+        android:id="@+id/tvDistance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="거리 : 0.0km"
+        android:textSize="14sp"
+        android:textColor="@color/txt_brown_dark"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"
+        tools:text="거리 : 1.7km"/>
+
+    <!-- 🚀 NEW: 내가 첨부한 사진 (visited image)을 표시할 ImageView -->
+    <ImageView
+        android:id="@+id/dialogVisitedImage"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:scaleType="centerCrop"
+        android:visibility="visible" />
+
+    <!-- 🚀 NEW: 상태 메시지를 표시할 TextView -->
+    <TextView
+        android:id="@+id/tvStatusMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="8dp"
+        android:text="이미 탐색 완료된 장소입니다."
+        android:textColor="@android:color/holo_red_dark"
+        android:textSize="14sp"
+        android:visibility="visible" />
+
+    <!-- 🚀 NEW: 운동 데이터 표시할 TextView -->
+    <TextView
+        android:id="@+id/tvExerciseData"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:textColor="@color/txt_brown_dark"
+        android:textSize="14sp"
+        android:visibility="visible" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btnCancelExplore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="50dp"
+            android:text="다시 선택"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@null"/>
+
+        <Button
+            android:id="@+id/btnStartExplore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="탐색 시작"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@null"/>
+    </LinearLayout>
+</LinearLayout>
