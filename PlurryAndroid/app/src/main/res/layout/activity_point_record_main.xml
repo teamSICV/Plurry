@@ -18,6 +18,7 @@
         android:layout_marginBottom="20dp"
         android:text="내 장소 포인트"
         android:textSize="17sp"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -35,11 +36,11 @@
 
     <Button
         android:id="@+id/showCrewBottomBtn"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
         android:layout_marginBottom="20dp"
-        android:background="@drawable/img_btn_record2"
+        android:background="@drawable/img_btn_brown_dark"
         android:text="장소 포인트 정보 보기"
         app:backgroundTint="@null"
         app:layout_constraintBottom_toBottomOf="parent"

@@ -12,6 +12,7 @@ TagManager:
   - Item
   - Roof
   - Mark
+  - Script
   layers:
   - Default
   - TransparentFX

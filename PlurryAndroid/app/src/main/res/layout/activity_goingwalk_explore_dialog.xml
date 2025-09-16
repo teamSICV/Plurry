@@ -20,9 +20,9 @@
             android:text="장소에 도착했어요!\n사진을 찍어주세요"
             android:textSize="18sp"
             android:textStyle="bold"
+            android:textColor="@color/txt_brown_dark"
             android:gravity="center"
-            android:padding="12dp"
-            android:textColor="#000000" />
+            android:padding="12dp" />
 
         <ImageView
             android:id="@+id/ivPlaceImage"
@@ -39,7 +39,7 @@
             android:layout_marginTop="8dp"
             android:gravity="center"
             android:text="일반 보상 아이템 지급\n크루 보상 아이템 지급"
-            android:textColor="#333333"
+            android:textColor="@color/txt_brown_dark"
             android:textSize="16sp"
             android:visibility="invisible" />
 
@@ -50,7 +50,7 @@
             android:layout_marginTop="8dp"
             android:gravity="center"
             android:text="걸음: 0 걸음\n거리: 0.00 km\n칼로리: 0.0 kcal"
-            android:textColor="#666666"
+            android:textColor="@color/txt_brown_dark"
             android:textSize="14sp"
             android:visibility="invisible" />
 
@@ -71,7 +71,7 @@
                 android:layout_marginBottom="12dp"
                 android:gravity="center"
                 android:text="📸 이미지 비교 결과"
-                android:textColor="#333333"
+                android:textColor="@color/txt_brown_dark"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -95,7 +95,7 @@
                         android:layout_marginBottom="4dp"
                         android:gravity="center"
                         android:text="🎯 목표 장소"
-                        android:textColor="#555555"
+                        android:textColor="@color/txt_brown_dark"
                         android:textSize="12sp"
                         android:textStyle="bold" />
 
@@ -122,7 +122,7 @@
                         android:layout_marginBottom="4dp"
                         android:gravity="center"
                         android:text="📷 촬영한 사진"
-                        android:textColor="#555555"
+                        android:textColor="@color/txt_brown_dark"
                         android:textSize="12sp"
                         android:textStyle="bold" />
 
@@ -156,21 +156,23 @@
         <Button
             android:id="@+id/btnMainAction"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="wrap_content"
             android:text="촬영하기"
             android:layout_marginTop="20dp"
-            android:background="@drawable/img_btn_record2"
-            android:textColor="#FFFFFF"
+            android:layout_marginHorizontal="40dp"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="@color/txt_white"
             app:backgroundTint="@null"/>
 
         <Button
             android:id="@+id/btnSecondaryAction"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:background="@drawable/img_btn_record2"
+            android:layout_marginHorizontal="40dp"
+            android:background="@drawable/img_btn_brown_dark"
             android:text="탐색 종료"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/txt_white"
             android:visibility="invisible"
             app:backgroundTint="@null" />
 

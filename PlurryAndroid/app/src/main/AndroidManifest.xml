@@ -41,15 +41,7 @@
             android:name=".crewstep.CrewExit"
             android:exported="false" />
         <activity
-            android:name=".raising.RaisingItemActivity"
-            android:exported="false"
-            android:theme="@style/PopupTheme" />
-        <activity
             android:name=".raising.RaisingStoryPlayActivity"
-            android:exported="false"
-            android:theme="@style/PopupTheme" />
-        <activity
-            android:name=".raising.RaisingStoryActivity"
             android:exported="false"
             android:theme="@style/PopupTheme" />
         <activity

@@ -46,7 +46,7 @@ public class CharacterMove : MonoBehaviour
         }
         else
         {
-#if UNITY_ANDROID && UNITY_EDITOR
+#if UNITY_EDITOR
             //For Debug
             if (Input.touchCount == 1)
             {
@@ -68,18 +68,16 @@ public class CharacterMove : MonoBehaviour
 
     public void StopWalking()
     {
+        GameObject[] pinObjects = GameObject.FindGameObjectsWithTag("Mark");
+        foreach (GameObject pinObject in pinObjects)
+        {
+            Destroy(pinObject);
+        }
+
         if (isCo)
         {
             isCo = false;
             StopCoroutine(coroutine);
-            //GameObject pinObject = GameObject.Find("Mark(Clone)");
-            //Destroy(pinObject);
-
-            GameObject[] pinObjects = GameObject.FindGameObjectsWithTag("Mark");
-            foreach (GameObject pinObject in pinObjects)
-            {
-                Destroy(pinObject);
-            }
         }
     }
 
@@ -87,13 +85,30 @@ public class CharacterMove : MonoBehaviour
     {
         Ray ray = Camera.main.ScreenPointToRay(position);
         RaycastHit hit;
-        int floorLayer = LayerMask.GetMask("Floor");
+        int floorLayer = LayerMask.GetMask("Floor", "Player");
 
-        //if (Physics.Raycast(ray, out hit))
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, floorLayer))
         {
-            //Debug.Log("Raycast Hitted : " + hit.transform.tag);
-            if (hit.transform.tag == "Floor")
+            if (hit.transform.tag == "Player")
+            {
+                StopWalking();
+                bisCanPlayerInput = false;
+
+                Vector3 cameraPosition = Camera.main.transform.position;
+                Vector3 playerPosition = hit.transform.position;
+
+                Vector3 directionToCamera = cameraPosition - playerPosition;
+                directionToCamera.y = 0; 
+
+                if (directionToCamera != Vector3.zero)
+                {
+                    player.transform.rotation = Quaternion.LookRotation(directionToCamera);
+                }
+
+                GameObject.FindGameObjectWithTag("Script").GetComponent<FloatCharacterScript>().SendMessage("SendScriptLocation");
+                animintance.SendMessage("PlayGreeting");
+            }
+            else if (hit.transform.tag == "Floor")
             {
                 StopWalking();
 
@@ -106,22 +121,14 @@ public class CharacterMove : MonoBehaviour
     private IEnumerator MoveCharacter(Vector3 position)
     {
         isCo = true;
-        /*        while (player.transform.position != position)
-                {
-                    player.transform.LookAt(new Vector3(position.x, player.transform.position.y, position.z));
-                    player.transform.position = Vector3.MoveTowards(player.transform.position, new Vector3(position.x, player.transform.position.y, position.z), Time.deltaTime);
-                    yield return null;
-                }*/
 
         Vector3 targetPosition = new Vector3(position.x, player.transform.position.y, position.z);
-        //Debug.Log(Vector3.Distance(new Vector3(player.transform.position.x, 0, player.transform.position.z), new Vector3(targetPosition.x, 0, targetPosition.z)));
 
         while (Vector3.Distance(new Vector3(player.transform.position.x, 0, player.transform.position.z),
                                  new Vector3(targetPosition.x, 0, targetPosition.z)) > 0.1f)
         {
-            //player.transform.LookAt(targetPosition);
             Vector3 lookDirection = (targetPosition - player.transform.position).normalized;
-            lookDirection.y = 0; // y축 회전만 허용
+            lookDirection.y = 0; 
             player.transform.rotation = Quaternion.LookRotation(lookDirection);
 
             Vector3 direction = (targetPosition - player.transform.position).normalized;
@@ -131,8 +138,6 @@ public class CharacterMove : MonoBehaviour
             yield return null;
         }
 
-        //GameObject pinObject = GameObject.Find("Mark(Clone)");
-        //Destroy(pinObject);
         isCo = false;
     }
 }
