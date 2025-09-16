@@ -91,12 +91,12 @@ class AndroidSecurityValidator {
         }
 
         // 5. 금지어 필터링
-        for (word in BLOCKED_WORDS) {
+        /*for (word in BLOCKED_WORDS) {
             if (nickname.lowercase().contains(word.lowercase())) {
                 Log.w(TAG, "금지어 사용 시도: $nickname")
                 return ValidationResult(false, "사용할 수 없는 단어가 포함되어 있습니다.")
             }
-        }
+        }*/
 
         // 6. 연속된 특수문자 검증
         if (nickname.contains(Regex("[^가-힣a-zA-Z0-9\\s]{3,}"))) {
