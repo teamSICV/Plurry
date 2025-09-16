@@ -35,7 +35,7 @@ public class PlayerState : MonoBehaviour
         switch (StateName)
         {
             case "Growing":
-                //Debug.Log(StateName + "상태 시작");
+                //LogLS.Log(StateName + "상태 시작");
                 GetComponent<CharacterMove>().SendMessage("StopWalking");
 
                 PlayerTransform.rotation = Quaternion.Euler(0, -40f, 0f);
@@ -47,11 +47,12 @@ public class PlayerState : MonoBehaviour
                 animintance.bisIdle = false;
                 animintance.bisGrowing = true;
                 animintance.bisItem = false;
+                animintance.bisStory = false;
 
                 break;
 
             case "Item":
-                //Debug.Log(StateName + "상태 시작");
+                //LogLS.Log(StateName + "상태 시작");
                 GetComponent<CharacterMove>().SendMessage("StopWalking");
 
                 PlayerTransform.rotation = Quaternion.Euler(0, -70f, 0f);
@@ -63,6 +64,24 @@ public class PlayerState : MonoBehaviour
                 animintance.bisIdle = false;
                 animintance.bisGrowing = false;
                 animintance.bisItem = true;
+                animintance.bisStory = false;
+
+                break;
+
+            case "Story":
+                //LogLS.Log(StateName + "상태 시작");
+                GetComponent<CharacterMove>().SendMessage("StopWalking");
+
+                PlayerTransform.rotation = Quaternion.Euler(0, 81f, 0f);
+
+                targetPos = new Vector3(2.5f, 0f, -0.5f);
+                moveVector = targetPos - transform.position;
+                GetComponent<CharacterController>().Move(moveVector);
+
+                animintance.bisIdle = false;
+                animintance.bisGrowing = false;
+                animintance.bisItem = false;
+                animintance.bisStory = true;
 
                 break;
 
@@ -74,12 +93,20 @@ public class PlayerState : MonoBehaviour
 
     public void EndPlayerState()
     {
-        characterMove.bisCanPlayerInput = true;
-
         animintance.bisIdle = true;
         animintance.bisGrowing = false;
         animintance.bisItem = false;
+        animintance.bisStory = false;
 
         cameraMove.SendMessage("EndCameraState");
+
+        Invoke("EnablePlayerInput", 0.5f);
+    }
+
+    private void EnablePlayerInput()
+    {
+        characterMove.bisCanPlayerInput = true;
     }
 }
+
+

@@ -10,6 +10,7 @@
     android:background="@drawable/img_bg_splash">
 
     <ImageView
+        android:id="@+id/plurryImg"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:src="@drawable/img_title2"
@@ -19,16 +20,21 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.25"/>
 
-    <!--<TextView
-        android:id="@+id/SkipLogin"
-        android:layout_width="90dp"
-        android:layout_height="50dp"
-        android:clickable="true"
-        android:text="건너뛰기"
-        android:padding="15dp"
-        android:textAlignment="center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />-->
+    <TextView
+        android:id="@+id/tvLockoutMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="3분 0초 후 재시도 가능"
+        android:textColor="#FF5722"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:padding="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/plurryImg"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <Button
         android:id="@+id/BtnLogin"
@@ -41,19 +47,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         />
-
-<!--    <Button-->
-<!--        android:id="@+id/BtnOtherLogin"-->
-<!--        android:layout_width="140dp"-->
-<!--        android:layout_height="35dp"-->
-<!--        android:layout_marginTop="10dp"-->
-<!--        android:text="다른 계정으로 로그인"-->
-<!--        android:textSize="10dp"-->
-<!--        android:visibility="visible"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintTop_toBottomOf="@+id/BtnLogin" />-->
-
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

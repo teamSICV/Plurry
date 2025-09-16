@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class GameController : MonoBehaviour
 {
-    private string displayText = "Unity Callback test";
     public GUISkin skin;
     string androidFunctionName;
     private PlayerState playerState;
@@ -25,7 +24,7 @@ public class GameController : MonoBehaviour
 #if UNITY_ANDROID && !UNITY_EDITOR
         CallAndroidFunction();
 #else
-        Debug.Log("안드로이드 플랫폼에서만 작동합니다. : " + androidFunctionName);
+        LogLS.Log("안드로이드 플랫폼에서만 작동합니다. : " + androidFunctionName);
 #endif
 
         androidFunctionName = "";
@@ -41,38 +40,6 @@ public class GameController : MonoBehaviour
             }
         }
     }
-
-    public void SendCommendToAndroidWithVector2(string functionName, Vector2 parameter)
-    {
-        displayText = "SendCommendToAndroidWithVector2 Called";
-        if (functionName != "")
-        {
-            androidFunctionName = functionName;
-        }
-#if UNITY_ANDROID && !UNITY_EDITOR
-    CallAndroidFunctionWithVector2(parameter);
-#else
-        Debug.Log($"안드로이드 플랫폼에서만 작동합니다. : {androidFunctionName}, 파라미터: ({parameter.x}, {parameter.y})");
-#endif
-        androidFunctionName = "";
-    }
-
-    private void CallAndroidFunctionWithVector2(Vector2 parameter)
-    {
-        using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-        {
-            using (AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
-            {
-                // float 배열로 전달하거나
-                activity.Call(androidFunctionName, parameter.x, parameter.y);
-
-                // 또는 문자열로 전달
-                // activity.Call(androidFunctionName, $"{parameter.x},{parameter.y}");
-            }
-        }
-    }
-
-
 
     //Call Back Section
     private void UnityProcessGrowing()
@@ -97,14 +64,5 @@ public class GameController : MonoBehaviour
     {
         //displayText = "Item success";
         playerState.SendMessage("EndPlayerState");
-    }
-
-
-    //Debugging Section
-
-    void OnGUI()
-    {
-        GUI.skin = skin;
-        GUI.Label(new Rect(Screen.width / 2 - 50, Screen.height*4 / 5, 100, 50), displayText, "Test");
     }
 }

@@ -34,12 +34,12 @@
 
         <Button
             android:id="@+id/btnStart"
-            android:layout_width="150dp"
-            android:layout_height="100dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:text="탐색 시작"
             android:layout_marginBottom="10dp"
-            android:background="@drawable/img_btn_record2"
+            android:background="@drawable/img_btn_brown_dark"
             app:backgroundTint="@null"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

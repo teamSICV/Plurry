@@ -12,7 +12,7 @@
         android:id="@+id/crewHeader"
         android:layout_width="match_parent"
         android:layout_height="70dp"
-        android:background="@color/gray_box"
+        android:background="@color/grey_box"
         android:padding="10dp">
 
         <ImageView
@@ -21,7 +21,7 @@
             android:layout_height="40dp"
             android:src="@drawable/back"
             android:clickable="true"
-            app:tint="@color/crew_pink"/>
+            app:tint="@color/txt_pink_light"/>
 
         <TextView
             android:id="@+id/textView3"
@@ -33,7 +33,7 @@
             android:textStyle="bold"
             android:textAlignment="center"
             android:textSize="20sp"
-            android:textColor="@color/crew_pink"/>
+            android:textColor="@color/txt_pink_light"/>
 
         <TextView
             android:id="@+id/joinCrewMember"
@@ -46,7 +46,7 @@
             android:text="크루 가입"
             android:textSize="14sp"
             android:padding="15dp"
-            android:textColor="@color/crew_orange"/>
+            android:textColor="@color/txt_orange_vivid"/>
 
         <TextView
             android:id="@+id/ExitCrewMember"
@@ -59,10 +59,10 @@
             android:text="크루 탈퇴"
             android:textSize="14sp"
             android:padding="15dp"
-            android:textColor="@color/crew_orange"/>
+            android:textColor="@color/txt_orange_vivid"/>
     </RelativeLayout>
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
@@ -82,7 +82,7 @@
                 android:layout_height="250dp"
                 android:layout_margin="12dp"
                 app:cardCornerRadius="12dp"
-                app:cardBackgroundColor="@color/gray_box">
+                app:cardBackgroundColor="@color/grey_box">
 
                 <com.google.android.material.tabs.TabLayout
                     android:id="@+id/tablayout"
@@ -91,6 +91,9 @@
                     android:background="@null"
                     app:tabGravity="fill"
                     app:tabMode="fixed"
+                    app:tabTextColor="@color/txt_orange_light"
+                    app:tabSelectedTextColor="@color/txt_pink_light"
+                    app:tabIndicatorColor="@color/txt_pink_light"
                     tools:layout_editor_absoluteX="0dp"
                     tools:layout_editor_absoluteY="79dp">
 
@@ -98,25 +101,20 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="일간"
-                        app:tabTextColor="@color/crew_pink"
-                        app:tabSelectedTextColor="@color/crew_pink"
                         app:backgroundTint="@null"/>
 
                     <com.google.android.material.tabs.TabItem
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="주간"
-                        app:tabTextColor="@color/crew_pink"
-                        app:tabSelectedTextColor="@color/crew_pink"
                         app:backgroundTint="@null"/>
 
                     <com.google.android.material.tabs.TabItem
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="월간"
-                        app:tabTextColor="@color/crew_pink"
-                        app:tabSelectedTextColor="@color/crew_pink"
                         app:backgroundTint="@null"/>
+
                 </com.google.android.material.tabs.TabLayout>
 
                 <com.github.mikephil.charting.charts.BarChart
@@ -136,7 +134,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@color/gray_box"
+                android:background="@color/grey_box"
                 android:layout_marginBottom="20dp">
 
                 <LinearLayout
@@ -154,7 +152,7 @@
                         android:layout_weight="1"
                         android:text="장소포인트 기록"
                         android:textSize="16sp"
-                        android:textColor="@color/crew_pink"/>
+                        android:textColor="@color/txt_pink_light"/>
 
                     <TextView
                         android:id="@+id/morePointBtn"
@@ -166,7 +164,7 @@
                         android:clickable="true"
                         android:gravity="end"
                         android:layout_gravity="center_vertical"
-                        android:textColor="@color/crew_orange"/>
+                        android:textColor="@color/txt_orange_vivid"/>
                 </LinearLayout>
 
 
@@ -202,7 +200,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@color/gray_box">
+            android:background="@color/grey_box">
 
             <TextView
                 android:id="@+id/timeTextView"
@@ -212,7 +210,7 @@
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp"
                 android:text="--:--:-- 업데이트"
-                android:textColor="@color/crew_pink"/>
+                android:textColor="@color/txt_pink_light"/>
 
             <TextView
                 android:layout_width="match_parent"
@@ -221,19 +219,20 @@
                 android:gravity="center"
                 android:textSize="16sp"
                 android:padding="8dp"
-                android:textColor="@color/crew_orange"/>
+                android:textColor="@color/txt_orange_light"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/timelineRecyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
-                android:contentDescription="timeline"/>
+                android:layout_height="wrap_content"
+                android:contentDescription="timeline"
+                android:paddingHorizontal="10dp"/>
 
         </LinearLayout>
 
         </LinearLayout>
 
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/rankingButton"
@@ -244,7 +243,7 @@
         android:layout_marginBottom="20dp"
         android:elevation="8dp"
         app:srcCompat="@drawable/img_icon_trophy"
-        app:backgroundTint="@color/crew_orange"
+        app:backgroundTint="@color/txt_pink_light"
         app:tint="@color/black"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

@@ -85,44 +85,133 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
         }
 
         val userId = currentUser.uid
-        Log.w("MyPageExitDialog", "회원탈퇴 시도 - UserID: $userId")
+        Log.w(TAG, "=== 회원탈퇴 시작 - UserID: $userId ===")
 
         scope.launch {
+            var dataDeleteSuccess = false
+            var authDeleteSuccess = false
+
             try {
-                // crew place 처리
-                handleCrewRelatedData(userId)
+                // 1. 먼저 모든 데이터를 삭제 (Authentication이 살아있는 상태에서)
+                Toast.makeText(context, "사용자 데이터 삭제 중...", Toast.LENGTH_SHORT).show()
+                safeDeleteUserData(userId)
+                dataDeleteSuccess = true
+                Log.w(TAG, "데이터 삭제 완료 - UserID: $userId")
 
-                // goWalk 모든 문서 삭제
-                deleteUserGoWalkData(userId)
-
-                // visitedPlaces 데이터 및 관련 이미지 삭제
-                deleteVisitedPlacesData(userId)
-
-                // 사용자가 생성한 Places 삭제
-                deleteUserCreatedPlaces(userId)
-
-                // 프로필 이미지 삭제
-                deleteProfileImage(userId)
-
-                // userReward 문서 삭제
-                deleteUserRewardData(userId)
-
-                // Users/{uid} 메인 문서 삭제
-                deleteUserMainDocument(userId)
-
-                // Storage에서 사용자 폴더 삭제
-                deleteUserStorageFolder(userId)
-
-                // Authentication에서 사용자 계정 삭제
-                deleteAuthenticationAccount()
-
-                Log.w("MyPageExitDialog", "회원탈퇴 완료 - UserID: $userId")
-
-            } catch (e: Exception) {
-                Log.e("MyPageExitDialog", "회원탈퇴 중 보안 오류: ${e.message}", e)
-                Toast.makeText(context, "회원탈퇴 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
-                dismiss()
+            } catch (dataException: Exception) {
+                Log.e(TAG, "데이터 삭제 중 오류: ${dataException.message}", dataException)
+                // 데이터 삭제 실패해도 계속 진행
+                dataDeleteSuccess = false
             }
+
+            try {
+                // 2. 마지막에 Authentication 계정 삭제
+                Toast.makeText(context, "계정 삭제 중...", Toast.LENGTH_SHORT).show()
+                deleteAuthenticationAccount()
+                authDeleteSuccess = true
+                Log.w(TAG, "Authentication 삭제 완료 - UserID: $userId")
+
+            } catch (authException: Exception) {
+                Log.e(TAG, "Authentication 삭제 실패: ${authException.message}", authException)
+                authDeleteSuccess = false
+
+                // 재인증 필요 메시지 확인
+                if (authException.message?.contains("recent") == true ||
+                    authException.message?.contains("login") == true) {
+                    Toast.makeText(context,
+                        "계정 삭제를 위해 재로그인이 필요합니다.\n로그아웃 후 다시 로그인하여 탈퇴를 시도해주세요.",
+                        Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // 3. 결과에 따른 처리
+            when {
+                dataDeleteSuccess && authDeleteSuccess -> {
+                    Log.w(TAG, "=== 회원탈퇴 완전 성공 - UserID: $userId ===")
+                    Toast.makeText(context, "회원탈퇴가 완료되었습니다.", Toast.LENGTH_SHORT).show()
+                    navigateToLogin()
+                }
+                dataDeleteSuccess && !authDeleteSuccess -> {
+                    Log.w(TAG, "=== 데이터 삭제 완료, Authentication 삭제 실패 - UserID: $userId ===")
+                    Toast.makeText(context,
+                        "데이터는 삭제되었으나 계정 삭제가 실패했습니다.\n로그아웃 후 재로그인하여 다시 시도해주세요.",
+                        Toast.LENGTH_LONG).show()
+                }
+                !dataDeleteSuccess && authDeleteSuccess -> {
+                    Log.w(TAG, "=== 계정 삭제 완료, 데이터 삭제 실패 - UserID: $userId ===")
+                    Toast.makeText(context, "계정 삭제는 완료되었습니다.", Toast.LENGTH_SHORT).show()
+                    navigateToLogin()
+                }
+                else -> {
+                    Log.w(TAG, "=== 회원탈퇴 실패 - UserID: $userId ===")
+                    Toast.makeText(context,
+                        "회원탈퇴에 실패했습니다.\n네트워크 상태를 확인하고 다시 시도해주세요.",
+                        Toast.LENGTH_LONG).show()
+                }
+            }
+
+            dismiss()
+        }
+    }
+
+    private fun navigateToLogin() {
+        val intent = Intent(context, LoginMainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        context.startActivity(intent)
+    }
+
+    private suspend fun safeDeleteUserData(userId: String) {
+        val deleteTasks = mapOf<String, suspend () -> Unit>(
+            "crew 관련 데이터" to { handleCrewRelatedData(userId) },
+            "goWalk 데이터" to { deleteUserGoWalkData(userId) },
+            "visitedPlaces 데이터" to { deleteVisitedPlacesData(userId) },
+            "사용자 생성 Places" to { deleteUserCreatedPlaces(userId) },
+            "프로필 이미지" to { deleteProfileImage(userId) },
+            "userReward 데이터" to { deleteUserRewardData(userId) },
+            "사용자 메인 문서" to { deleteUserMainDocument(userId) },
+            "사용자 Storage 폴더" to { deleteUserStorageFolder(userId) }
+        )
+
+        var successCount = 0
+        val totalTasks = deleteTasks.size
+
+        deleteTasks.forEach { (taskName, deleteTask) ->
+            try {
+                deleteTask()
+                successCount++
+                Log.d(TAG, "$taskName 삭제 성공 ($successCount/$totalTasks)")
+            } catch (e: Exception) {
+                Log.e(TAG, "$taskName 삭제 실패: ${e.message}", e)
+            }
+        }
+
+        Log.w(TAG, "데이터 삭제 완료: $successCount/$totalTasks 성공")
+
+        if (successCount == 0) {
+            throw Exception("모든 데이터 삭제 작업이 실패했습니다.")
+        }
+    }
+
+    private suspend fun deleteAuthenticationAccount() {
+        try {
+            val currentUser = auth.currentUser ?: throw Exception("사용자 정보를 찾을 수 없습니다.")
+
+            // 1. Google Sign Out
+            try {
+                googleSignInClient.signOut().await()
+                Log.d(TAG, "Google 로그아웃 성공")
+                delay(500)
+            } catch (googleSignOutException: Exception) {
+                Log.w(TAG, "Google 로그아웃 실패 (무시하고 계속): ${googleSignOutException.message}")
+            }
+
+            // 2. Firebase Authentication 계정 삭제
+            currentUser.delete().await()
+            Log.d(TAG, "Firebase Authentication 계정 삭제 성공")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Authentication 계정 삭제 실패: ${e.message}", e)
+            throw e
         }
     }
 
@@ -136,6 +225,8 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
             val crewId = userDoc.getString("crewAt")
 
             if (crewId != null) {
+                Log.d(TAG, "사용자가 크루에 속해있음: $crewId")
+
                 // 사용자가 생성한 Places의 crewPlace 삭제
                 deleteUserCreatedPlacesFromCrewPlace(userId, crewId)
 
@@ -154,15 +245,17 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 removeCrewRewardItems(userId, crewId)
 
                 if (isLeader) {
-                    // 리더인 경우 크루 완전 삭제
+                    Log.d(TAG, "크루 리더로서 크루 전체 삭제")
                     handleLeaderCrewDeletion(crewId)
                 } else {
-                    // 일반 멤버인 경우 멤버에서만 제거
+                    Log.d(TAG, "크루 멤버로서 크루 탈퇴")
                     handleMemberCrewExit(userId, crewId)
                 }
+            } else {
+                Log.d(TAG, "사용자가 크루에 속하지 않음")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling crew related data", e)
+            Log.e(TAG, "crew 관련 데이터 처리 중 오류", e)
             throw e
         }
     }
@@ -175,7 +268,7 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .get()
                 .await()
 
-            Log.d(TAG, "Found ${userCreatedPlacesQuery.documents.size} places created by user: $userId")
+            Log.d(TAG, "사용자가 생성한 장소 수: ${userCreatedPlacesQuery.documents.size}")
 
             // 각 장소에 대해 crewPlace에서 삭제
             userCreatedPlacesQuery.documents.forEach { placeDoc ->
@@ -190,13 +283,11 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                     val crewPlaceDoc = crewPlaceRef.get().await()
                     if (crewPlaceDoc.exists()) {
                         crewPlaceRef.delete().await()
-                        Log.d(TAG, "Successfully deleted crewPlace: $placeId from crew: $crewId")
-                    } else {
-                        Log.d(TAG, "CrewPlace document does not exist: $placeId in crew: $crewId")
+                        Log.d(TAG, "crewPlace 삭제 성공: $placeId from $crewId")
                     }
 
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to delete crewPlace: $placeId from crew: $crewId", e)
+                    Log.w(TAG, "crewPlace 삭제 실패: $placeId from $crewId", e)
                 }
             }
 
@@ -218,23 +309,21 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                                 val otherCrewPlaceDoc = otherCrewPlaceRef.get().await()
                                 if (otherCrewPlaceDoc.exists()) {
                                     otherCrewPlaceRef.delete().await()
-                                    Log.d(TAG, "Deleted crewPlace: $placeId from other crew: ${crewDoc.id}")
+                                    Log.d(TAG, "다른 크루의 crewPlace 삭제: $placeId from ${crewDoc.id}")
                                 }
                             } catch (e: Exception) {
-                                Log.w(TAG, "Failed to delete crewPlace: $placeId from crew: ${crewDoc.id}", e)
+                                Log.w(TAG, "다른 크루 crewPlace 삭제 실패: $placeId from ${crewDoc.id}", e)
                             }
                         }
                     }
 
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to query all crews for placeId: $placeId", e)
+                    Log.w(TAG, "모든 크루 조회 실패 for placeId: $placeId", e)
                 }
             }
 
-            Log.d(TAG, "Completed deleteUserCreatedPlacesFromCrewPlace for user: $userId")
-
         } catch (e: Exception) {
-            Log.e(TAG, "Error in deleteUserCreatedPlacesFromCrewPlace", e)
+            Log.e(TAG, "사용자 생성 장소의 crewPlace 삭제 중 오류", e)
             throw e
         }
     }
@@ -246,15 +335,15 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .collection("goWalk")
 
             val documents = goWalkRef.get().await()
+            Log.d(TAG, "goWalk 문서 수: ${documents.documents.size}")
 
             documents.documents.forEach { document ->
                 document.reference.delete().await()
-                Log.d(TAG, "Deleted goWalk document: ${document.id}")
+                Log.d(TAG, "goWalk 문서 삭제: ${document.id}")
             }
 
-            Log.d(TAG, "Successfully deleted all goWalk data for user: $userId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting goWalk data", e)
+            Log.e(TAG, "goWalk 데이터 삭제 중 오류", e)
             throw e
         }
     }
@@ -266,6 +355,7 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .collection("visitedPlaces")
 
             val documents = visitedPlacesRef.get().await()
+            Log.d(TAG, "visitedPlaces 문서 수: ${documents.documents.size}")
 
             documents.documents.forEach { document ->
                 val placeId = document.id
@@ -281,20 +371,19 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                     if (!myImgUrl.isNullOrEmpty()) {
                         val imageRef = storage.getReferenceFromUrl(myImgUrl)
                         imageRef.delete().await()
-                        Log.d(TAG, "Deleted place image: $myImgUrl")
+                        Log.d(TAG, "장소 이미지 삭제: $myImgUrl")
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to delete place image for placeId: $placeId", e)
+                    Log.w(TAG, "장소 이미지 삭제 실패 for placeId: $placeId", e)
                 }
 
                 // visitedPlaces 문서 삭제
                 document.reference.delete().await()
-                Log.d(TAG, "Deleted visitedPlace: $placeId")
+                Log.d(TAG, "visitedPlace 삭제: $placeId")
             }
 
-            Log.d(TAG, "Successfully deleted all visitedPlaces data")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting visitedPlaces data", e)
+            Log.e(TAG, "visitedPlaces 데이터 삭제 중 오류", e)
             throw e
         }
     }
@@ -306,6 +395,8 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .get()
                 .await()
 
+            Log.d(TAG, "사용자가 생성한 Places 수: ${placesQuery.documents.size}")
+
             placesQuery.documents.forEach { placeDoc ->
                 val placeId = placeDoc.id
 
@@ -315,21 +406,20 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                     if (!myImgUrl.isNullOrEmpty()) {
                         val imageRef = storage.getReferenceFromUrl(myImgUrl)
                         imageRef.delete().await()
-                        Log.d(TAG, "Deleted place image: $myImgUrl for placeId: $placeId")
+                        Log.d(TAG, "Place 이미지 삭제: $myImgUrl for $placeId")
                     }
 
                     // Place 문서 삭제
                     placeDoc.reference.delete().await()
-                    Log.d(TAG, "Deleted user created place: $placeId")
+                    Log.d(TAG, "사용자 생성 Place 삭제: $placeId")
 
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to delete place: $placeId", e)
+                    Log.w(TAG, "Place 삭제 실패: $placeId", e)
                 }
             }
 
-            Log.d(TAG, "Successfully deleted all user created places for user: $userId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting user created places", e)
+            Log.e(TAG, "사용자 생성 Places 삭제 중 오류", e)
             throw e
         }
     }
@@ -345,10 +435,12 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
             if (!profileImgUrl.isNullOrEmpty()) {
                 val profileImageRef = storage.getReferenceFromUrl(profileImgUrl)
                 profileImageRef.delete().await()
-                Log.d(TAG, "Deleted profile image: $profileImgUrl")
+                Log.d(TAG, "프로필 이미지 삭제: $profileImgUrl")
+            } else {
+                Log.d(TAG, "프로필 이미지 없음")
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to delete profile image", e)
+            Log.w(TAG, "프로필 이미지 삭제 실패", e)
         }
     }
 
@@ -385,24 +477,26 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                         "lastUpdated" to FieldValue.serverTimestamp()
                     )).await()
 
-                    Log.d(TAG, "Removed crew reward items for user: $userId")
+                    Log.d(TAG, "크루 리워드 아이템 제거 완료 for user: $userId")
                 }
+            } else {
+                Log.d(TAG, "제거할 크루 리워드 아이템 없음")
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to remove crew reward items", e)
+            Log.w(TAG, "크루 리워드 아이템 제거 실패", e)
         }
     }
 
     private suspend fun handleLeaderCrewDeletion(crewId: String) {
         try {
+            // 모든 멤버의 crewAt 필드 삭제 (크루 삭제 전에 먼저)
+            clearMembersCrewAt(crewId)
+
             // 크루 문서 삭제
             firestore.collection("Crew")
                 .document(crewId)
                 .delete()
                 .await()
-
-            // 모든 멤버의 crewAt 필드 삭제
-            clearMembersCrewAt(crewId)
 
             // crewPlace 문서들 삭제
             deleteCrewPlaceDocuments(crewId)
@@ -413,9 +507,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
             // 크루 스토리지 삭제
             deleteCrewStorage(crewId)
 
-            Log.d(TAG, "Successfully deleted crew as leader: $crewId")
+            Log.d(TAG, "리더로서 크루 완전 삭제 완료: $crewId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting crew as leader", e)
+            Log.e(TAG, "리더 크루 삭제 중 오류", e)
             throw e
         }
     }
@@ -434,9 +528,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
             delay(500)
             crewTotalManager.manualRecalculateCrewScore(crewId)
 
-            Log.d(TAG, "Successfully exited crew as member: $userId from $crewId")
+            Log.d(TAG, "멤버로서 크루 탈퇴 완료: $userId from $crewId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error exiting crew as member", e)
+            Log.e(TAG, "멤버 크루 탈퇴 중 오류", e)
             throw e
         }
     }
@@ -453,6 +547,8 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
 
             if (membersDoc.exists()) {
                 val membersData = membersDoc.data
+                Log.d(TAG, "크루 멤버 수: ${membersData?.keys?.size}")
+
                 membersData?.keys?.forEach { memberUid ->
                     try {
                         firestore.collection("Users")
@@ -462,9 +558,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                                 "crewAtTime" to FieldValue.delete()
                             ))
                             .await()
-                        Log.d(TAG, "Cleared crewAt for member: $memberUid")
+                        Log.d(TAG, "멤버 crewAt 정리: $memberUid")
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to clear crewAt for member $memberUid", e)
+                        Log.w(TAG, "멤버 crewAt 정리 실패 $memberUid", e)
                     }
                 }
 
@@ -491,9 +587,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                                 "crewAtTime" to FieldValue.delete()
                             ))
                             .await()
-                        Log.d(TAG, "Cleared crewAt for leader: $leaderField")
+                        Log.d(TAG, "리더 crewAt 정리: $leaderField")
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to clear crewAt for leader $leaderField", e)
+                        Log.w(TAG, "리더 crewAt 정리 실패 $leaderField", e)
                     }
                 }
 
@@ -501,7 +597,7 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error clearing members crewAt", e)
+            Log.e(TAG, "멤버들 crewAt 정리 중 오류", e)
         }
     }
 
@@ -512,13 +608,14 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .collection("crewPlace")
 
             val documents = crewPlaceRef.get().await()
+            Log.d(TAG, "crewPlace 문서 수: ${documents.documents.size}")
 
             documents.documents.forEach { document ->
                 document.reference.delete().await()
-                Log.d(TAG, "Deleted crewPlace document: ${document.id}")
+                Log.d(TAG, "crewPlace 문서 삭제: ${document.id}")
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Error deleting crewPlace documents", e)
+            Log.w(TAG, "crewPlace 문서 삭제 중 오류", e)
         }
     }
 
@@ -531,9 +628,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .delete()
                 .await()
 
-            Log.d(TAG, "Successfully deleted crewReward document for crew: $crewId")
+            Log.d(TAG, "crewReward 문서 삭제 완료: $crewId")
         } catch (e: Exception) {
-            Log.w(TAG, "Error deleting crewReward document", e)
+            Log.w(TAG, "crewReward 문서 삭제 중 오류", e)
         }
     }
 
@@ -541,9 +638,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
         try {
             val crewRef = storage.reference.child("Crew").child(crewId)
             deleteStorageFolder(crewRef)
-            Log.d(TAG, "Deleted storage folder: Crew/$crewId")
+            Log.d(TAG, "크루 Storage 폴더 삭제: Crew/$crewId")
         } catch (e: Exception) {
-            Log.w(TAG, "Storage deletion failed for Crew/$crewId", e)
+            Log.w(TAG, "크루 Storage 삭제 실패: Crew/$crewId", e)
         }
     }
 
@@ -556,9 +653,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .delete()
                 .await()
 
-            Log.d(TAG, "Successfully deleted userReward document for user: $userId")
+            Log.d(TAG, "userReward 문서 삭제 완료: $userId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting userReward data", e)
+            Log.e(TAG, "userReward 데이터 삭제 중 오류", e)
             throw e
         }
     }
@@ -570,9 +667,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 .delete()
                 .await()
 
-            Log.d(TAG, "Successfully deleted Users main document for user: $userId")
+            Log.d(TAG, "사용자 메인 문서 삭제 완료: $userId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting Users main document", e)
+            Log.e(TAG, "사용자 메인 문서 삭제 중 오류", e)
             throw e
         }
     }
@@ -581,9 +678,9 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
         try {
             val userRef = storage.reference.child(userId)
             deleteStorageFolder(userRef)
-            Log.d(TAG, "Deleted user storage folder: $userId")
+            Log.d(TAG, "사용자 Storage 폴더 삭제: $userId")
         } catch (e: Exception) {
-            Log.w(TAG, "User storage deletion failed for $userId", e)
+            Log.w(TAG, "사용자 Storage 삭제 실패: $userId", e)
         }
     }
 
@@ -601,34 +698,7 @@ class MyPageExitDialog(context: Context) : Dialog(context) {
                 deleteStorageFolder(subfolder)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to delete storage folder: ${folderRef.path}", e)
-        }
-    }
-
-    private suspend fun deleteAuthenticationAccount() {
-        try {
-            val currentUser = auth.currentUser
-
-            // Google 로그아웃을 먼저 실행
-            googleSignInClient.signOut().await()
-
-            currentUser?.delete()?.await()
-
-            Log.d(TAG, "사용자 계정 삭제 성공")
-
-            Toast.makeText(context, "회원탈퇴가 완료되었습니다.", Toast.LENGTH_SHORT).show()
-
-            // 로그인 화면으로 이동
-            val intent = Intent(context, LoginMainActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            context.startActivity(intent)
-
-            dismiss()
-
-        } catch (e: Exception) {
-            Log.e(TAG, "사용자 계정 삭제 실패: ${e.message}", e)
-            Toast.makeText(context, "회원탈퇴에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-            dismiss()
+            Log.w(TAG, "Storage 폴더 삭제 실패: ${folderRef.path}", e)
         }
     }
 }
