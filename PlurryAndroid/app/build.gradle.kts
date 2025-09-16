@@ -11,7 +11,14 @@ val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) load(f.inputStream())
 }
-val kakaoKey: String = localProps.getProperty("KAKAO_REST_API_KEY") ?: ""
+val kakaoKey: String = (
+        // gradle.properties 또는 ~/.gradle/gradle.properties
+        project.findProperty("KAKAO_REST_API_KEY") as String?
+        // 환경변수 대안
+            ?: System.getenv("KAKAO_REST_API_KEY")
+            // 마지막 안전장치 (빌드 실패를 원하면 "" 대신 throw IllegalStateException 해도 됨)
+            ?: ""
+        )
 
 android {
     namespace = "com.SICV.plurry"
@@ -135,8 +142,12 @@ dependencies {
     implementation ("androidx.exifinterface:exifinterface:1.3.6")
     //카카오맵api 설정
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    //안전도 계산
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("com.google.code.gson:gson:2.10.1")
 
 
 

@@ -42,6 +42,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
+import com.SICV.plurry.BuildConfig
+import androidx.core.content.ContextCompat
+import com.google.android.material.card.MaterialCardView
+import com.SICV.plurry.safety.model.SafetyDetail
+
 
 class ExploreTrackingFragment : Fragment() {
 
@@ -96,8 +101,8 @@ class ExploreTrackingFragment : Fragment() {
         tvSpeedWarning = view.findViewById(R.id.tvSpeedWarning)
 
         // 안전도 배너 (nullable 처리)
-        safetyBanner = view.findViewById(R.id.safetyBanner)
-        safetyBannerText = view.findViewById(R.id.safetyBannerText)
+        safetyBanner = view.findViewById(R.id.includeSafetyBanner) // include 자체
+        safetyBannerText = safetyBanner?.findViewById(R.id.safetyBannerText) // 내부 TextView
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
@@ -143,31 +148,43 @@ class ExploreTrackingFragment : Fragment() {
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
-        // 안전도 ViewModel 생성
+        // --- [안전도] ViewModel 초기화 & 관찰자 연결 ---
         val safetyRepo = SafetyRepo(
             kakao = RetrofitModule.kakaoApi,
-            safetyService = RetrofitModule.safetyService,
-            kakaoApiKey = "KakaoAK a670ee4833315dafcd56da98e48b2a26" // ← 실제 키로 교체
+            safetyService = RetrofitModule.safetyService
         )
-        safetyViewModel = ViewModelProvider(this, SafetyVMFactory(safetyRepo))[SafetyViewModel::class.java]
+        safetyViewModel = ViewModelProvider(
+            this,
+            SafetyVMFactory(safetyRepo)
+        )[SafetyViewModel::class.java]
 
         safetyViewModel.safety.observe(viewLifecycleOwner) { detail ->
-            if (detail == null) return@observe
-            val levelName = detail.level?.name ?: "UNKNOWN"
-            latestSafetyLine = " · 안전도 ${detail.score} ($levelName)"
+            detail ?: return@observe
 
-            if (levelName == "DANGER") {
-                safetyBannerText?.text = "안전도 ${detail.score} (낮음). 밝은 길로 우회하세요."
-                safetyBanner?.visibility = View.VISIBLE
+            latestSafetyLine = " · 안전도 ${detail.score} (${detail.level.name})"
 
-                val fm = parentFragmentManager
-                if (isAdded && !isDetached && fm.findFragmentByTag("safety_detour") == null) {
-                    BottomSheet().show(fm, "safety_detour")
-                }
-            } else {
-                safetyBanner?.visibility = View.GONE
+            // 배너 보이게
+            safetyBanner?.visibility = View.VISIBLE
+
+            // 텍스트 업데이트
+            safetyBannerText?.text = "현재 안전도: ${detail.score} (${detail.level.name})"
+
+            // 색상 바꾸기
+            when (detail.level) {
+                SafetyDetail.Level.SAFE -> safetyBanner?.setBackgroundColor(
+                    ContextCompat.getColor(requireContext(), android.R.color.holo_green_light)
+                )
+                SafetyDetail.Level.CAUTION -> safetyBanner?.setBackgroundColor(
+                    ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light)
+                )
+                SafetyDetail.Level.DANGER -> safetyBanner?.setBackgroundColor(
+                    ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
+                )
             }
         }
+
+
+
 
         startLocationTracking()
         return view
