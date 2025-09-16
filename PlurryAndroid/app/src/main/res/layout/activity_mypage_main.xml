@@ -6,26 +6,29 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".mypage.MyPageMainActivity">
+    tools:context=".mypage.MyPageMainActivity"
+    android:background="@drawable/img_mypage">
 
   <TextView
       android:id="@+id/textView2"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:layout_marginTop="40dp"
+      android:layout_marginTop="30dp"
       android:text="마이페이지"
-      android:textSize="20sp"
+      android:textSize="25sp"
+      android:textStyle="bold"
+      android:textColor="@color/white"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent" />
 
   <de.hdodenhof.circleimageview.CircleImageView
       android:id="@+id/myPageProfile"
-      android:layout_width="150dp"
-      android:layout_height="150dp"
+      android:layout_width="160dp"
+      android:layout_height="160dp"
       android:layout_gravity="top|center_horizontal"
       android:clickable="true"
-      android:layout_marginTop="50dp"
+      android:layout_marginTop="100dp"
       android:padding="10dp"
       android:src="@drawable/basicprofile"
       app:layout_constraintEnd_toEndOf="parent"
@@ -50,7 +53,7 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:padding="10dp"
-          android:textSize="17sp"
+          android:textSize="18sp"
           android:text="닉네임:" />
 
       <TextView
@@ -59,7 +62,7 @@
           android:layout_height="wrap_content"
           android:clickable="true"
           android:padding="10dp"
-          android:textSize="17sp"
+          android:textSize="18sp"
           android:text=" " />
 
     </LinearLayout>
@@ -75,7 +78,7 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:padding="10dp"
-          android:textSize="17sp"
+          android:textSize="18sp"
           android:text="활동지역:" />
 
       <TextView
@@ -83,7 +86,7 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:padding="10dp"
-          android:textSize="17sp"
+          android:textSize="18sp"
           android:text=" " />
     </LinearLayout>
 
@@ -92,12 +95,12 @@
   <TextView
       android:id="@+id/myPageLogout"
       android:layout_width="100dp"
-      android:layout_height="40dp"
+      android:layout_height="50dp"
       android:clickable="true"
       android:gravity="center"
       android:text="로그아웃"
       android:padding="10dp"
-      android:layout_marginBottom="10dp"
+      android:textSize="17sp"
       android:textColor="@color/gray"
       app:layout_constraintBottom_toTopOf="@+id/myPageExitApp"
       app:layout_constraintEnd_toEndOf="parent"
@@ -106,12 +109,12 @@
   <TextView
       android:id="@+id/myPageExitApp"
       android:layout_width="100dp"
-      android:layout_height="40dp"
+      android:layout_height="50dp"
       android:gravity="center"
       android:padding="10dp"
       android:text="탈퇴하기"
       android:clickable="true"
-      android:textSize="15sp"
+      android:textSize="17sp"
       android:textColor="#c30f16"
       android:layout_marginBottom="25dp"
       app:layout_constraintBottom_toBottomOf="parent"

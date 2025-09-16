@@ -364,7 +364,7 @@
             android:id="@+id/textView7"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="포인트장소"
+            android:text="서명 기록"
             app:layout_constraintEnd_toEndOf="@+id/b_pointRecord"
             app:layout_constraintStart_toStartOf="@+id/b_pointRecord"
             app:layout_constraintTop_toBottomOf="@+id/b_pointRecord" />
@@ -373,7 +373,7 @@
         android:id="@+id/textView8"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="크루"
+        android:text="크루 페이지"
         app:layout_constraintEnd_toEndOf="@+id/b_crewLine"
         app:layout_constraintStart_toStartOf="@+id/b_crewLine"
         app:layout_constraintTop_toBottomOf="@+id/b_crewLine" />
@@ -382,7 +382,7 @@
         android:id="@+id/textView9"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="양육"
+        android:text="캐릭터 성장"
         app:layout_constraintEnd_toEndOf="@+id/b_raising"
         app:layout_constraintStart_toStartOf="@+id/b_raising"
         app:layout_constraintTop_toBottomOf="@+id/b_raising" />
