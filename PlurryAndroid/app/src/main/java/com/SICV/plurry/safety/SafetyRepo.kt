@@ -25,17 +25,6 @@ class SafetyRepo(
         const val CODE_SUBWAY     = "SW8"  // 지하철역
         const val RADIUS_M = 200
 
-        // 가중치 정의 (안전도에 미치는 영향도 기준)
-        const val WEIGHT_CCTV = 3.0          // CCTV: 가장 높은 가중치 (감시/억제 효과)
-        const val WEIGHT_STREET_LIGHT = 2.5   // 가로등: 높은 가중치 (야간 시야 확보)
-        const val WEIGHT_PUBLIC_OFFICE = 2.0  // 공공기관: 높은 가중치 (신뢰할 수 있는 피난처)
-        const val WEIGHT_CONVENIENCE = 1.5    // 편의점: 중간 가중치 (24시간 운영, 사람 있음)
-        const val WEIGHT_SUBWAY = 1.2        // 지하철: 낮은 가중치 (사람 많지만 혼잡)
-
-        // 밀도 보정 계수 (200m 반경 기준)
-        const val IDEAL_CCTV_COUNT = 8        // 이상적인 CCTV 개수
-        const val IDEAL_LIGHT_COUNT = 15      // 이상적인 가로등 개수
-        const val MAX_SCORE = 100            // 최대 점수
     }
 
     suspend fun getSafety(lat: Double, lon: Double): SafetyDetail = withContext(Dispatchers.IO) {
@@ -76,17 +65,23 @@ class SafetyRepo(
             }
 
             // 3️⃣ 점수 계산 및 레벨 결정
-            val totalScore = conv + public + subway + (tileSummary.cctvCount ?: 0) + (tileSummary.streetLightCount ?: 0)
+            //val totalScore = conv + public + subway + (tileSummary.cctvCount ?: 0) + (tileSummary.streetLightCount ?: 0)
 
+            // 예시 가중치 시스템
+            val weightedScore = (conv * 1.5).toInt() +        // 편의점: 높은 가중치
+                    (public * 2.0).toInt() +   // 공공기관: 가장 높은 가중치
+                    (subway * 1.2).toInt() +         // 지하철: 보통 가중치
+                    (tileSummary.cctvCount ?: 0) +   // CCTV: 기본 가중치
+                    (tileSummary.streetLightCount ?: 0) // 가로등: 기본 가중치
             val finalLevel = when {
-                totalScore >= 10 -> SafetyDetail.Level.SAFE
-                totalScore >= 5 -> SafetyDetail.Level.CAUTION
-                else -> SafetyDetail.Level.DANGER
+                weightedScore >= 15 -> SafetyDetail.Level.SAFE      // 매우 안전
+                weightedScore >= 8  -> SafetyDetail.Level.CAUTION   // 보통
+                else -> SafetyDetail.Level.DANGER                 // 위험
             }
 
             // 4️⃣ 최종 결과 반환
             SafetyDetail(
-                score = totalScore,
+                score = weightedScore,
                 level = finalLevel,
                 convCount = conv,
                 publicCount = public,
