@@ -7,9 +7,10 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="300dp"
-        android:layout_height="300dp"
+        android:layout_height="350dp"
         android:layout_gravity="center"
-        android:background="@color/white">
+        android:background="@drawable/img_frame_record"
+        android:padding="10dp">
 
         <TextView
             android:id="@+id/textView8"
@@ -18,6 +19,8 @@
             android:layout_marginTop="30dp"
             android:gravity="center"
             android:text="닉네임 변경"
+            android:textStyle="bold"
+            android:textColor="#7C643D"
             android:textAlignment="center"
             android:textSize="20sp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -29,7 +32,9 @@
             android:layout_width="300dp"
             android:layout_height="50dp"
             android:hint="새로운 닉네임 입력"
+            android:textColorHint="@color/white"
             android:layout_marginTop="60dp"
+            android:textAlignment="center"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textView8" />
@@ -39,7 +44,11 @@
             android:layout_width="150dp"
             android:layout_height="wrap_content"
             android:text="닉네임 변경"
+            android:textStyle="bold"
             android:layout_marginBottom="20dp"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@null"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />

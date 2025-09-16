@@ -7,18 +7,20 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="300dp"
-        android:layout_height="300dp"
+        android:layout_height="350dp"
         android:layout_gravity="center"
-        android:background="@color/white">
+        android:background="@drawable/img_frame_record">
 
         <TextView
             android:layout_width="270dp"
             android:layout_height="150dp"
             android:gravity="center"
-            android:text="프로필 이미지를 변경하시겠습니까?"
+            android:text="프로필 이미지를\n변경하시겠습니까?"
+            android:textColor="#7C643D"
+            android:textStyle="bold"
             android:textAlignment="center"
             android:layout_marginTop="40dp"
-            android:textSize="17sp"
+            android:textSize="18sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -30,6 +32,9 @@
             android:layout_marginStart="30dp"
             android:text="취소"
             android:layout_marginTop="200dp"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@null"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -40,6 +45,9 @@
             android:layout_marginEnd="30dp"
             android:text="확인"
             android:layout_marginTop="200dp"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@null"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -49,6 +49,7 @@
         android:layout_height="70dp"
         android:padding="20dp"
         android:hint="크루명 입력"
+        android:textColorHint="@color/txt_brown_light"
         android:textColor="@color/txt_brown_light"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
