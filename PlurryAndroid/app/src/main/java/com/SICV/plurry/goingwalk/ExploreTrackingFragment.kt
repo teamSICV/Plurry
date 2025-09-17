@@ -42,7 +42,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
-import com.SICV.plurry.BuildConfig
 import androidx.core.content.ContextCompat
 import com.google.android.material.card.MaterialCardView
 import com.SICV.plurry.safety.model.SafetyDetail

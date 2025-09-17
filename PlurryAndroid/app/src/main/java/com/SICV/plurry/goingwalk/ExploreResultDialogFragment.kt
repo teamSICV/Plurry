@@ -449,30 +449,27 @@ class ExploreResultDialogFragment : DialogFragment() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 얼굴 모자이크 적용
-                //val mosaicBitmap = faceMosaicHelper.applyFaceMosaic(originalBitmap, mosaicSize = 15)
-
-                // 🎯 간단한 해결책: 이미지를 작게 만들어서 처리
+                // 이미지를 작게 만들어 처리
                 val smallBitmap = makeImageSmaller(originalBitmap)
                 Log.d("FaceMosaicDebug", "작은 이미지 크기: ${smallBitmap.width} x ${smallBitmap.height}")
 
                 // 작은 이미지로 얼굴 모자이크 처리
                 var mosaicBitmap = faceMosaicHelper.applyFaceMosaic(smallBitmap, mosaicSize = 10)
 
-                if (mosaicBitmap != null && !smallBitmap.sameAs(mosaicBitmap)) {
+                if (mosaicBitmap != null) {
                     Log.d("FaceMosaicDebug", "✅ 얼굴 탐지 성공!")
-                    // 결과를 원본 크기로 확대
+                    // 원본 크기로 복원 (필터 off로 픽셀 보존)
                     mosaicBitmap = Bitmap.createScaledBitmap(
                         mosaicBitmap,
                         originalBitmap.width,
                         originalBitmap.height,
-                        true
+                        /* filter = */ false
                     )
                 } else {
                     Log.w("FaceMosaicDebug", "⚠️ 얼굴 탐지 실패, 간단한 모자이크 적용")
-                    // 간단한 대안: 이미지 중앙에 모자이크
                     mosaicBitmap = applySimpleBlur(originalBitmap)
                 }
+
                 // 처리된 이미지를 임시 파일로 저장
                 val processedFile = if (mosaicBitmap != null) {
                     Log.d("ExploreDialog", "✅ 얼굴 모자이크 처리 성공")
@@ -486,17 +483,17 @@ class ExploreResultDialogFragment : DialogFragment() {
                     Log.d("ExploreDialog", "📁 기존 imageFile: ${imageFile?.absolutePath}")
                     Log.d("ExploreDialog", "📁 새로운 processedFile: ${processedFile.absolutePath}")
 
-                    // 기존 imageFile을 처리된 파일로 교체
-                    val oldFile = imageFile
                     imageFile = processedFile
 
                     Log.d("ExploreDialog", "🔄 imageFile 교체 완료: ${imageFile?.absolutePath}")
                     Log.d("ExploreDialog", "📏 처리된 파일 크기: ${processedFile.length() / 1024}KB")
 
                     withContext(Dispatchers.Main) {
-                        // 3단계: Firebase 업로드 및 성공 다이얼로그에 이미지 전달
-                        // 이미지 업로드 후 운동 데이터도 함께 저장하도록 함수 호출을 변경합니다.
-                        uploadToFirebaseWithImageComparisonAndFitnessData(processedFile, mosaicBitmap ?: originalBitmap, similarity)
+                        uploadToFirebaseWithImageComparisonAndFitnessData(
+                            processedFile,
+                            mosaicBitmap ?: originalBitmap,
+                            similarity
+                        )
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -508,46 +505,31 @@ class ExploreResultDialogFragment : DialogFragment() {
             } catch (e: Exception) {
                 Log.e("ExploreDialog", "얼굴 모자이크 처리 중 오류: ${e.message}")
                 withContext(Dispatchers.Main) {
-                    // 오류 발생시 원본 이미지로 업로드 진행 (이 경우 운동 데이터는 저장되지 않음)
-                    // 이 부분은 기존 uploadToFirebase() 대신, 실패 다이얼로그를 띄우는 것이 더 적절할 수 있습니다.
-                    // 현재는 기존 로직을 따르지만, 실제 앱에서는 사용자에게 명확한 피드백을 주는 것이 좋습니다.
                     showComparisonResult(false, 0f, "얼굴 모자이크 처리 실패")
                 }
             }
         }
     }
 
-    // 🎯 필요한 함수 1: 이미지 작게 만들기
     private fun makeImageSmaller(bitmap: Bitmap): Bitmap {
-        val maxSize = 1000 // 최대 1000px
+        val maxSize = 1000
         val width = bitmap.width
         val height = bitmap.height
+        if (width <= maxSize && height <= maxSize) return bitmap
 
-        if (width <= maxSize && height <= maxSize) {
-            return bitmap
-        }
-
-        val scale = if (width > height) {
-            maxSize.toFloat() / width
-        } else {
-            maxSize.toFloat() / height
-        }
-
+        val scale = if (width > height) maxSize.toFloat() / width else maxSize.toFloat() / height
         val newWidth = (width * scale).toInt()
         val newHeight = (height * scale).toInt()
-
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
-    // 🎯 필요한 함수 2: 간단한 모자이크 (대안책)
     private fun applySimpleBlur(bitmap: Bitmap): Bitmap {
         val result = bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, true)
         val canvas = android.graphics.Canvas(result)
         val paint = android.graphics.Paint()
 
-        // 이미지 중앙 상단에 간단한 사각형 모자이크
         val centerX = bitmap.width / 2
-        val centerY = bitmap.height / 4 // 상단 1/4 지점
+        val centerY = bitmap.height / 4
         val blurWidth = bitmap.width / 3
         val blurHeight = bitmap.height / 5
 
@@ -556,26 +538,21 @@ class ExploreResultDialogFragment : DialogFragment() {
         val right = centerX + blurWidth / 2
         val bottom = centerY + blurHeight / 2
 
-        // 해당 영역을 흐림 처리 (간단한 픽셀화)
         val blockSize = 20
         for (y in top until bottom step blockSize) {
             for (x in left until right step blockSize) {
                 val endX = minOf(x + blockSize, right)
                 val endY = minOf(y + blockSize, bottom)
-
                 if (x < bitmap.width && y < bitmap.height) {
-                    val avgColor = bitmap.getPixel(x, y) // 간단하게 첫 픽셀 색상 사용
+                    val avgColor = bitmap.getPixel(x, y)
                     paint.color = avgColor
                     canvas.drawRect(x.toFloat(), y.toFloat(), endX.toFloat(), endY.toFloat(), paint)
                 }
             }
         }
-
         Log.d("SimpleMosaic", "간단한 모자이크 적용 완료: ($left, $top) ~ ($right, $bottom)")
         return result
     }
-
-
     private fun setupImageComparison() {
         try {
             if (::imageComparisonLayout.isInitialized && ::referenceImageView.isInitialized &&
