@@ -425,8 +425,39 @@ class ExploreTrackingFragment : Fragment() {
                         // 우회 경로 계산 및 네비게이션
                         handleNavigationAndDetour(current)
 
-                    } catch (e: Exception) {
-                        Log.e("ExploreTracking", "LocationCallback 처리 오류: ${e.message}")
+
+                    val distance = calculateDistance(current.latitude, current.longitude)
+                    // 🚀 MODIFIED: 장소 이름을 포함하여 텍스트 업데이트
+                    tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance)
+
+                    val destLoc = Location("dest").apply {
+                        latitude = targetLat
+                        longitude = targetLng
+                    }
+                    val bearing = calculateBearing(current, destLoc)
+                    arrowImageView.rotation = bearing
+
+                    val roundedLevel = (distance / 100).toInt()
+                    if (roundedLevel < lastVibrationLevel) {
+                        triggerVibration()
+                        lastVibrationLevel = roundedLevel
+                    }
+
+                    val currentLevel50m = (distance / 50).toInt()
+                    if (currentLevel50m != lastLoggedDistanceLevel) {
+                        if (lastLoggedDistanceLevel != -1) {
+                            if (currentLevel50m < lastLoggedDistanceLevel) {
+                                Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
+                            } else {
+                                Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
+                            }
+                        }
+                        lastLoggedDistanceLevel = currentLevel50m
+                    }
+
+                    if (distance < 30 && !arrivalDialogShown) {
+                        arrivalDialogShown = true
+                        onArriveAtPlace()
                     }
                 }
             }
