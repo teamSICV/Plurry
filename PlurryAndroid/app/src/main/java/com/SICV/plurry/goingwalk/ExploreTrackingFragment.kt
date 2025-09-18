@@ -42,6 +42,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
+import com.SICV.plurry.BuildConfig
 import androidx.core.content.ContextCompat
 import com.google.android.material.card.MaterialCardView
 import com.SICV.plurry.safety.model.SafetyDetail
@@ -155,7 +156,15 @@ class ExploreTrackingFragment : Fragment() {
 
             // 맵 프래그먼트 설정
             val mapFrag = childFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
-            mapFrag?.getMapAsync { map ->
+            Log.d("DebugTest", "mapFrag 찾기 결과: $mapFrag")
+
+            if (mapFrag == null) {
+                Log.e("DebugTest", "맵 프래그먼트를 찾을 수 없습니다!")
+                Toast.makeText(requireContext(), "지도 로딩 실패!", Toast.LENGTH_LONG).show()
+            } else {
+                Log.d("DebugTest", "맵 프래그먼트 찾음 - getMapAsync 호출")
+
+                mapFrag?.getMapAsync { map ->
                 Log.d("MapDebug", "지도 로드 완료 - 초기화 시작")
 
                 try {
@@ -179,7 +188,7 @@ class ExploreTrackingFragment : Fragment() {
                                 processPendingSafetyEvaluations()
 
                                 // 테스트 오버레이 추가 (디버깅용)
-                                addTestOverlay()
+                                //addTestOverlay()
 
                             } else {
                                 Log.e("MapDebug", "SafetyOverlayManager 초기화 실패 - null 반환")
@@ -198,7 +207,7 @@ class ExploreTrackingFragment : Fragment() {
                     Log.e("MapDebug", "지도 초기화 오류: ${e.message}")
                     e.printStackTrace()
                 }
-            }
+            }}
 
             // Fitness 옵션 설정
             exploreStartTime = System.currentTimeMillis()
@@ -341,20 +350,21 @@ class ExploreTrackingFragment : Fragment() {
                 convCount = 0,
                 publicCount = 0,
                 subwayCount = 0,
+                tourismCount = 0,
                 cctvCount = 0,
                 streetLightCount = 0,
                 reasons = listOf("테스트 위험 지역")
             )
 
             safetyOverlayManager?.addSafetyEvaluation(
-                37.5107092, 127.0941135, // 서울시청 좌표
+                37.5665, 126.9780, // 서울시청 좌표
                 testSafetyDetail
             )
 
             // 카메라를 테스트 위치로 이동
             googleMap?.animateCamera(
                 com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
-                    com.google.android.gms.maps.model.LatLng(37.5107092, 127.0941135),
+                    com.google.android.gms.maps.model.LatLng(37.5665, 126.9780),
                     15f
                 )
             )

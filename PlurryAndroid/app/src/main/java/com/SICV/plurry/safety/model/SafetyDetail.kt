@@ -7,6 +7,7 @@ data class SafetyDetail(
     val convCount: Int,
     val publicCount: Int,
     val subwayCount: Int,
+    val tourismCount: Int,
     val cctvCount: Int,
     val streetLightCount: Int,   // ← count로 통일
     val reasons: List<String> = emptyList()
