@@ -23,6 +23,7 @@ class SafetyRepo(
         const val CODE_CONVENIENCE = "CS2" // 편의점
         const val CODE_PUBLIC   = "PO3"  // 공공기관
         const val CODE_SUBWAY     = "SW8"  // 지하철역
+        const val CODE_TOURISM    = "AT4"  // 관관명소
         const val RADIUS_M = 200
 
     }
@@ -56,6 +57,14 @@ class SafetyRepo(
                 0
             }
 
+            val tourism = runCatching {
+                kakao.categorySearch(auth, CODE_TOURISM, lat, lon, RADIUS_M)
+                    .documents?.size ?: 0
+            }.getOrElse {
+                Log.e("SafetyRepo", "관광명소 조회 실패: $it")
+                0
+            }
+
             // 2️⃣ Firebase Functions 호출
             val tileSummary = runCatching {
                 safetyService.getTileSummary(lat, lon, RADIUS_M)
@@ -70,6 +79,7 @@ class SafetyRepo(
             // 예시 가중치 시스템
             val weightedScore = (conv * 1.5).toInt() +        // 편의점: 높은 가중치
                     (public * 2.0).toInt() +   // 공공기관: 가장 높은 가중치
+                    (tourism * 2.0).toInt() +   // 공공기관: 가장 높은 가중치
                     (subway * 1.2).toInt() +         // 지하철: 보통 가중치
                     (tileSummary.cctvCount ?: 0) +   // CCTV: 기본 가중치
                     (tileSummary.streetLightCount ?: 0) // 가로등: 기본 가중치
@@ -86,12 +96,14 @@ class SafetyRepo(
                 convCount = conv,
                 publicCount = public,
                 subwayCount = subway,
+                tourismCount = tourism,
                 cctvCount = tileSummary.cctvCount ?: 0,
                 streetLightCount = tileSummary.streetLightCount ?: 0,
                 reasons = listOf(
                     "편의점: ${conv}개",
                     "공공기관: ${public}개",
                     "지하철역: ${subway}개",
+                    "관관명소: ${tourism}개",
                     "CCTV: ${tileSummary.cctvCount ?: 0}개",
                     "가로등: ${tileSummary.streetLightCount ?: 0}개"
                 )
@@ -106,6 +118,7 @@ class SafetyRepo(
                 convCount = 0,
                 publicCount = 0,
                 subwayCount = 0,
+                tourismCount = 0,
                 cctvCount = 0,
                 streetLightCount = 0,
                 reasons = listOf("데이터를 불러올 수 없습니다")

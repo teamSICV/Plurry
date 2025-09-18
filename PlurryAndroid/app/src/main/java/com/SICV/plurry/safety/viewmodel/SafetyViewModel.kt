@@ -40,6 +40,7 @@ class SafetyViewModel(
                     convCount = 0,
                     publicCount = 0,
                     subwayCount = 0,
+                    tourismCount = 0,
                     cctvCount = 0,
                     streetLightCount = 0,
                     reasons = listOf("fallback")
