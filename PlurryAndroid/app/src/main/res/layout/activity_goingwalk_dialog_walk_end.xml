@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/img_frame_record"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/tvWalkEndTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="산책 종료"
+        android:textStyle="bold"
+        android:textSize="30sp"
+        android:textColor="@color/txt_brown_dark"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvWalkDistance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="거리: 0.00 km"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tvWalkSteps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="걸음 수: 0 걸음"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tvWalkCalories"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="칼로리 소모: 0 kcal"
+        android:textSize="16sp"
+        android:layout_marginBottom="30dp" />
+
+    <Button
+        android:id="@+id/btnConfirmWalkEnd"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:text="확인"
+        android:background="@drawable/img_btn_brown_dark"
+        android:textColor="#FFFFFF"
+        app:backgroundTint="@null" />
+
+</LinearLayout>

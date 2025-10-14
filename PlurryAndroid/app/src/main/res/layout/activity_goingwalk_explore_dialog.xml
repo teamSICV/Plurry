@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/img_frame_record"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:id="@+id/tvDialogTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="장소에 도착했어요!\n사진을 찍어주세요"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/txt_brown_dark"
+            android:gravity="center"
+            android:padding="12dp" />
+
+        <ImageView
+            android:id="@+id/ivPlaceImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="12dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_launcher_background" />
+
+        <TextView
+            android:id="@+id/tvRewardInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="일반 보상 아이템 지급\n크루 보상 아이템 지급"
+            android:textColor="@color/txt_brown_dark"
+            android:textSize="16sp"
+            android:visibility="invisible" />
+
+        <TextView
+            android:id="@+id/tvStatsInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="걸음: 0 걸음\n거리: 0.00 km\n칼로리: 0.0 kcal"
+            android:textColor="@color/txt_brown_dark"
+            android:textSize="14sp"
+            android:visibility="invisible" />
+
+        <!-- 🆕 이미지 비교 레이아웃 (success 모드에서만 표시) -->
+        <LinearLayout
+            android:id="@+id/layoutImageComparison"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="#F8F9FA"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:visibility="invisible">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:gravity="center"
+                android:text="📸 이미지 비교 결과"
+                android:textColor="@color/txt_brown_dark"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <!-- 🎯 기준 이미지 (목표 장소) -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:gravity="center"
+                        android:text="🎯 목표 장소"
+                        android:textColor="@color/txt_brown_dark"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/ivReferenceImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="100dp"
+                        android:background="#DDDDDD"
+                        android:scaleType="centerCrop" />
+
+                </LinearLayout>
+
+                <!-- 📷 사용자 촬영 이미지 (모자이크 처리됨) -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:gravity="center"
+                        android:text="📷 촬영한 사진"
+                        android:textColor="@color/txt_brown_dark"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/ivUserImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="100dp"
+                        android:background="#DDDDDD"
+                        android:scaleType="centerCrop" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ✅ 유사도 표시 -->
+            <TextView
+                android:id="@+id/tvSimilarity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="#E8F5E8"
+                android:gravity="center"
+                android:padding="8dp"
+                android:text="유사도: 85%"
+                android:textColor="#2E7D32"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnMainAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="촬영하기"
+            android:layout_marginTop="20dp"
+            android:layout_marginHorizontal="40dp"
+            android:background="@drawable/img_btn_brown_dark"
+            android:textColor="@color/txt_white"
+            app:backgroundTint="@null"/>
+
+        <Button
+            android:id="@+id/btnSecondaryAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginHorizontal="40dp"
+            android:background="@drawable/img_btn_brown_dark"
+            android:text="탐색 종료"
+            android:textColor="@color/txt_white"
+            android:visibility="invisible"
+            app:backgroundTint="@null" />
+
+    </LinearLayout>
+</ScrollView>
