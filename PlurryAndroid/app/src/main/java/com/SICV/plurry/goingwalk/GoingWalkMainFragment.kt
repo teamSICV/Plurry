@@ -16,10 +16,13 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.SICV.plurry.MainActivity
 import com.SICV.plurry.R
+import com.SICV.plurry.safety.RouteAvoidanceManager
+import com.SICV.plurry.safety.SafetyOverlayManager
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
@@ -49,13 +52,12 @@ class GoingWalkMainFragment : Fragment() {
 
 //Locate
     private lateinit var walkInfoText: TextView
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var googleMap: GoogleMap? = null
 
 //Google Fit
     private var startTime: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
-    private val updateInterval = 3000L
+    private val updateInterval = 1000L
     private var postSteps = 0
 
     private val fitnessOptions: FitnessOptions by lazy {
@@ -70,10 +72,20 @@ class GoingWalkMainFragment : Fragment() {
 //Locate Accuracy
     private val SUSPICIOUS_ACCURACY_THRESHOLD_METERS = 2f
     private val MIN_ACCURACY_CONSIDERED_VALID = 0.5f
-    private var lastLocation: Location? = null
+    public var lastLocation: Location? = null
     private var lastLocationTime: Long = 0L
     private val MAX_SPEED_KMH = 300.0
 
+
+//Map
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    public lateinit var mapFragment: SupportMapFragment
+    private var polylineManager: PolylineManager? = null
+
+    // 지도 준비 상태 관리
+    //private var isMapReady = false
+    //private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
+    private var hasInitialCameraMove = false
 
 /* ******************
 *
@@ -87,9 +99,21 @@ class GoingWalkMainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
 
-        //LogLS.d("Begin")
-        // XML 레이아웃을 View 객체로 변환 (inflate)
-        return inflater.inflate(R.layout.fragment_goingwalk_main, container, false)
+        val view = inflater.inflate(R.layout.fragment_goingwalk_main, container, false)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+
+        // MapFragment 찾기 - childFragmentManager 사용!
+//        val mapFrag = childFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+//
+//        if (mapFrag == null) {
+//            Log.e("MapDebug", "MapFragment를 찾을 수 없습니다!")
+//            LogLS.e("MapFragment를 찾을 수 없습니다!")
+//            Toast.makeText(requireContext(), "지도 로딩 실패", Toast.LENGTH_LONG).show()
+//        }
+
+        return view
+
     }
 
     // onCreateView에서 View 생성이 완료된 후 호출되는 곳
@@ -104,8 +128,6 @@ class GoingWalkMainFragment : Fragment() {
         val btnRefreshLocation = view.findViewById<Button>(R.id.btnRefreshLocation)
         val btnAddPoint = view.findViewById<Button>(R.id.btnAddPoint)
         val btnExplore = view.findViewById<Button>(R.id.btnExplore)
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
         // 개발자 옵션 활성화 여부 확인
         if (isDeveloperOptionsEnabled()) {
@@ -195,7 +217,7 @@ class GoingWalkMainFragment : Fragment() {
 
         if (hasAllPermissions()) {
             // 모든 권한이 있으면, 지도 설정 및 Google Fit 권한 확인 시작
-            //initializeMap()
+            initializeMap()
             checkFitPermissionsAndStartWalk()
         } else {
             // 권한이 없으면 요청
@@ -345,24 +367,104 @@ class GoingWalkMainFragment : Fragment() {
 * ******************/
     // 지도 초기화
     private fun initializeMap() {
-        // childFragmentManager를 사용하여 Fragment 내의 MapFragment를 찾음
-        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
-        mapFragment?.getMapAsync { map ->
-            googleMap = map
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                googleMap?.isMyLocationEnabled = true
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    location?.let {
-                        checkLocationIntegrityAndHandleExit(it, "지도 초기화")
-                        val currentLatLng = LatLng(it.latitude, it.longitude)
-                        googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
-                        lastLocation = it
-                        lastLocationTime = System.currentTimeMillis()
+        val mapFrag = childFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+
+        if (mapFrag == null) {
+            Log.e("MapDebug", "MapFragment를 찾을 수 없습니다!")
+            LogLS.e("MapFragment를 찾을 수 없습니다!")
+            Toast.makeText(requireContext(), "지도 로딩 실패", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        mapFragment = mapFrag
+        mapFragment.getMapAsync { map ->
+            //LogLS.d("지도 로드 완료 - 초기화 시작")
+
+            try {
+                googleMap = map
+                polylineManager = PolylineManager(map)
+
+                // 지도 기본 설정
+                setupMapSettings(map)
+
+                // 일단 서울 기본 위치로 설정 (GPS 잡히기 전까지 임시)
+                map.moveCamera(
+                    com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
+                        LatLng(37.5665, 126.9780), // 서울시청
+                        21f
+                    )
+                )
+                //Log.d("MapDebug", "기본 위치(서울)로 카메라 설정")
+                //LogLS.d("기본 위치(서울)로 카메라 설정")
+
+                // 현재 위치로 카메라 이동
+                if (ActivityCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    // lastLocation 시도
+                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                        if (location != null) {
+                            map.animateCamera(
+                                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
+                                    LatLng(location.latitude, location.longitude),
+                                    21f
+                                )
+                            )
+                            hasInitialCameraMove = true
+                            Log.d(
+                                "MapDebug",
+                                "lastLocation으로 카메라 이동: ${location.latitude}, ${location.longitude}"
+                            )
+                            //LogLS.d("lastLocation으로 카메라 이동: ${location.latitude}, ${location.longitude}")
+                        } else {
+                            Log.w("MapDebug", "lastLocation이 null입니다. 실시간 위치 업데이트를 기다립니다")
+                            LogLS.w("lastLocation이 null입니다. 실시간 위치 업데이트를 기다립니다")
+                            // hasInitialCameraMove를 false로 유지하여 실시간 위치가 들어오면 이동하도록
+                        }
+                    }.addOnFailureListener { e ->
+                        Log.e("MapDebug", "lastLocation 가져오기 실패: ${e.message}")
+                        LogLS.e("lastLocation 가져오기 실패: ${e.message}")
                     }
+                } else {
+                    Log.w("MapDebug", "위치 권한이 없습니다")
+                    LogLS.t(requireContext(), "위치 권한이 없습니다")
                 }
+
+                //Log.d("MapDebug", "지도 초기화 완료")
+                //LogLS.d("지도 초기화 완료")
+            } catch (e: Exception) {
+                Log.e("MapDebug", "지도 초기화 오류: ${e.message}")
+                LogLS.e("지도 초기화 오류: ${e.message}")
+                e.printStackTrace()
             }
+        }
+    }
+
+    private fun setupMapSettings(map: com.google.android.gms.maps.GoogleMap) {
+        try {
+            map.mapType = com.google.android.gms.maps.GoogleMap.MAP_TYPE_NORMAL
+            map.uiSettings.isZoomControlsEnabled = true
+            map.uiSettings.isCompassEnabled = true
+            map.uiSettings.isMyLocationButtonEnabled = true
+
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                map.isMyLocationEnabled = true
+            }
+
+            Log.d("MapDebug", "지도 기본 설정 완료")
+            //LogLS.d("지도 기본 설정 완료")
+        } catch (e: SecurityException) {
+            Log.e("MapDebug", "위치 권한 없음: ${e.message}")
+            LogLS.t(requireContext(),"위치 권한 없음: ${e.message}")
+        } catch (e: Exception) {
+            Log.e("MapDebug", "지도 설정 오류: ${e.message}")
+            LogLS.e("지도 설정 오류: ${e.message}")
         }
     }
 
@@ -410,7 +512,8 @@ class GoingWalkMainFragment : Fragment() {
             // Activity를 종료하는 대신, Fragment 스택에서 현재 Fragment를 제거
             parentFragmentManager.popBackStack()
         } else {
-            Log.i("Location", "$source: 현재 위치: ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
+            //LogLS.d("$source: 현재 위치: ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
+            polylineManager?.addPointToPath(LatLng(location.latitude, location.longitude))
         }
     }
 
@@ -428,7 +531,7 @@ class GoingWalkMainFragment : Fragment() {
             location?.let {
                 checkLocationIntegrityAndHandleExit(it, "수동 새로고침")
                 val currentLatLng = LatLng(it.latitude, it.longitude)
-                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 17f))
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 21f))
             } ?: run {
                 Toast.makeText(requireContext(), "현재 위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
@@ -438,8 +541,8 @@ class GoingWalkMainFragment : Fragment() {
     private fun startWalk() {
         startTime = System.currentTimeMillis()
 
-        LogLS.d("산책 시작 - startTime: $startTime")
-        LogLS.t(requireContext(),"산책 시작 - startTime: $startTime")
+        //LogLS.d("산책 시작 - startTime: $startTime")
+        //LogLS.t(requireContext(),"산책 시작 - startTime: $startTime")
 
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
         arrayOf(
