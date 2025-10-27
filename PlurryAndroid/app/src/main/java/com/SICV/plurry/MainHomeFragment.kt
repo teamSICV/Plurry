@@ -12,6 +12,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.constraintlayout.widget.ConstraintLayout
 import com.SICV.plurry.ranking.MainCrewRankingManager
 import com.SICV.plurry.ranking.MainRankingManager
 import com.google.firebase.auth.FirebaseAuth
@@ -123,10 +124,10 @@ class MainHomeFragment : Fragment() {
     }
 
     private fun setupRankingManager(view: View) {
-        val rankingLinearLayout = view.findViewById<LinearLayout>(R.id.mainRankLinearLayout)
-        val titleTextView = rankingLinearLayout.getChildAt(0) as TextView
-        val valueTextView = rankingLinearLayout.getChildAt(1) as TextView
-        val unitTextView = rankingLinearLayout.getChildAt(2) as TextView
+        val rankingConstraintLayout = view.findViewById<ConstraintLayout>(R.id.mainRankConstraintLayout)
+        val titleTextView = rankingConstraintLayout.getChildAt(0) as TextView
+        val valueTextView = rankingConstraintLayout.getChildAt(1) as TextView
+        val unitTextView = rankingConstraintLayout.getChildAt(2) as TextView
 
         val leftArrow = view.findViewById<ImageView>(R.id.btnPre)
         val rightArrow = view.findViewById<ImageView>(R.id.btnNext)
