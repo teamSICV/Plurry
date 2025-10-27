@@ -55,14 +55,14 @@ import com.SICV.plurry.MainActivity
 
 class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
+    //private lateinit var fusedLocationClient: FusedLocationProviderClient //Map
+    //private lateinit var locationCallback: LocationCallback
     private lateinit var tvDistanceInfo: TextView
     private lateinit var tvPlaceName: TextView
     private lateinit var arrowImageView: ImageView
     private lateinit var imgTargetPreview: ImageView
     private lateinit var btnExitExplore: Button
-    private lateinit var mapFragment: SupportMapFragment
+    //private lateinit var mapFragment: SupportMapFragment //Map
     private lateinit var tvSpeedWarning: TextView
 
     // 나침반 및 방향 센서 관련 변수
@@ -95,7 +95,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private var isExploringActive = true
     private var lastLocationTime: Long = 0L
     private var lastLocation: Location? = null
-    private var polylineManager: PolylineManager? = null
+    //private var polylineManager: PolylineManager? = null //Map
 
     private var isImageZoomed = false
 
@@ -115,9 +115,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private var lastDetourMessage: String? = null
 
     // 지도 준비 상태 관리
-    private var isMapReady = false
+    private var isMapReady = false  //Map
     private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
-    private var hasInitialCameraMove = false
+    //private var hasInitialCameraMove = false  //Map
 
     data class PendingSafetyEvaluation(
         val lat: Double,
@@ -145,7 +145,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             // 안전도 배너 (nullable 처리)
             safetyBannerText = safetyBanner?.findViewById(R.id.safetyBannerText)
 
-            fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+            //fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext()) //Map
 
             arguments?.let {
                 placeId = it.getString("placeId")
@@ -196,8 +196,17 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                 override fun handleOnBackPressed() {}
             })
 
-            // MapFragment 찾기 - childFragmentManager 사용!
-            val mapFrag = childFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
+
+            // parentFragmentManager를 통해 부모 Fragment 찾기
+            val parentMainFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
+
+            // 디버깅
+//            Log.d("MapDebug", "parentFragmentManager.fragments: ${parentFragmentManager.fragments}")
+//            LogLS.d("parentFragmentManager.fragments: ${parentFragmentManager.fragments}")
+//            Log.d("MapDebug", "parentMainFragment: $parentMainFragment")
+//            LogLS.d("parentMainFragment: $parentMainFragment")
+
+            val mapFrag = parentMainFragment?.mapFragment
 
             if (mapFrag == null) {
                 Log.e("MapDebug", "MapFragment를 찾을 수 없습니다!")
@@ -206,72 +215,24 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                 return view
             }
 
-            mapFragment = mapFrag
-            mapFragment.getMapAsync { map ->
-                Log.d("MapDebug", "지도 로드 완료 - 초기화 시작")
+            //mapFragment = mapFrag
+            mapFrag.getMapAsync { map ->
+                //Log.d("MapDebug", "지도 로드 완료 - 초기화 시작")
                 //LogLS.d("지도 로드 완료 - 초기화 시작")
-                Log.d("MapDebug", "전달된 목표 위치: lat=$targetLat, lng=$targetLng")
+                //Log.d("MapDebug", "전달된 목표 위치: lat=$targetLat, lng=$targetLng")
                 //LogLS.d("전달된 목표 위치: lat=$targetLat, lng=$targetLng")
 
                 try {
-                    googleMap = map
-                    polylineManager = PolylineManager(map)
-
-                    // 지도 기본 설정
-                    setupMapSettings(map)
-
-                    // 일단 서울 기본 위치로 설정 (GPS 잡히기 전까지 임시)
-                    map.moveCamera(
-                        com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
-                            LatLng(37.5665, 126.9780), // 서울시청
-                            12f
-                        )
-                    )
-                    Log.d("MapDebug", "기본 위치(서울)로 카메라 설정")
-                    //LogLS.d("기본 위치(서울)로 카메라 설정")
-
-                    // 현재 위치로 카메라 이동
-                    if (ActivityCompat.checkSelfPermission(
-                            requireContext(),
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        // lastLocation 시도
-                        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                            if (location != null) {
-                                map.animateCamera(
-                                    com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
-                                        LatLng(location.latitude, location.longitude),
-                                        16f
-                                    )
-                                )
-                                hasInitialCameraMove = true
-                                Log.d("MapDebug", "lastLocation으로 카메라 이동: ${location.latitude}, ${location.longitude}")
-                                //LogLS.d("lastLocation으로 카메라 이동: ${location.latitude}, ${location.longitude}")
-                            } else {
-                                Log.w("MapDebug", "lastLocation이 null입니다. 실시간 위치 업데이트를 기다립니다")
-                                LogLS.w("lastLocation이 null입니다. 실시간 위치 업데이트를 기다립니다")
-                                // hasInitialCameraMove를 false로 유지하여 실시간 위치가 들어오면 이동하도록
-                            }
-                        }.addOnFailureListener { e ->
-                            Log.e("MapDebug", "lastLocation 가져오기 실패: ${e.message}")
-                            LogLS.e("lastLocation 가져오기 실패: ${e.message}")
-                        }
-                    } else {
-                        Log.w("MapDebug", "위치 권한이 없습니다")
-                        LogLS.t(requireContext(),"위치 권한이 없습니다")
-                    }
-
                     // SafetyOverlayManager 초기화 (약간 지연)
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                         try {
-                            Log.d("MapDebug", "SafetyOverlayManager 초기화 시도")
+                            //Log.d("MapDebug", "SafetyOverlayManager 초기화 시도")
                             //LogLS.d("SafetyOverlayManager 초기화 시도")
                             safetyOverlayManager = SafetyOverlayManager(map)
 
                             if (safetyOverlayManager != null) {
                                 isMapReady = true
-                                Log.d("MapDebug", "SafetyOverlayManager 초기화 성공!")
+                                //Log.d("MapDebug", "SafetyOverlayManager 초기화 성공!")
                                 //LogLS.d("SafetyOverlayManager 초기화 성공!")
                                 processPendingSafetyEvaluations()
                             } else {
@@ -288,7 +249,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                     // 우회 경로 관리자 초기화
                     routeAvoidanceManager = RouteAvoidanceManager()
 
-                    Log.d("MapDebug", "지도 초기화 완료")
+                    //Log.d("MapDebug", "지도 초기화 완료")
                     //LogLS.d("지도 초기화 완료")
                 } catch (e: Exception) {
                     Log.e("MapDebug", "지도 초기화 오류: ${e.message}")
@@ -331,7 +292,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                 safetyViewModel.safety.observe(viewLifecycleOwner) { detail ->
                     detail ?: return@observe
 
-                    Log.d("SafetyDebug", "안전도 평가 결과 - 점수: ${detail.score}, 레벨: ${detail.level}")
+                    //Log.d("SafetyDebug", "안전도 평가 결과 - 점수: ${detail.score}, 레벨: ${detail.level}")
                     //LogLS.d("안전도 평가 결과 - 점수: ${detail.score}, 레벨: ${detail.level}")
 
                     latestSafetyLine = " · 안전도 ${detail.score} (${detail.level.name})"
@@ -397,32 +358,6 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
-
-    private fun setupMapSettings(map: com.google.android.gms.maps.GoogleMap) {
-        try {
-            map.mapType = com.google.android.gms.maps.GoogleMap.MAP_TYPE_NORMAL
-            map.uiSettings.isZoomControlsEnabled = true
-            map.uiSettings.isCompassEnabled = true
-            map.uiSettings.isMyLocationButtonEnabled = true
-
-            if (ActivityCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                map.isMyLocationEnabled = true
-            }
-
-            Log.d("MapDebug", "지도 기본 설정 완료")
-            //LogLS.d("지도 기본 설정 완료")
-        } catch (e: SecurityException) {
-            Log.e("MapDebug", "위치 권한 없음: ${e.message}")
-            LogLS.t(requireContext(),"위치 권한 없음: ${e.message}")
-        } catch (e: Exception) {
-            Log.e("MapDebug", "지도 설정 오류: ${e.message}")
-            LogLS.e("지도 설정 오류: ${e.message}")
-        }
-    }
 
     private fun updateSafetyBanner(detail: SafetyDetail) {
         try {
@@ -521,92 +456,72 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     }
 
     private fun startLocationTracking() {
-        val request = LocationRequest.create().apply {
-            interval = 2000
-            fastestInterval = 1000
-            priority = Priority.PRIORITY_HIGH_ACCURACY
-        }
+        //LogLS.d("Begin")
 
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                val current = result.lastLocation ?: return
-
-                if (!isAdded || activity == null || view == null) return
-
-                requireActivity().runOnUiThread {
-                    // 첫 번째 위치 획득 시 카메라를 현재 위치로 이동 (초기 이동이 안됐을 경우에만)
-                    if (lastLocation == null && !hasInitialCameraMove) {
-                        googleMap?.animateCamera(
-                            com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
-                                com.google.android.gms.maps.model.LatLng(current.latitude, current.longitude),
-                                16f
-                            )
-                        )
-                        hasInitialCameraMove = true
-                        Log.d("MapDebug", "실시간 위치로 카메라 이동: ${current.latitude}, ${current.longitude}")
-                        //LogLS.d("실시간 위치로 카메라 이동: ${current.latitude}, ${current.longitude}")
-                    }
-
-                    // 속도 감지 및 탐색 기능 제어
-                    handleSpeedDetection(current)
-
-                    lastLocation = current
-                    lastLocationTime = current.elapsedRealtimeNanos
-
-                    // 위험 지역 진입 체크
-                    checkDangerAreaEntry(current)
-
-                    // 안전도 평가
-                    evaluateSafetyIfNeeded(current)
-
-                    // 우회 경로 계산 및 네비게이션
-                    handleNavigationAndDetour(current)
-
-                    // 탐색이 활성화된 상태에서만 거리 계산 및 진동 처리
-                    if (isExploringActive) {
-                        val distance = calculateDistance(current.latitude, current.longitude)
-
-                        val roundedLevel = (distance / 100).toInt()
-                        if (roundedLevel < lastVibrationLevel) {
-                            triggerVibration()
-                            lastVibrationLevel = roundedLevel
-                        }
-
-                        val currentLevel50m = (distance / 50).toInt()
-                        if (currentLevel50m != lastLoggedDistanceLevel) {
-                            if (lastLoggedDistanceLevel != -1) {
-                                if (currentLevel50m < lastLoggedDistanceLevel) {
-                                    Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
-                                    //LogLS.d("🔵 더 가까워졌습니다: ${distance.toInt()}m")
-                                } else {
-                                    Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
-                                    //LogLS.d("🔴 더 멀어졌습니다: ${distance.toInt()}m")
-                                }
-                            }
-                            lastLoggedDistanceLevel = currentLevel50m
-                        }
-
-                        if (distance < 30 && !arrivalDialogShown) {
-                            arrivalDialogShown = true
-                            onArriveAtPlace()
-                        }
-                    }
-                }
+        // 2초마다 processLocationTracking 호출
+        val handler = android.os.Handler(Looper.getMainLooper())
+        val runnable = object : Runnable {
+            override fun run() {
+                processLocationTracking()
+                handler.postDelayed(this, 2000) // 2초마다 반복
             }
         }
+        handler.post(runnable)
+    }
 
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-            return
-        }
+    private fun processLocationTracking() {
+        //LogLS.d("Begin")
 
-        try {
-            fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
-        } catch (e: Exception) {
-            Log.e("ExploreTracking", "위치 업데이트 시작 오류: ${e.message}")
-            LogLS.e("위치 업데이트 시작 오류: ${e.message}")
+        val parentFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
+        val current = parentFragment?.lastLocation ?: return
+
+        if (!isAdded || activity == null || view == null) return
+
+        requireActivity().runOnUiThread {
+            // 속도 감지 및 탐색 기능 제어
+            handleSpeedDetection(current)
+
+            lastLocation = current
+            lastLocationTime = current.elapsedRealtimeNanos
+
+            // 위험 지역 진입 체크
+            checkDangerAreaEntry(current)
+
+            // 안전도 평가
+            evaluateSafetyIfNeeded(current)
+
+            // 우회 경로 계산 및 네비게이션
+            handleNavigationAndDetour(current)
+
+            // 탐색이 활성화된 상태에서만 거리 계산 및 진동 처리
+            if (isExploringActive) {
+                val distance = calculateDistance(current.latitude, current.longitude)
+
+                val roundedLevel = (distance / 100).toInt()
+                if (roundedLevel < lastVibrationLevel) {
+                    triggerVibration()
+                    lastVibrationLevel = roundedLevel
+                }
+
+                val currentLevel50m = (distance / 50).toInt()
+                if (currentLevel50m != lastLoggedDistanceLevel) {
+                    if (lastLoggedDistanceLevel != -1) {
+                        if (currentLevel50m < lastLoggedDistanceLevel) {
+                            Log.d("Explore", "🔵 더 가까워졌습니다: ${distance.toInt()}m")
+                            //LogLS.d("🔵 더 가까워졌습니다: ${distance.toInt()}m")
+                        } else {
+                            Log.d("Explore", "🔴 더 멀어졌습니다: ${distance.toInt()}m")
+                            //LogLS.d("🔴 더 멀어졌습니다: ${distance.toInt()}m")
+                        }
+                    }
+                    lastLoggedDistanceLevel = currentLevel50m
+                }
+
+                if (distance < 30 && !arrivalDialogShown) {
+                    arrivalDialogShown = true
+                    onArriveAtPlace()
+                }
+            }
         }
     }
 
@@ -687,13 +602,13 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             updateDetourStatus(navigationResult)
 
             if (isExploringActive) {
-                polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
+                //polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
                 updateNavigationDisplay(current, navigationResult)
             }
         } else {
             // 기본 네비게이션 (나침반 기능 포함)
             if (isExploringActive) {
-                polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
+                //polylineManager?.addPointToPath(LatLng(current.latitude, current.longitude))
 
                 val distance = calculateDistance(current.latitude, current.longitude)
                 tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %.1f m".format(distance) + latestSafetyLine
@@ -938,11 +853,11 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             parentFragmentManager.popBackStack()
 
 
-            fusedLocationClient.removeLocationUpdates(locationCallback)
+            //fusedLocationClient.removeLocationUpdates(locationCallback)
             sensorManager.unregisterListener(this)
 
-            polylineManager?.clearPath()
-            polylineManager = null
+            //polylineManager?.clearPath()
+            //polylineManager = null
 
             safetyOverlayManager?.clearAllOverlays()
             safetyOverlayManager = null
