@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.SICV.plurry.R
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -18,8 +19,8 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
     private lateinit var storyContainer: LinearLayout
     private lateinit var scrollView: ScrollView
     private var currentStory : Int = 0
-    private var storyLines = mutableListOf<String>()
-    private var currentLineIndex = 0
+    private var storyLines = mutableListOf<List<String>>()
+    private var currentLineIndex = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,30 +62,48 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
 
     private fun loadStoryFromAssets() {
         //Log.d("Story", "loadStoryFromAssets called")
-        val assetDir : String = "story/teststory$currentStory.txt"
+        val assetDir : String = "story/plurrystory$currentStory.csv"
         //Log.d("Story", "assetDir : ${assetDir}")
         try {
             val inputStream = assets.open(assetDir)
             val reader = BufferedReader(InputStreamReader(inputStream))
-            storyLines = reader.readLines().toMutableList()
+            storyLines = reader.readLines()
+                .map { it.split(",") }
+                .toMutableList()
             reader.close()
         } catch (e: Exception) {
             // story 폴더에서 파일을 찾을 수 없는 경우 기본 텍스트 사용
-            storyLines = mutableListOf(
-                "스토리 로드 실패1",
-                "스토리 로드 실패2",
-                "스토리 로드 실패3"
-            )
+            storyLines = mutableListOf(listOf("스토리 로드 실패"))
         }
     }
 
     private fun addNextStoryLine() {
         if (currentLineIndex < storyLines.size) {
+
             val textView = TextView(this).apply {
-                text = storyLines[currentLineIndex]
-                textSize = 20f
-                setPadding(0, 20, 0, 20)
-                gravity = Gravity.CENTER
+                text = storyLines[currentLineIndex][0]
+
+                when (storyLines[currentLineIndex][1]) {
+                    "r" -> textAlignment = TextView.TEXT_ALIGNMENT_TEXT_END
+                    "l" -> textAlignment = TextView.TEXT_ALIGNMENT_TEXT_START
+                    else -> textAlignment = TextView.TEXT_ALIGNMENT_CENTER
+                }
+
+                when (storyLines[currentLineIndex][2]) {
+                    "b" -> setTypeface(null, android.graphics.Typeface.BOLD)
+                    "i" -> setTypeface(null, android.graphics.Typeface.ITALIC)
+                    else -> setTypeface(null, android.graphics.Typeface.NORMAL)
+                }
+
+                textSize = storyLines[currentLineIndex][3].toFloat() ?: 17f
+
+                when (storyLines[currentLineIndex][4]) {
+                    "b" -> setTextColor(ContextCompat.getColor(context, R.color.txt_blue_light))
+                    "g" -> setTextColor(ContextCompat.getColor(context, R.color.txt_grey_light))
+                    else -> setTextColor(ContextCompat.getColor(context, R.color.txt_white))
+                }
+
+                setPadding(0, 0, 0, 100)
             }
 
             storyContainer.addView(textView)
@@ -93,6 +112,10 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
             // 스크롤을 맨 아래로 이동
             scrollView.post {
                 scrollView.fullScroll(ScrollView.FOCUS_DOWN)
+            }
+
+            if(currentLineIndex==storyLines.size) {
+                findViewById<TextView>(R.id.tv_info).text = "스토리가 종료되었습니다"
             }
         }
     }

@@ -13,12 +13,16 @@
 
     <color name="txt_black">#FF000000</color>
     <color name="txt_white">#FFFFFFFF</color>
+    <color name="txt_white_trans">#B3FFFFFF</color>
     <color name="txt_orange_light">#FFF0CEB3</color>
     <color name="txt_orange_vivid">#FFEAB084</color>
     <color name="txt_pink_light">#FFED95A2</color>
     <color name="txt_brown_light">#FFB89055</color>
     <color name="txt_brown_dark">#FF604827</color>
+    <color name="txt_blue_light">#A4DBF9</color>
+    <color name="txt_grey_light">#D1D1D1</color>
     <color name="btn_grey_light">#FFADADAD</color>
+
 
     <color name="grey_box">#80050609</color>
     <color name="white_box">#CCFFFFFF</color>
