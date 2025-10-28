@@ -718,7 +718,6 @@ class PointSelectFragment : DialogFragment() {
 
     override fun onCancel(dialog: DialogInterface) {
         super.onCancel(dialog)
-        //LogLS.d("Begin")
         (parentFragment as? GoingWalkMainFragment)?.setButtonStateEndExplore()
     }
 }

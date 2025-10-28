@@ -17,6 +17,7 @@ import com.SICV.plurry.ranking.MainCrewRankingManager
 import com.SICV.plurry.ranking.MainRankingManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import android.media.MediaPlayer // MediaPlayer 임포트
 
 class MainHomeFragment : Fragment() {
 
@@ -26,6 +27,10 @@ class MainHomeFragment : Fragment() {
     private lateinit var myWalkRecord: MainMyWalkRecord
 
     // MainActivity Interface
+    // 배경 음악을 위한 미디어 플레이어
+    private var mediaPlayer: MediaPlayer? = null // MediaPlayer 인스턴스 선언
+
+    // MainActivity 인터페이스
     interface OnFragmentInteractionListener {
         fun onNavigationRequested(destination: String, extras: Bundle? = null)
     }
@@ -55,6 +60,20 @@ class MainHomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         //LogLS.d("Begin")
+
+        // --- 음악 시작: 배경 음악 재생을 초기화하고 연속 재생 시작 ---
+        try {
+            mediaPlayer = MediaPlayer.create(context, R.raw.main)
+            mediaPlayer?.isLooping = true // 음악을 계속 반복하도록 설정
+
+            // 볼륨을 절반(0.5)으로 설정합니다. (좌우 채널)
+            mediaPlayer?.setVolume(0.4f, 0.4f)
+
+            mediaPlayer?.start()
+        } catch (e: Exception) {
+            Log.e("MainHomeFragment", "미디어 플레이어 초기화 또는 시작 오류: ${e.message}")
+        }
+        // --- 음악 끝 ---
 
         settingButton(view)
         setupRankingManager(view)
@@ -161,12 +180,20 @@ class MainHomeFragment : Fragment() {
         super.onResume()
         crewRankingManager.startUpdating()
         myWalkRecord.startUpdating()
+
+        // 프래그먼트로 돌아왔을 때 음악을 다시 재생합니다.
+        if (mediaPlayer?.isPlaying == false) {
+            mediaPlayer?.start()
+        }
     }
 
     override fun onPause() {
         super.onPause()
         crewRankingManager.stopUpdating()
         myWalkRecord.stopUpdating()
+
+        // 프래그먼트를 벗어나 다른 페이지로 이동할 때 음악을 일시 정지합니다.
+        mediaPlayer?.pause()
     }
 
     override fun onDestroyView() {
@@ -174,6 +201,9 @@ class MainHomeFragment : Fragment() {
         rankingManager.cleanup()
         crewRankingManager.cleanup()
         myWalkRecord.cleanup()
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
     override fun onDetach() {
