@@ -118,6 +118,8 @@ PlurryUnity/[Aa]ssets/[Ss]treamingAssets/aa/*
 #### Custom Ignore #####
 #######################
 
+.idea/*
+
 #Android
 **/ExampleUnitTest.kt
 PlurryAndroid/secrets.properties
