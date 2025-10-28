@@ -25,6 +25,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import kotlin.math.*
+import android.media.MediaPlayer // MediaPlayer 임포트
 
 class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -36,9 +37,25 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var visitedPlacesLoader: VisitedPlacesLoader
     private var currentUserLocation: LatLng? = null
 
+    // 배경 음악을 위한 미디어 플레이어
+    private var mediaPlayer: MediaPlayer? = null // MediaPlayer 인스턴스 선언
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_point_record_main)
+
+        // --- 음악 시작: 배경 음악 재생을 초기화하고 연속 재생 시작 ---
+        try {
+            // 참고: 'R.raw.background_music'을 'res/raw' 폴더에 넣은 실제 파일 이름으로 바꿔주세요.
+            mediaPlayer = MediaPlayer.create(this, R.raw.signrecord)
+            mediaPlayer?.isLooping = true // 음악을 계속 반복하도록 설정
+            mediaPlayer?.setVolume(1.0f, 1.0f)
+
+            mediaPlayer?.start()
+        } catch (e: Exception) {
+            Log.e("PointRecord", "미디어 플레이어 초기화 또는 시작 오류: ${e.message}")
+        }
+        // --- 음악 끝 ---
 
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
@@ -87,6 +104,30 @@ class PointRecordMainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         checkCrewMembership()
     }
+
+    // --- Activity 라이프사이클 메서드에 음악 재생/정지 로직 추가 ---
+    override fun onResume() {
+        super.onResume()
+        // 화면으로 돌아왔을 때 음악을 다시 재생합니다.
+        if (mediaPlayer?.isPlaying == false) {
+            mediaPlayer?.start()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // 화면을 벗어나 다른 페이지로 이동할 때 음악을 일시 정지합니다.
+        mediaPlayer?.pause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 메모리 누수 방지를 위해 MediaPlayer 리소스 해제
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+    // --- 음악 로직 끝 ---
 
     private fun checkCrewMembership() {
         val currentUser = auth.currentUser
