@@ -119,6 +119,13 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
     //private var hasInitialCameraMove = false  //Map
 
+    //탐색 범위 거리 조정
+    private val distanceLevel1 = 20
+    private val distanceLevel2 = 10
+    private val distancearrive = 5
+
+
+
     data class PendingSafetyEvaluation(
         val lat: Double,
         val lng: Double,
@@ -497,13 +504,13 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             if (isExploringActive) {
                 val distance = calculateDistance(current.latitude, current.longitude)
 
-                val roundedLevel = (distance / 100).toInt()
+                val roundedLevel = (distance / distanceLevel1).toInt()
                 if (roundedLevel < lastVibrationLevel) {
                     triggerVibration()
                     lastVibrationLevel = roundedLevel
                 }
 
-                val currentLevel50m = (distance / 50).toInt()
+                val currentLevel50m = (distance / distanceLevel2).toInt()
                 if (currentLevel50m != lastLoggedDistanceLevel) {
                     if (lastLoggedDistanceLevel != -1) {
                         if (currentLevel50m < lastLoggedDistanceLevel) {
@@ -517,7 +524,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                     lastLoggedDistanceLevel = currentLevel50m
                 }
 
-                if (distance < 30 && !arrivalDialogShown) {
+                if (distance < distancearrive && !arrivalDialogShown) {
                     arrivalDialogShown = true
                     onArriveAtPlace()
                 }

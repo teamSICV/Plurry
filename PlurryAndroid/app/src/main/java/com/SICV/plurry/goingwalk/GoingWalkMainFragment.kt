@@ -57,7 +57,7 @@ class GoingWalkMainFragment : Fragment() {
 //Google Fit
     private var startTime: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
-    private val updateInterval = 1000L
+    private val updateInterval = 1000L  //함수 호출 간격 (1초)
     private var postSteps = 0
 
     private val fitnessOptions: FitnessOptions by lazy {
@@ -81,11 +81,15 @@ class GoingWalkMainFragment : Fragment() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     public lateinit var mapFragment: SupportMapFragment
     private var polylineManager: PolylineManager? = null
+    private val mapCameraZoom = 19f
 
     // 지도 준비 상태 관리
     //private var isMapReady = false
     //private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
     private var hasInitialCameraMove = false
+
+    // Location Accuracy
+    private val locationAccuracyThresholds = 5 //초당 거리차 오차범위
 
 /* ******************
 *
@@ -387,11 +391,11 @@ class GoingWalkMainFragment : Fragment() {
                 // 지도 기본 설정
                 setupMapSettings(map)
 
-                // 일단 서울 기본 위치로 설정 (GPS 잡히기 전까지 임시)
+                // 일단 덕성여대 하나누리관 기본 위치로 설정 (GPS 잡히기 전까지 임시)
                 map.moveCamera(
                     com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
-                        LatLng(37.5665, 126.9780), // 서울시청
-                        21f
+                        LatLng(37.650223, 127.019191), // 덕성여대 하나누리관
+                        mapCameraZoom
                     )
                 )
                 //Log.d("MapDebug", "기본 위치(서울)로 카메라 설정")
@@ -409,7 +413,7 @@ class GoingWalkMainFragment : Fragment() {
                             map.animateCamera(
                                 com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(
                                     LatLng(location.latitude, location.longitude),
-                                    21f
+                                    mapCameraZoom
                                 )
                             )
                             hasInitialCameraMove = true
@@ -483,6 +487,7 @@ class GoingWalkMainFragment : Fragment() {
     }
 
     private fun isTeleporting(currentLocation: Location): Boolean {
+        /*
         lastLocation?.let { prevLocation ->
             val timeElapsedSeconds = (System.currentTimeMillis() - lastLocationTime) / 1000.0
             if (timeElapsedSeconds <= 0) return false
@@ -497,6 +502,36 @@ class GoingWalkMainFragment : Fragment() {
         }
         lastLocation = currentLocation
         lastLocationTime = System.currentTimeMillis()
+        return false
+         */
+
+        if(lastLocation==null) {
+            lastLocation = currentLocation
+            lastLocationTime = System.currentTimeMillis()
+            return false
+        }
+
+        lastLocation?.let { prevLocation ->
+            val timeElapsedSeconds = (System.currentTimeMillis() - lastLocationTime) / 1000.0
+            if (timeElapsedSeconds <= 0) return false
+
+            val distanceMeters = prevLocation.distanceTo(currentLocation)
+            val speedMs = distanceMeters / timeElapsedSeconds
+            val speedKmh = speedMs * 3.6
+
+            if (speedKmh > MAX_SPEED_KMH) {
+                Log.w("Teleportation", "순간이동 감지! 허용 속도 초과: ${String.format("%.2f", speedKmh)}km/h")
+                return true
+            }
+
+            if ((speedMs>=locationAccuracyThresholds)&&timeElapsedSeconds<3) {
+                lastLocation = prevLocation
+                Toast.makeText(requireContext(), "GPS거리 오차 5m이상 발생", Toast.LENGTH_SHORT).show()
+            } else {
+                lastLocation = currentLocation
+                lastLocationTime = System.currentTimeMillis()
+            }
+        }
         return false
     }
 
@@ -513,7 +548,11 @@ class GoingWalkMainFragment : Fragment() {
             parentFragmentManager.popBackStack()
         } else {
             //LogLS.d("$source: 현재 위치: ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
-            polylineManager?.addPointToPath(LatLng(location.latitude, location.longitude))
+            if(lastLocation!=null){
+                polylineManager?.addPointToPath(LatLng(lastLocation!!.latitude, lastLocation!!.longitude))
+                val currentLatLng = LatLng(lastLocation!!.latitude, lastLocation!!.longitude)
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
+            }
         }
     }
 
@@ -531,7 +570,7 @@ class GoingWalkMainFragment : Fragment() {
             location?.let {
                 checkLocationIntegrityAndHandleExit(it, "수동 새로고침")
                 val currentLatLng = LatLng(it.latitude, it.longitude)
-                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 21f))
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
             } ?: run {
                 Toast.makeText(requireContext(), "현재 위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
             }
