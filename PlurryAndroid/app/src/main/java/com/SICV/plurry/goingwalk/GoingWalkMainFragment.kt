@@ -36,6 +36,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import java.util.concurrent.TimeUnit
+import android.media.MediaPlayer
 
 class GoingWalkMainFragment : Fragment() {
 
@@ -91,11 +92,14 @@ class GoingWalkMainFragment : Fragment() {
     // Location Accuracy
     private val locationAccuracyThresholds = 5 //초당 거리차 오차범위
 
-/* ******************
-*
-* Create View
-*
-* ******************/
+    // 배경 음악 재생을 위한 MediaPlayer 인스턴스
+    private var mediaPlayer: MediaPlayer? = null // <-- 음악 재생 속성 추가
+
+    /* ******************
+    *
+    * Create View
+    *
+    * ******************/
 
     // Fragment의 UI를 생성하고 반환하는 곳
     override fun onCreateView(
@@ -156,6 +160,30 @@ class GoingWalkMainFragment : Fragment() {
                 setButtonStateStartExplore()
             }
         }
+
+        // --- 배경 음악 초기화 --- <-- 음악 관련 코드 시작
+        try {
+            // 배경 음악 리소스를 R.raw.new_walk_music으로 설정합니다.
+            mediaPlayer = MediaPlayer.create(requireContext(), R.raw.goingwalk)
+            mediaPlayer?.isLooping = true // 음악을 계속 반복하도록 설정
+            mediaPlayer?.setVolume(0.5f, 0.5f) // 볼륨 설정
+        } catch (e: Exception) {
+            Log.e("GoingWalkFragment", "미디어 플레이어 초기화 오류: ${e.message}")
+        }
+        // --- 배경 음악 초기화 끝 ---
+    }
+
+    // --- Fragment 생명주기: 음악 재생 관리 ---
+    override fun onResume() { // <-- 음악 재생을 위해 추가
+        super.onResume()
+        // Fragment가 화면에 나타날 때 음악을 재개합니다.
+        mediaPlayer?.start()
+    }
+
+    override fun onPause() { // <-- 음악 일시 정지를 위해 추가
+        super.onPause()
+        // Fragment가 잠시 뒤로 갈 때 (다른 앱 사용 등) 음악을 일시 정지합니다.
+        mediaPlayer?.pause()
     }
 
     private fun setupButtonListeners(
@@ -178,6 +206,11 @@ class GoingWalkMainFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Fragment의 뷰가 파괴될 때 MediaPlayer 리소스를 해제합니다. <-- 음악 해제 로직 추가
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+
         // Handler 콜백 제거하여 메모리 누수 방지
         handler.removeCallbacks(updateRunnable)
     }
