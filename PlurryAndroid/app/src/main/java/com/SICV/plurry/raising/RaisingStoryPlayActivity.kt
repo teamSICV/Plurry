@@ -62,7 +62,7 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
 
     private fun loadStoryFromAssets() {
         //Log.d("Story", "loadStoryFromAssets called")
-        val assetDir : String = "story/plurrystory$currentStory.csv"
+        val assetDir : String = "story/PlurryStory - $currentStory.csv"
         //Log.d("Story", "assetDir : ${assetDir}")
         try {
             val inputStream = assets.open(assetDir)
@@ -95,12 +95,17 @@ class RaisingStoryPlayActivity : AppCompatActivity() {
                     else -> setTypeface(null, android.graphics.Typeface.NORMAL)
                 }
 
-                textSize = storyLines[currentLineIndex][3].toFloat() ?: 17f
+                textSize = storyLines[currentLineIndex][3].toFloatOrNull() ?: 17f
 
                 when (storyLines[currentLineIndex][4]) {
                     "b" -> setTextColor(ContextCompat.getColor(context, R.color.txt_blue_light))
                     "g" -> setTextColor(ContextCompat.getColor(context, R.color.txt_grey_light))
                     else -> setTextColor(ContextCompat.getColor(context, R.color.txt_white))
+                }
+
+                when (storyLines[currentLineIndex][5]) {
+                    "s" -> text = ("\"" + storyLines[currentLineIndex][0] + "\"")
+                    else -> text = storyLines[currentLineIndex][0]
                 }
 
                 setPadding(0, 0, 0, 100)
