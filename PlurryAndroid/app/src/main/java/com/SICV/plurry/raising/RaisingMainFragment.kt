@@ -450,7 +450,7 @@ class RaisingMainFragment : Fragment() {
 * Story
 *
 * *********/
-    private val storyCount: Int = 5
+    private val storyCount: Int = 4
 
     private fun ShowStoryPopup() {
         //LogLS.d("Begin")
@@ -542,6 +542,7 @@ class RaisingMainFragment : Fragment() {
 *
 * *********/
     private var popupTotalItemGrowingAmount = 0
+    private var popupGetItemGrowingAmount = 0
 
     fun onItemDialogResult(totalItemGrowingAmount: Int, currentNormalItemAmount: Int, currentCrewItemAmount: Int) {
         //LogLS.d("Begin")
@@ -558,6 +559,7 @@ class RaisingMainFragment : Fragment() {
         activity?.runOnUiThread {
             showingDialogName = "Item"
             popupTotalItemGrowingAmount = 0
+            popupGetItemGrowingAmount = 0
 
             // DialogFragment 대신 직접 View를 overlay로 추가
             val inflater = LayoutInflater.from(requireContext())
@@ -604,7 +606,10 @@ class RaisingMainFragment : Fragment() {
         tvCrewlItem.text = currentCrewItemAmount.toString()
 
         val tvGetGrowingAmount = popupView.findViewById<TextView>(R.id.tv_openamount)
-        tvGetGrowingAmount.text = popupTotalItemGrowingAmount.toString()
+        tvGetGrowingAmount.text = popupGetItemGrowingAmount.toString() + " 점 획득!"
+
+        val tvTotalItemGrowingAmount = popupView.findViewById<TextView>(R.id.tv_getamount)
+        tvTotalItemGrowingAmount.text = "총 획득 : " + popupTotalItemGrowingAmount.toString()
     }
 
     private fun openItemBoxInPopup(boxId: BoxId, popupView: View) {
@@ -614,20 +619,21 @@ class RaisingMainFragment : Fragment() {
 
         if (boxId == BoxId.NORMAL) {
             if (currentNormalItemAmount > 0) {
-                randomMin = 0
-                randomMax = 100
+                randomMin = 20
+                randomMax = 70
                 currentNormalItemAmount--
             } else return
         } else {
             if (currentCrewItemAmount > 0) {
                 randomMin = 50
-                randomMax = 200
+                randomMax = 100
                 currentCrewItemAmount--
             } else return
         }
 
-        popupTotalItemGrowingAmount = (randomMin..randomMax).random()
-        currentRaisingAmount += popupTotalItemGrowingAmount
+        popupGetItemGrowingAmount = (randomMin..randomMax).random()
+        currentRaisingAmount += popupGetItemGrowingAmount
+        popupTotalItemGrowingAmount += popupGetItemGrowingAmount
         updatePopupTextViews(popupView)
     }
 
@@ -768,3 +774,5 @@ class RaisingMainFragment : Fragment() {
 //    }
 
 }
+
+
