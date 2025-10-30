@@ -23,7 +23,7 @@
 
     <Button
         android:id="@+id/b_growing"
-        android:layout_width="100dp"
+        android:layout_width="120dp"
         android:layout_height="100dp"
         android:text="성장하기"
         android:background="@drawable/img_icon_raise"
@@ -35,10 +35,22 @@
         app:layout_constraintVertical_bias="0.8" />
 
     <TextView
+        android:id="@+id/title_level"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lv."
+        android:textAlignment="textEnd"
+        android:textSize="25sp"
+        android:textColor="@color/txt_orange_light"
+        android:layout_marginEnd="5dp"
+        app:layout_constraintBottom_toBottomOf="@id/t_level"
+        app:layout_constraintEnd_toStartOf="@id/t_level" />
+
+    <TextView
         android:id="@+id/t_level"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="000"
+        android:text="0"
         android:textAlignment="textEnd"
         android:textSize="30sp"
         android:textColor="@color/txt_orange_light"
@@ -74,23 +86,34 @@
         android:text="000"
         android:textAlignment="center"
         android:textSize="10sp"
-        app:layout_constraintTop_toTopOf="@id/b_growing"
-        app:layout_constraintBottom_toBottomOf="@id/b_growing"
+        android:textColor="@color/txt_brown_light"
+        app:layout_constraintTop_toBottomOf="@id/b_growing"
         app:layout_constraintStart_toStartOf="@id/b_growing"
-        app:layout_constraintEnd_toEndOf="@id/b_growing"
-        app:layout_constraintVertical_bias="0.75" />
+        app:layout_constraintEnd_toEndOf="@id/b_growing" />
 
     <TextView
         android:id="@+id/t_raisingPoint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="000"
+        android:text="00"
         android:textAlignment="textEnd"
-        android:layout_marginEnd="30dp"
+        android:layout_marginEnd="3dp"
         android:textSize="15sp"
         android:textColor="@color/txt_brown_dark"
         app:layout_constraintTop_toTopOf="@id/f_gage"
         app:layout_constraintBottom_toBottomOf="@id/f_gage"
+        app:layout_constraintEnd_toStartOf="@id/title_raisingPoint" />
+
+    <TextView
+        android:id="@+id/title_raisingPoint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="/100"
+        android:textAlignment="textEnd"
+        android:layout_marginEnd="25dp"
+        android:textSize="10sp"
+        android:textColor="@color/txt_brown_dark"
+        app:layout_constraintBottom_toBottomOf="@id/t_raisingPoint"
         app:layout_constraintEnd_toEndOf="@id/f_gage" />
 
     <ImageView

@@ -35,11 +35,13 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <View
+            <ImageView
                 android:id="@+id/tv_normal_bg"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:background="@color/txt_pink_light"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/img_frame_circle"
+                app:backgroundTint="@color/txt_brown_light"
+                app:tint="@color/txt_brown_light"
                 app:layout_constraintTop_toTopOf="@id/b_normal"
                 app:layout_constraintBottom_toBottomOf="@id/b_normal"
                 app:layout_constraintStart_toStartOf="@id/b_normal"
@@ -53,6 +55,7 @@
                 android:layout_height="wrap_content"
                 android:text="0"
                 android:textAlignment="center"
+                android:textColor="@color/txt_white"
                 app:layout_constraintTop_toTopOf="@id/tv_normal_bg"
                 app:layout_constraintBottom_toBottomOf="@id/tv_normal_bg"
                 app:layout_constraintStart_toStartOf="@id/tv_normal_bg"
@@ -72,11 +75,13 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <View
+            <ImageView
                 android:id="@+id/tv_crew_bg"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:background="@color/txt_pink_light"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/img_frame_circle"
+                app:backgroundTint="@color/txt_brown_light"
+                app:tint="@color/txt_brown_light"
                 app:layout_constraintTop_toTopOf="@id/b_crew"
                 app:layout_constraintBottom_toBottomOf="@id/b_crew"
                 app:layout_constraintStart_toStartOf="@id/b_crew"
@@ -90,6 +95,7 @@
                 android:layout_height="wrap_content"
                 android:text="0"
                 android:textAlignment="center"
+                android:textColor="@color/txt_white"
                 app:layout_constraintTop_toTopOf="@id/tv_crew_bg"
                 app:layout_constraintEnd_toEndOf="@id/tv_crew_bg"
                 app:layout_constraintStart_toStartOf="@id/tv_crew_bg"
@@ -101,9 +107,9 @@
             android:id="@+id/tv_openamount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="25dp"
-            android:layout_marginBottom="40dp"
-            android:text="00"
+            android:layout_marginTop="15dp"
+            android:layout_marginBottom="70dp"
+            android:text=""
             android:textAlignment="center"
             android:textColor="@color/txt_orange_vivid"
             android:textStyle="bold"
@@ -112,6 +118,19 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/l_boxes"
             app:layout_constraintBottom_toBottomOf="parent"/>
+
+        <TextView
+            android:id="@+id/tv_getamount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="총 획득 : 00"
+            android:textAlignment="center"
+            android:textColor="@color/txt_orange_vivid"
+            android:textSize="10sp"
+            app:layout_constraintStart_toStartOf="@+id/tv_openamount"
+            app:layout_constraintEnd_toEndOf="@+id/tv_openamount"
+            app:layout_constraintTop_toBottomOf="@+id/tv_openamount"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
