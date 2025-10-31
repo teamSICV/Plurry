@@ -52,6 +52,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import com.SICV.plurry.MainActivity
+import com.SICV.plurry.safety.CustomDanger
 
 class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
@@ -241,6 +242,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                                 isMapReady = true
                                 //Log.d("MapDebug", "SafetyOverlayManager 초기화 성공!")
                                 //LogLS.d("SafetyOverlayManager 초기화 성공!")
+                                CustomDanger.applyToOverlay(safetyOverlayManager)
                                 processPendingSafetyEvaluations()
                             } else {
                                 Log.e("MapDebug", "SafetyOverlayManager 초기화 실패 - null 반환")
