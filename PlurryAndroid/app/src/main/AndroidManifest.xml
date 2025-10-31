@@ -41,9 +41,9 @@
         <activity
             android:name=".mypage.MyPageMainActivity"
             android:exported="false" />
-        <activity
-            android:name=".crewstep.CrewExit"
-            android:exported="false" />
+<!--        <activity-->
+<!--            android:name=".crewstep.CrewExit"-->
+<!--            android:exported="false" />-->
         <activity
             android:name=".raising.RaisingStoryPlayActivity"
             android:exported="false"

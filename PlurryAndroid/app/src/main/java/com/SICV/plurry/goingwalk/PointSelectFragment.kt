@@ -60,6 +60,11 @@ class PointSelectFragment : DialogFragment() {
     // 🚀 NEW: 크루 장소 ID를 저장할 Set
     private val crewPlaceIds = mutableSetOf<String>()
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setStyle(STYLE_NORMAL, R.style.PopupTheme)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.activity_goingwalk_point_select, container, false)
 
@@ -673,7 +678,7 @@ class PointSelectFragment : DialogFragment() {
                 Log.d("ExploreConfirmDialog", "탐색 가능한 장소: ${place.placeId}")
             }
 
-            val dialog = android.app.AlertDialog.Builder(requireContext())
+            val dialog = android.app.AlertDialog.Builder(requireContext(), R.style.PopupTheme)
                 .setView(view)
                 .create()
 
