@@ -11,7 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center_horizontal">
+        android:gravity="center_horizontal"
+        android:layout_gravity="center">
 
         <TextView
             android:id="@+id/tvDialogTitle"
@@ -41,7 +42,7 @@
             android:text="일반 보상 아이템 지급\n크루 보상 아이템 지급"
             android:textColor="@color/txt_brown_dark"
             android:textSize="16sp"
-            android:visibility="invisible" />
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/tvStatsInfo"
@@ -52,7 +53,7 @@
             android:text="걸음: 0 걸음\n거리: 0.00 km\n칼로리: 0.0 kcal"
             android:textColor="@color/txt_brown_dark"
             android:textSize="14sp"
-            android:visibility="invisible" />
+            android:visibility="gone" />
 
         <!-- 🆕 이미지 비교 레이아웃 (success 모드에서만 표시) -->
         <LinearLayout
@@ -63,7 +64,7 @@
             android:background="#F8F9FA"
             android:orientation="vertical"
             android:padding="12dp"
-            android:visibility="invisible">
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="match_parent"
@@ -173,7 +174,7 @@
             android:background="@drawable/img_btn_brown_dark"
             android:text="탐색 종료"
             android:textColor="@color/txt_white"
-            android:visibility="invisible"
+            android:visibility="gone"
             app:backgroundTint="@null" />
 
     </LinearLayout>

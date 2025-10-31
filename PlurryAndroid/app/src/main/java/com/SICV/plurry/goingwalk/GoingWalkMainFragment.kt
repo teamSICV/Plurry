@@ -84,6 +84,11 @@ class GoingWalkMainFragment : Fragment() {
     private var polylineManager: PolylineManager? = null
     private val mapCameraZoom = 19f
 
+    private val minExploreLatitude = 37.648832
+    private val maxExploreLatitude = 37.654267
+    private val minExploreLongitude = 127.014280
+    private val maxExploreLongitude = 127.020029
+
     // 지도 준비 상태 관리
     //private var isMapReady = false
     //private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
@@ -196,9 +201,31 @@ class GoingWalkMainFragment : Fragment() {
         btnRefreshLocation.setOnClickListener { refreshLocation() }
         btnAddPoint.setOnClickListener {
             // childFragmentManager를 사용하여 Fragment 내에서 DialogFragment를 관리
+
+/*            if(lastLocation == null) {
+                Toast.makeText(requireContext(), "위치 정보가 없습니다!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if((lastLocation!!.latitude<minExploreLatitude)||(lastLocation!!.latitude>maxExploreLatitude)||(lastLocation!!.longitude<minExploreLongitude)||(lastLocation!!.longitude>maxExploreLongitude)) {
+                Toast.makeText(requireContext(), "서명 서비스를 제공하지 않는 위치입니다!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }*/
+
             AddPointDialogFragment().show(childFragmentManager, "AddPointDialog")
         }
         btnExplore.setOnClickListener {
+
+/*            if(lastLocation == null) {
+                Toast.makeText(requireContext(), "위치 정보가 없습니다!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if((lastLocation!!.latitude<minExploreLatitude)||(lastLocation!!.latitude>maxExploreLatitude)||(lastLocation!!.longitude<minExploreLongitude)||(lastLocation!!.longitude>maxExploreLongitude)) {
+                Toast.makeText(requireContext(), "서명 서비스를 제공하지 않는 위치입니다!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }*/
+
             PointSelectFragment().show(childFragmentManager, "PointSelectDialog")
             setButtonStateStartExplore()
         }
@@ -239,6 +266,13 @@ class GoingWalkMainFragment : Fragment() {
         tvEndWalk?.visibility = View.VISIBLE
         btnExplore?.visibility = View.VISIBLE
         tvExplore?.visibility = View.VISIBLE
+
+        val activity = requireActivity()
+        if (activity is MainActivity) {
+            activity.SetSafety("SAFE")
+        } else {
+            LogLS.e("MainActivity가 아닙니다!")
+        }
     }
 
 

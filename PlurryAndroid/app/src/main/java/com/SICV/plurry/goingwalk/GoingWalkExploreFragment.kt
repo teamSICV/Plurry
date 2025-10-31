@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -119,12 +120,29 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
     //private var hasInitialCameraMove = false  //Map
 
+    // Arrive gate (목표 도착 1회 호출)
+    private var hasArrived = false
+    private var lastArriveTime = 0L
+    private val ARRIVE_RADIUS_M = 30f
+    private val EXIT_RADIUS_M = 50f
+    private val ARRIVE_COOLDOWN_MS = 10_000L
+
+    // Danger gate (위험지역 경고 1회 + 이탈 후에만 재발)
+    private var inDanger = false
+    private var safeStreak = 0
+    private var lastDangerNotifyAt = 0L
+    private val DANGER_COOLDOWN_MS = 10_000L
+    private val SAFE_CLEAR_COUNT = 3
+
     //탐색 범위 거리 조정
     private val distanceLevel1 = 20
     private val distanceLevel2 = 10
     private val distancearrive = 5
 
-
+    //함수 반복호출 Handler
+    private val locationTrackingHandler = Handler(Looper.getMainLooper())
+    private var locationTrackingRunnable: Runnable? = null
+    private val trackingTimeInterval: Long = 2000L
 
     data class PendingSafetyEvaluation(
         val lat: Double,
@@ -464,20 +482,27 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
     private fun startLocationTracking() {
         //LogLS.d("Begin")
+        hasArrived = false
+        lastArriveTime = 0L
+        inDanger = false
+        safeStreak = 0
+        lastDangerNotifyAt = 0L
+        arrivalDialogShown = false
 
-        // 2초마다 processLocationTracking 호출
-        val handler = android.os.Handler(Looper.getMainLooper())
-        val runnable = object : Runnable {
+        // trackingTimeInterval마다 processLocationTracking 호출
+        locationTrackingRunnable = object : Runnable {
             override fun run() {
                 processLocationTracking()
-                handler.postDelayed(this, 2000) // 2초마다 반복
+                locationTrackingHandler.postDelayed(this, trackingTimeInterval)
             }
         }
-        handler.post(runnable)
+        locationTrackingHandler.post(locationTrackingRunnable!!)
     }
 
     private fun processLocationTracking() {
         //LogLS.d("Begin")
+
+        if (!isAdded || view == null) return
 
         val parentFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
         val current = parentFragment?.lastLocation ?: return
@@ -524,9 +549,21 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
                     lastLoggedDistanceLevel = currentLevel50m
                 }
 
-                if (distance < distancearrive && !arrivalDialogShown) {
-                    arrivalDialogShown = true
-                    onArriveAtPlace()
+//                if (distance < distancearrive && !arrivalDialogShown) {
+//                    arrivalDialogShown = true
+//                    onArriveAtPlace()
+//                }
+                val now = System.currentTimeMillis()
+
+                if (!hasArrived && distance < ARRIVE_RADIUS_M) {
+                    if (now - lastArriveTime > ARRIVE_COOLDOWN_MS) {
+                        hasArrived = true
+                        lastArriveTime = now
+                        onArriveAtPlace()
+                    }
+                } else if (hasArrived && distance > EXIT_RADIUS_M) {
+                    // 50m 이상 벗어나야 다시 도착 가능
+                    hasArrived = false
                 }
             }
         }
@@ -574,8 +611,29 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             current.longitude
         ) ?: false
 
-        if (isInDangerArea) {
-            showDangerAreaWarning()
+//        if (isInDangerArea) {
+//            showDangerAreaWarning()
+//        }
+        val now = System.currentTimeMillis()
+
+        if (!inDanger && isInDangerArea) {
+            // 처음 진입: 쿨다운 내 재알림 방지
+            if (now - lastDangerNotifyAt > DANGER_COOLDOWN_MS) {
+                inDanger = true
+                safeStreak = 0
+                lastDangerNotifyAt = now
+                showDangerAreaWarning() // ← 토스트+진동 1회
+            }
+        } else if (inDanger && !isInDangerArea) {
+            // 연속 안전 판정 누적(히스테리시스 역할)
+            safeStreak++
+            if (safeStreak >= SAFE_CLEAR_COUNT) {
+                inDanger = false
+                safeStreak = 0
+            }
+        } else if (inDanger && isInDangerArea) {
+            // 위험 상태 유지 중에는 추가 알림 없음
+            safeStreak = 0
         }
     }
 
@@ -727,6 +785,8 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             return
         }
 
+        LogLS.d("Begin")
+
         val endTime = System.currentTimeMillis()
 
         try {
@@ -840,8 +900,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        LogLS.d("Begin")
 
-        //LogLS.d("Begin")
+        locationTrackingHandler.removeCallbacksAndMessages(null)
 
         try {
             // MainActivity를 통해 현재 표시된 GoingWalkMainFragment 찾기

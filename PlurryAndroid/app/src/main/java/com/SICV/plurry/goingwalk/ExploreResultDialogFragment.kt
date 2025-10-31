@@ -69,9 +69,16 @@ class ExploreResultDialogFragment : DialogFragment() {
     private var imageFile: File? = null
     private var imageUri: Uri? = null
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        isCancelable = false
+    }
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val builder = android.app.AlertDialog.Builder(requireContext())
+        val builder = android.app.AlertDialog.Builder(requireContext(), R.style.PopupTheme)
         val view = LayoutInflater.from(context).inflate(R.layout.activity_goingwalk_explore_dialog, null)
+
+        LogLS.d("Begin")
 
         titleTextView = view.findViewById(R.id.tvDialogTitle)
         placeImageView = view.findViewById(R.id.ivPlaceImage)
@@ -122,8 +129,12 @@ class ExploreResultDialogFragment : DialogFragment() {
             setupDialogByMode()
         }
 
+        isCancelable = false // onCreate에서도 추가
+
         builder.setView(view)
-        return builder.create()
+        val dialog = builder.create()
+        dialog.setCancelable(false) // 이 줄 추가
+        return dialog
     }
 
     // 장소 이름을 가져오는 함수 추가
@@ -819,6 +830,9 @@ class ExploreResultDialogFragment : DialogFragment() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        LogLS.d("Begin")
+
         if (::onnxHelper.isInitialized) onnxHelper.close()
         if (::faceMosaicHelper.isInitialized) faceMosaicHelper.close()
     }
