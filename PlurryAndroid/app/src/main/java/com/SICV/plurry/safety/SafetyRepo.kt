@@ -28,8 +28,8 @@ class SafetyRepo(
 
     }
 
-    private val safeThresholdPoint = 30
-    private val cautionThresholdPoint = 30
+    private val safeThresholdPoint = 15
+    private val cautionThresholdPoint = 8
 
     suspend fun getSafety(lat: Double, lon: Double): SafetyDetail = withContext(Dispatchers.IO) {
         try {
