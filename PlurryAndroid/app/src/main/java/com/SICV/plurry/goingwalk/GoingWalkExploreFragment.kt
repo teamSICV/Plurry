@@ -129,9 +129,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val SAFE_CLEAR_COUNT = 3
 
     //탐색 범위 거리 조정
-    private val distanceLevel1 = 5
-    private val distanceLevel2 = 3
-    private val distancearrive = 1
+    private val distanceLevel1 = 10
+    private val distanceLevel2 = 8
+    private val distancearrive = 5
 
     // Arrive gate (목표 도착 1회 호출)
     private var hasArrived = false
