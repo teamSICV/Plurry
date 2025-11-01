@@ -11,7 +11,7 @@ object CustomDanger {
         val name: String,
         val lat: Double,
         val lng: Double,
-        val radius: Float = 50f
+        val radius: Float = 40f
     )
 
     // 여기 수정하면 좌표 추가/변경 가능
@@ -20,20 +20,19 @@ object CustomDanger {
     )
 
     fun applyToOverlay(manager: SafetyOverlayManager?) {
+        manager?.setMinDistanceBetweenAreas(50.0)
         zones.forEach { z ->
             val detail = SafetyDetail(
                 score = 0,
                 level = SafetyDetail.Level.DANGER,
-                convCount = 0,
-                publicCount = 0,
-                subwayCount = 0,
-                tourismCount = 0,
-                cctvCount = 0,
-                streetLightCount = 0,
+                convCount = 0, publicCount = 0, subwayCount = 0, tourismCount = 0,
+                cctvCount = 0, streetLightCount = 0,
                 reasons = listOf("수동 위험지역 - ${z.name}")
             )
-            manager?.addSafetyEvaluation(z.lat, z.lng, detail)
+            // ✅ 반경 전달 (Double)
+            manager?.addSafetyEvaluation(z.lat, z.lng, detail, z.radius.toDouble())
         }
+        manager?.setMinDistanceBetweenAreas(150.0)
     }
 
     fun addZone(name: String, lat: Double, lng: Double, radius: Float = 50f) {

@@ -2,10 +2,14 @@
 package com.SICV.plurry.safety
 
 import android.graphics.Color
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.model.*
-import com.SICV.plurry.safety.model.SafetyDetail
 import android.util.Log
+import com.SICV.plurry.safety.model.SafetyDetail
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.Circle
+import com.google.android.gms.maps.model.CircleOptions
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
+
 
 class SafetyOverlayManager(private val googleMap: GoogleMap) {
 
@@ -25,6 +29,12 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
         private const val OVERLAY_DURATION = 30 * 60 * 1000L // 30분간 유지
         private const val MIN_DISTANCE_BETWEEN_AREAS = 150.0 // 영역 간 최소 거리
     }
+    private var minDistanceBetweenAreas = 150.0
+
+    fun setMinDistanceBetweenAreas(value: Double) {
+        minDistanceBetweenAreas = value
+    }
+
 
     /**
      * 안전도 평가 결과를 바탕으로 위험 지역 오버레이 추가
@@ -57,33 +67,63 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
         // 오래된 오버레이 정리
         cleanupExpiredOverlays()
     }
+    fun addSafetyEvaluation(
+        lat: Double,
+        lng: Double,
+        safetyDetail: SafetyDetail,
+        radiusMeters: Double?
+    ) {
+        val location = LatLng(lat, lng)
+        val areaId = "${lat}_${lng}_${System.currentTimeMillis()}"
+
+        when (safetyDetail.level) {
+            SafetyDetail.Level.DANGER -> {
+                val nearbyArea = findNearbyDangerArea(location)
+                if (nearbyArea == null) {
+                    addDangerOverlay(areaId, location, safetyDetail, radiusMeters ?: DANGER_RADIUS)
+                    Log.d("SafetyOverlay", "새로운 위험 지역 추가(반경 ${radiusMeters ?: DANGER_RADIUS}m): $areaId")
+                } else {
+                    Log.d("SafetyOverlay", "근처에 이미 위험 지역 존재: ${nearbyArea.id}")
+                }
+            }
+            SafetyDetail.Level.CAUTION -> addCautionOverlay(areaId, location, safetyDetail)
+            SafetyDetail.Level.SAFE -> Log.d("SafetyOverlay", "안전 지역: $areaId")
+        }
+
+        cleanupExpiredOverlays()
+    }
 
     /**
      * 위험 지역 오버레이 추가
      */
-    private fun addDangerOverlay(id: String, center: LatLng, safetyDetail: SafetyDetail) {
+    // 1) 기존 안전도 계산에 따른 위험지역 호출 호환용
+    private fun addDangerOverlay(
+        id: String,
+        center: com.google.android.gms.maps.model.LatLng,
+        safetyDetail: com.SICV.plurry.safety.model.SafetyDetail
+    ) {
+        // 기존 기본 반경(DANGER_RADIUS)로 위임
+        addDangerOverlay(id, center, safetyDetail, DANGER_RADIUS)
+    }
+    // 2) 수동으로 추가한 반경 받는용
+    private fun addDangerOverlay(
+        id: String,
+        center: com.google.android.gms.maps.model.LatLng,
+        safetyDetail: com.SICV.plurry.safety.model.SafetyDetail,
+        radiusMeters: Double
+    ) {
         val circle = googleMap.addCircle(
-            CircleOptions()
+            com.google.android.gms.maps.model.CircleOptions()
                 .center(center)
-                .radius(DANGER_RADIUS)
-                .fillColor(Color.argb(100, 255, 0, 0)) // 반투명 빨간색
-                .strokeColor(Color.RED)
+                .radius(radiusMeters)  // ← 전달된 반경 사용
+                .fillColor(android.graphics.Color.argb(100, 255, 0, 0))
+                .strokeColor(android.graphics.Color.RED)
                 .strokeWidth(3f)
                 .clickable(true)
         )
-
-        // 클릭 리스너 추가
-        googleMap.setOnCircleClickListener { clickedCircle ->
-            if (clickedCircle == circle) {
-                showDangerAreaInfo(safetyDetail, center)
-            }
-        }
-
-        val dangerArea = DangerArea(id, center, DANGER_RADIUS, safetyDetail)
-        dangerAreas.add(dangerArea)
-        overlays.add(circle)
-
-        Log.i("SafetyOverlay", "위험 지역 오버레이 추가 완료 - 점수: ${safetyDetail.score}")
+        googleMap.setOnCircleClickListener { if (it == circle) showDangerAreaInfo(safetyDetail, center) }
+        val dangerArea = DangerArea(id, center, radiusMeters, safetyDetail)
+        dangerAreas.add(dangerArea); overlays.add(circle)
     }
 
     /**
@@ -105,12 +145,12 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
     }
 
     /**
-     * 근처 위험 지역 찾기
+     * 근처 위험 지역 찾기(수동 위험지역은 겹치면 우회가 안될 수 있으니 변수로 변경)
      */
     private fun findNearbyDangerArea(location: LatLng): DangerArea? {
         return dangerAreas.find { area ->
             val distance = calculateDistance(location, area.center)
-            distance < MIN_DISTANCE_BETWEEN_AREAS
+            distance < minDistanceBetweenAreas   // 변수로 변경
         }
     }
 

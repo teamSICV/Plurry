@@ -29,7 +29,7 @@ class RouteAvoidanceManager {
     )
 
     companion object {
-        private const val DETOUR_MARGIN = 50.0        // 위험구역에서 50m 더 멀리 우회
+        private const val DETOUR_MARGIN = 30.0        // 위험지역에서 얼마나 크게 돌 것 인지
         private const val DETOUR_ARRIVAL_RADIUS = 30.0 // 우회점 도달 판정 반지름
         private const val MAX_DETOUR_DISTANCE = 500.0   // 최대 우회 거리
         private const val DETOUR_TIMEOUT = 10 * 60 * 1000L // 우회 타임아웃 (10분)
