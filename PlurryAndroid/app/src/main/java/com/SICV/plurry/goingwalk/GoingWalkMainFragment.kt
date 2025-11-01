@@ -58,7 +58,7 @@ class GoingWalkMainFragment : Fragment() {
 //Google Fit
     private var startTime: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
-    private val updateInterval = 1000L  //함수 호출 간격 (1초)
+    private val updateInterval = 500L  //함수 호출 간격 (1초)
     private var postSteps = 0
 
     private val fitnessOptions: FitnessOptions by lazy {
@@ -100,11 +100,16 @@ class GoingWalkMainFragment : Fragment() {
     // 배경 음악 재생을 위한 MediaPlayer 인스턴스
     private var mediaPlayer: MediaPlayer? = null // <-- 음악 재생 속성 추가
 
-    /* ******************
-    *
-    * Create View
-    *
-    * ******************/
+
+//ExploreTracking
+    public var isExploreTracking: Boolean = false
+
+
+/* ******************
+*
+* Create View
+*
+* ******************/
 
     // Fragment의 UI를 생성하고 반환하는 곳
     override fun onCreateView(
@@ -591,36 +596,68 @@ class GoingWalkMainFragment : Fragment() {
                 return true
             }
 
-            if ((speedMs>=locationAccuracyThresholds)&&timeElapsedSeconds<3) {
-                lastLocation = prevLocation
-                Toast.makeText(requireContext(), "GPS거리 오차 5m이상 발생", Toast.LENGTH_SHORT).show()
-            } else {
-                lastLocation = currentLocation
-                lastLocationTime = System.currentTimeMillis()
-            }
+            lastLocation = currentLocation
+            lastLocationTime = System.currentTimeMillis()
+
+//            if ((speedMs>=locationAccuracyThresholds)&&timeElapsedSeconds<3) {
+//                lastLocation = prevLocation
+//                Toast.makeText(requireContext(), "GPS거리 오차 5m이상 발생", Toast.LENGTH_SHORT).show()
+//            } else {
+//                lastLocation = currentLocation
+//                lastLocationTime = System.currentTimeMillis()
+//            }
         }
         return false
     }
 
     private fun checkLocationIntegrityAndHandleExit(location: Location, source: String) {
-        val mockDetected = isMockLocation(location)
-        val devOptionsEnabled = isDeveloperOptionsEnabled()
-        val accuracyDiscrepancyDetected = checkAccuracyDiscrepancy(location)
-        val teleportationDetected = isTeleporting(location)
 
-        if (mockDetected && (devOptionsEnabled || accuracyDiscrepancyDetected || teleportationDetected)) {
-            Log.e("Security", "보안 위협 감지: 비정상적인 위치 환경.")
-            Toast.makeText(requireContext(), "비정상적인 환경이 감지되어 이전 화면으로 돌아갑니다.", Toast.LENGTH_LONG).show()
-            // Activity를 종료하는 대신, Fragment 스택에서 현재 Fragment를 제거
-            parentFragmentManager.popBackStack()
-        } else {
-            //LogLS.d("$source: 현재 위치: ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
-            if(lastLocation!=null){
-                polylineManager?.addPointToPath(LatLng(lastLocation!!.latitude, lastLocation!!.longitude))
-                val currentLatLng = LatLng(lastLocation!!.latitude, lastLocation!!.longitude)
-                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
+        lastLocation = location
+        if(lastLocation!=null){
+            polylineManager?.addPointToPath(LatLng(lastLocation!!.latitude, lastLocation!!.longitude))
+            val currentLatLng = LatLng(lastLocation!!.latitude, lastLocation!!.longitude)
+            googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
+
+            //LogLS.d("Begin")
+
+            if(isExploreTracking) {
+                //LogLS.d("Begin")
+                //(parentFragmentManager.findFragmentByTag("going_walk_explore_tag") as? GoingWalkExploreFragment)?.processLocationTracking(location)
+//                val fragment = parentFragmentManager.findFragmentByTag("going_walk_explore_tag")
+//                LogLS.d("Found fragment: $fragment")
+                val fragment = parentFragmentManager.findFragmentById(R.id.fragmentContainerExplore)
+//                Log.d("PointSelectFragment", "Found fragment: $fragment")
+
+                if (fragment == null) {
+                    LogLS.e("GoingWalkExploreFragment not found with tag: going_walk_explore_tag")
+                } else if (fragment !is GoingWalkExploreFragment) {
+                    LogLS.e("Fragment found but wrong type: ${fragment::class.simpleName}")
+                } else {
+//                    LogLS.d("Calling processLocationTracking with location: $location")
+                    fragment.processLocationTracking(location)
+//                    LogLS.d("processLocationTracking called successfully")
+                }
             }
         }
+
+//        val mockDetected = isMockLocation(location)
+//        val devOptionsEnabled = isDeveloperOptionsEnabled()
+//        val accuracyDiscrepancyDetected = checkAccuracyDiscrepancy(location)
+//        val teleportationDetected = isTeleporting(location)
+//
+//        if (mockDetected && (devOptionsEnabled || accuracyDiscrepancyDetected || teleportationDetected)) {
+//            Log.e("Security", "보안 위협 감지: 비정상적인 위치 환경.")
+//            Toast.makeText(requireContext(), "비정상적인 환경이 감지되어 이전 화면으로 돌아갑니다.", Toast.LENGTH_LONG).show()
+//            // Activity를 종료하는 대신, Fragment 스택에서 현재 Fragment를 제거
+//            parentFragmentManager.popBackStack()
+//        } else {
+//            //LogLS.d("$source: 현재 위치: ${location.latitude}, ${location.longitude}, 정확도: ${location.accuracy}m")
+//            if(lastLocation!=null){
+//                polylineManager?.addPointToPath(LatLng(lastLocation!!.latitude, lastLocation!!.longitude))
+//                val currentLatLng = LatLng(lastLocation!!.latitude, lastLocation!!.longitude)
+//                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
+//            }
+//        }
     }
 
     private fun isDeveloperOptionsEnabled(): Boolean {
@@ -637,6 +674,7 @@ class GoingWalkMainFragment : Fragment() {
             location?.let {
                 checkLocationIntegrityAndHandleExit(it, "수동 새로고침")
                 val currentLatLng = LatLng(it.latitude, it.longitude)
+                Toast.makeText(requireContext(), "현재 위치 : ${it.latitude}, ${it.longitude}", Toast.LENGTH_SHORT).show()
                 googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
             } ?: run {
                 Toast.makeText(requireContext(), "현재 위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()

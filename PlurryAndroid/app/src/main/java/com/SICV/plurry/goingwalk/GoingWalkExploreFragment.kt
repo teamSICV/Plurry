@@ -121,13 +121,6 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val pendingSafetyEvaluations = mutableListOf<PendingSafetyEvaluation>()
     //private var hasInitialCameraMove = false  //Map
 
-    // Arrive gate (목표 도착 1회 호출)
-    private var hasArrived = false
-    private var lastArriveTime = 0L
-    private val ARRIVE_RADIUS_M = 30f
-    private val EXIT_RADIUS_M = 50f
-    private val ARRIVE_COOLDOWN_MS = 10_000L
-
     // Danger gate (위험지역 경고 1회 + 이탈 후에만 재발)
     private var inDanger = false
     private var safeStreak = 0
@@ -136,14 +129,21 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val SAFE_CLEAR_COUNT = 3
 
     //탐색 범위 거리 조정
-    private val distanceLevel1 = 20
-    private val distanceLevel2 = 10
-    private val distancearrive = 5
+    private val distanceLevel1 = 5
+    private val distanceLevel2 = 3
+    private val distancearrive = 1
+
+    // Arrive gate (목표 도착 1회 호출)
+    private var hasArrived = false
+    private var lastArriveTime = 0L
+    private val ARRIVE_RADIUS_M = distancearrive
+    private val EXIT_RADIUS_M = distancearrive + 5
+    private val ARRIVE_COOLDOWN_MS = 10_000L
 
     //함수 반복호출 Handler
-    private val locationTrackingHandler = Handler(Looper.getMainLooper())
-    private var locationTrackingRunnable: Runnable? = null
-    private val trackingTimeInterval: Long = 2000L
+//    private val locationTrackingHandler = Handler(Looper.getMainLooper())
+//    private var locationTrackingRunnable: Runnable? = null
+//    private val trackingTimeInterval: Long = 500L
 
     data class PendingSafetyEvaluation(
         val lat: Double,
@@ -483,7 +483,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     }
 
     private fun startLocationTracking() {
-        //LogLS.d("Begin")
+        LogLS.d("Begin")
         hasArrived = false
         lastArriveTime = 0L
         inDanger = false
@@ -492,24 +492,34 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
         arrivalDialogShown = false
 
         // trackingTimeInterval마다 processLocationTracking 호출
-        locationTrackingRunnable = object : Runnable {
+/*        locationTrackingRunnable = object : Runnable {
             override fun run() {
                 processLocationTracking()
                 locationTrackingHandler.postDelayed(this, trackingTimeInterval)
             }
         }
-        locationTrackingHandler.post(locationTrackingRunnable!!)
+        locationTrackingHandler.post(locationTrackingRunnable!!)*/
+
+        // parentFragmentManager를 통해 부모 Fragment 찾기
+        val parentMainFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
+        if(parentMainFragment!=null) {
+            parentMainFragment.isExploreTracking = true
+//            LogLS.d("isExploreTracking true됨")
+        }
     }
 
-    private fun processLocationTracking() {
-        //LogLS.d("Begin")
+    public fun processLocationTracking(location: Location) {
+//        LogLS.d("Begin")
 
-        if (!isAdded || view == null) return
+/*        if (!isAdded || view == null) return
 
         val parentFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
-        val current = parentFragment?.lastLocation ?: return
+        val current = parentFragment?.lastLocation ?: return*/
 
         if (!isAdded || activity == null || view == null) return
+
+        val current = location
+        lastLocation = location
 
         requireActivity().runOnUiThread {
             // 속도 감지 및 탐색 기능 제어
@@ -789,6 +799,11 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
         LogLS.d("Begin")
 
+        val parentMainFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
+        if(parentMainFragment!=null) {
+            parentMainFragment.isExploreTracking = false
+        }
+
         val endTime = System.currentTimeMillis()
 
         try {
@@ -904,7 +919,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
         super.onDestroyView()
         LogLS.d("Begin")
 
-        locationTrackingHandler.removeCallbacksAndMessages(null)
+//        locationTrackingHandler.removeCallbacksAndMessages(null)
 
         try {
             // MainActivity를 통해 현재 표시된 GoingWalkMainFragment 찾기
