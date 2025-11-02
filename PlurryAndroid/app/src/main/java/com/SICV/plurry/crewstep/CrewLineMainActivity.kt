@@ -302,31 +302,34 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
         }
 
         // 먼저 크루의 mainField를 가져와서 현재 위치와 비교
-        db.collection("Crew").document(crewId).get()
-            .addOnSuccessListener { crewDoc ->
-                if (crewDoc.exists()) {
-                    val crewMainField = crewDoc.getString("mainField") ?: ""
+//        db.collection("Crew").document(crewId).get()
+//            .addOnSuccessListener { crewDoc ->
+//                if (crewDoc.exists()) {
+//                    val crewMainField = crewDoc.getString("mainField") ?: ""
+//
+//                    // 현재 위치 확인
+//                    getCurrentDistrict { currentDistrict ->
+//                        if (crewMainField.isNotEmpty() && currentDistrict != crewMainField) {
+//                            // 위치가 일치하지 않으면 가입 중단
+//                            Toast.makeText(this, "크루 활동 지역과 현재 위치가\n일치하지 않습니다.", Toast.LENGTH_SHORT).show()
+//                            return@getCurrentDistrict
+//                        }
+//
+//                        // 위치가 일치하면 기존 가입 로직 진행
+//                        proceedWithJoining(crewId, db)
+//                    }
+//                } else {
+//                    Toast.makeText(this, "크루 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+//                }
+//            }
+//            .addOnFailureListener { e ->
+//                Log.e("CrewLineMain", "크루 정보 가져오기 실패", e)
+//                Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+//            }
 
-                    // 현재 위치 확인
-                    getCurrentDistrict { currentDistrict ->
-                        if (crewMainField.isNotEmpty() && currentDistrict != crewMainField) {
-                            // 위치가 일치하지 않으면 가입 중단
-                            Toast.makeText(this, "크루 활동 지역과 현재 위치가\n일치하지 않습니다.", Toast.LENGTH_SHORT).show()
-                            return@getCurrentDistrict
-                        }
-
-                        // 위치가 일치하면 기존 가입 로직 진행
-                        proceedWithJoining(crewId, db)
-                    }
-                } else {
-                    Toast.makeText(this, "크루 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("CrewLineMain", "크루 정보 가져오기 실패", e)
-                Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
-            }
-    }
+        //위치 비교없이 가입 진행
+        proceedWithJoining(crewId, db);
+        }
 
     private fun proceedWithJoining(crewId: String, db: FirebaseFirestore) {
         val currentUser = auth.currentUser
