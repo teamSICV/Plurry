@@ -45,6 +45,7 @@ class PointRecordDialog : DialogFragment() {
             fragment.arguments = args
 
             Log.d("PointRecordDialog", "newInstance 호출 - placeId: $placeId, lat: $lat, lng: $lng, isVisited: $isVisited")
+            LogLS.d("newInstance 호출 - placeId: $placeId, lat: $lat, lng: $lng, isVisited: $isVisited")
 
             return fragment
         }
@@ -67,6 +68,7 @@ class PointRecordDialog : DialogFragment() {
         val isVisited = arguments?.getBoolean("isVisited", false) ?: false
 
         Log.d("PointRecordDialog", "onCreateDialog - placeId: $placeId, lat: $lat, lng: $lng, isVisited: $isVisited")
+        LogLS.d("onCreateDialog - placeId: $placeId, lat: $lat, lng: $lng, isVisited: $isVisited")
 
         Glide.with(requireContext())
             .load(imageUrl)
@@ -118,6 +120,7 @@ class PointRecordDialog : DialogFragment() {
         btnStart.setOnClickListener {
             if (placeId.isEmpty() || (lat == 0.0 && lng == 0.0)) {
                 Log.w("PointRecordDialog", "유효하지 않은 위치 데이터: placeId=$placeId, lat=$lat, lng=$lng")
+                LogLS.w("유효하지 않은 위치 데이터: placeId=$placeId, lat=$lat, lng=$lng")
                 Toast.makeText(requireContext(), "위치 정보가 올바르지 않습니다.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -443,6 +446,7 @@ class PointRecordDialog : DialogFragment() {
             btnStart.setOnClickListener {
                 try {
                     Log.d("ExploreConfirmDialog", "전달받은 데이터: placeId=$placeId, lat=$lat, lng=$lng, imageUrl=$imageUrl, placeName=$placeName")
+                    LogLS.d("전달받은 데이터: placeId=$placeId, lat=$lat, lng=$lng, imageUrl=$imageUrl, placeName=$placeName")
 
                     val intent = Intent(requireContext(), MainActivity::class.java)
                     intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -454,7 +458,10 @@ class PointRecordDialog : DialogFragment() {
                     intent.putExtra("startExplore", true)
 
                     Log.d("ExploreConfirmDialog", "MainActivity 이동 시도")
-                    startActivity(intent)
+                    LogLS.d("MainActivity 이동 시도")
+//                    startActivity(intent)
+                    Toast.makeText(requireContext(), "오류해결중! 업데이트를 기다려주세요!", Toast.LENGTH_SHORT).show()
+
 
                     parent.dismiss()
                     dismiss()
