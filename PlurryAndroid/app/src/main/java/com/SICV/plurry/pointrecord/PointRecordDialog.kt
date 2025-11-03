@@ -459,7 +459,9 @@ class PointRecordDialog : DialogFragment() {
 
                     Log.d("ExploreConfirmDialog", "MainActivity 이동 시도")
                     LogLS.d("MainActivity 이동 시도")
-                    startActivity(intent)
+//                    startActivity(intent)
+                    Toast.makeText(requireContext(), "오류해결중! 업데이트를 기다려주세요!", Toast.LENGTH_SHORT).show()
+
 
                     parent.dismiss()
                     dismiss()
