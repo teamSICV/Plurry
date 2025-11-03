@@ -125,7 +125,9 @@ class RouteAvoidanceManager {
         dangerAreas: List<SafetyOverlayManager.DangerArea>
     ): SafetyOverlayManager.DangerArea? {
 
-        return dangerAreas
+        val filteredAreas = dangerAreas.filter { it.detourAllowed }
+
+        return filteredAreas
             .filter { it.safetyDetail.level == com.SICV.plurry.safety.model.SafetyDetail.Level.DANGER }
             .find { area ->
                 // 직선과 원의 교차 판정

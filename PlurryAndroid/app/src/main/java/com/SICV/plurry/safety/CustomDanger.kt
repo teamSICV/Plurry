@@ -30,7 +30,7 @@ object CustomDanger {
                 reasons = listOf("수동 위험지역 - ${z.name}")
             )
             // ✅ 반경 전달 (Double)
-            manager?.addSafetyEvaluation(z.lat, z.lng, detail, z.radius.toDouble())
+            manager?.addSafetyEvaluation(z.lat, z.lng, detail, z.radius.toDouble(), detourAllowed = false)
         }
         manager?.setMinDistanceBetweenAreas(150.0)
     }

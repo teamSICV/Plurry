@@ -21,7 +21,8 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
         val center: LatLng,
         val radius: Double = 100.0, // 기본 100m 반경
         val safetyDetail: SafetyDetail,
-        val timestamp: Long = System.currentTimeMillis()
+        val timestamp: Long = System.currentTimeMillis(),
+        val detourAllowed: Boolean = true          // ✅ 우회 허용 여부 (기본 true)
     )
 
     companion object {
@@ -71,7 +72,8 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
         lat: Double,
         lng: Double,
         safetyDetail: SafetyDetail,
-        radiusMeters: Double?
+        radiusMeters: Double?,
+        detourAllowed: Boolean = true
     ) {
         val location = LatLng(lat, lng)
         val areaId = "${lat}_${lng}_${System.currentTimeMillis()}"
@@ -80,7 +82,7 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
             SafetyDetail.Level.DANGER -> {
                 val nearbyArea = findNearbyDangerArea(location)
                 if (nearbyArea == null) {
-                    addDangerOverlay(areaId, location, safetyDetail, radiusMeters ?: DANGER_RADIUS)
+                    addDangerOverlay(areaId, location, safetyDetail, radiusMeters ?: DANGER_RADIUS, detourAllowed)
                     Log.d("SafetyOverlay", "새로운 위험 지역 추가(반경 ${radiusMeters ?: DANGER_RADIUS}m): $areaId")
                 } else {
                     Log.d("SafetyOverlay", "근처에 이미 위험 지역 존재: ${nearbyArea.id}")
@@ -96,35 +98,38 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
     /**
      * 위험 지역 오버레이 추가
      */
-    // 1) 기존 안전도 계산에 따른 위험지역 호출 호환용
+    // (B) 래퍼: 자동(안전도) 등록용 — 기존대로 반경 기본값 + detourAllowed=true
     private fun addDangerOverlay(
         id: String,
-        center: com.google.android.gms.maps.model.LatLng,
-        safetyDetail: com.SICV.plurry.safety.model.SafetyDetail
+        center: LatLng,
+        safetyDetail: SafetyDetail
     ) {
-        // 기존 기본 반경(DANGER_RADIUS)로 위임
-        addDangerOverlay(id, center, safetyDetail, DANGER_RADIUS)
+        addDangerOverlay(id, center, safetyDetail, DANGER_RADIUS, detourAllowed = true)
     }
-    // 2) 수동으로 추가한 반경 받는용
+
+    // (C) 실제 구현: 반경 + detourAllowed 둘 다 받기
     private fun addDangerOverlay(
         id: String,
-        center: com.google.android.gms.maps.model.LatLng,
-        safetyDetail: com.SICV.plurry.safety.model.SafetyDetail,
-        radiusMeters: Double
+        center: LatLng,
+        safetyDetail: SafetyDetail,
+        radiusMeters: Double,
+        detourAllowed: Boolean
     ) {
         val circle = googleMap.addCircle(
-            com.google.android.gms.maps.model.CircleOptions()
+            CircleOptions()
                 .center(center)
-                .radius(radiusMeters)  // ← 전달된 반경 사용
-                .fillColor(android.graphics.Color.argb(100, 255, 0, 0))
-                .strokeColor(android.graphics.Color.RED)
+                .radius(radiusMeters)
+                .fillColor(Color.argb(100, 255, 0, 0))
+                .strokeColor(Color.RED)
                 .strokeWidth(3f)
                 .clickable(true)
         )
         googleMap.setOnCircleClickListener { if (it == circle) showDangerAreaInfo(safetyDetail, center) }
-        val dangerArea = DangerArea(id, center, radiusMeters, safetyDetail)
+
+        val dangerArea = DangerArea(id, center, radiusMeters, safetyDetail, detourAllowed = detourAllowed)
         dangerAreas.add(dangerArea); overlays.add(circle)
     }
+
 
     /**
      * 주의 지역 오버레이 추가 (옵션)
