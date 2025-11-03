@@ -244,4 +244,11 @@ class SafetyOverlayManager(private val googleMap: GoogleMap) {
      * 위험 지역 목록 반환
      */
     fun getDangerAreas(): List<DangerArea> = dangerAreas.toList()
+
+    fun addManualDanger(lat: Double, lng: Double, detail: SafetyDetail, radiusMeters: Double, detourAllowed: Boolean) {
+        val loc = LatLng(lat, lng)
+        val id = "${lat}_${lng}_${System.currentTimeMillis()}"
+        addDangerOverlay(id, loc, detail, radiusMeters, detourAllowed)  // ← 근접검사 없음
+        cleanupExpiredOverlays()
+    }
 }

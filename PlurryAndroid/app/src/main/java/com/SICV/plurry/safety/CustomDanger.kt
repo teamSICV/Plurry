@@ -29,8 +29,11 @@ object CustomDanger {
                 cctvCount = 0, streetLightCount = 0,
                 reasons = listOf("수동 위험지역 - ${z.name}")
             )
-            // ✅ 반경 전달 (Double)
-            manager?.addSafetyEvaluation(z.lat, z.lng, detail, z.radius.toDouble(), detourAllowed = false)
+            manager?.addManualDanger(
+                z.lat, z.lng, detail,
+                z.radius.toDouble(),
+                detourAllowed = false   // 수동 존: 우회 경로 제외
+            )
         }
         manager?.setMinDistanceBetweenAreas(150.0)
     }
