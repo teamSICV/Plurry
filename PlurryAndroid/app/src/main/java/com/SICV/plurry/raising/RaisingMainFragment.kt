@@ -300,14 +300,21 @@ class RaisingMainFragment : Fragment() {
 
     private fun setupRaisingGage() {
         val gageRaisingPoint = view?.findViewById<View>(R.id.g_raise)
+        val fGage = view?.findViewById<ImageView>(R.id.f_gage) // f_gage 참조 가져오기
+
+        // f_gage의 실제 가로 길이를 dp로 변환
+        var fGageWidthPx = fGage?.width ?: 250 // 픽셀 단위 가로 길이 (기본값 250)
+        fGageWidthPx-=10
+        val density = resources.displayMetrics.density
+        val fGageWidthDp = (fGageWidthPx / density).toInt() // dp로 변환
 
         if(currentRaisingPoint<=5) {
             gageRaisingPoint?.visibility = View.INVISIBLE
         }
-        else if (currentRaisingPoint>=97) {
+        else if (currentRaisingPoint>=96) {
             gageRaisingPoint?.visibility = View.VISIBLE
             val density = resources.displayMetrics.density
-            var gWidthPx = (236 * density).toInt()
+            var gWidthPx = ((fGageWidthDp - 4) * density).toInt()
             if(gWidthPx==0) {
                 gWidthPx=1
             }
@@ -317,7 +324,7 @@ class RaisingMainFragment : Fragment() {
         else {
             gageRaisingPoint?.visibility = View.VISIBLE
             val density = resources.displayMetrics.density
-            var gWidthPx = ((currentRaisingPoint / 100.0) * 240 * density).toInt()
+            var gWidthPx = ((currentRaisingPoint / 100.0) * fGageWidthDp * density).toInt()
             if(gWidthPx==0) {
                 gWidthPx=1
             }
