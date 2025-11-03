@@ -26,7 +26,7 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
 
     private lateinit var imageView: ImageView
     private lateinit var editTextCrewName: EditText
-    private lateinit var findLocationButton: Button
+    //private lateinit var findLocationButton: Button
     private lateinit var makeCrewButton: Button
 
     private var imageUri: Uri? = null
@@ -47,7 +47,7 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
 
         imageView = findViewById(R.id.crewProfile)
         editTextCrewName = findViewById(R.id.editCrewName)
-        findLocationButton = findViewById(R.id.findLocation)
+        //findLocationButton = findViewById(R.id.findLocation)
         makeCrewButton = findViewById(R.id.btnMakeCrew)
 
         val crewMakeBackBtn = findViewById<ImageView>(R.id.crewMakeBackBtn)
@@ -60,12 +60,12 @@ class CrewLineMakeCrewActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        findLocationButton.setOnClickListener {
+        /*findLocationButton.setOnClickListener {
             getCurrentDistrict { district ->
                 currentDistrict = district
                 Toast.makeText(this, "위치: $district", Toast.LENGTH_SHORT).show()
             }
-        }
+        }*/
 
         makeCrewButton.setOnClickListener {
             if (imageUri == null) {
