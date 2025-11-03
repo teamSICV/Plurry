@@ -1,3 +1,4 @@
+/*
 package com.SICV.plurry.pointrecord
 
 import android.Manifest
@@ -865,4 +866,4 @@ class CrewPointBottomFragment : BottomSheetDialogFragment() {
         logMemoryUsage("Fragment 종료")
         Log.d("CrewPointBottom", "Fragment onDestroyView - 메모리 정리 완료")
     }
-}
+}*/
