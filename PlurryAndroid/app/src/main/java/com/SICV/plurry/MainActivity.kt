@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import android.graphics.Color
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -84,6 +85,7 @@ class MainActivity : UnityPlayerGameActivity(), MainHomeFragment.OnFragmentInter
 
         // Unity 오버레이 UI 설정
         setupUnityOverlay()
+        SetupEndUI()
 
         // Login
         auth = FirebaseAuth.getInstance()
@@ -145,6 +147,65 @@ class MainActivity : UnityPlayerGameActivity(), MainHomeFragment.OnFragmentInter
         } catch (e: Exception) {
             LogLS.e("Error adding Android UI overlay: ${e.message}")
             e.printStackTrace()
+        }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            LogLS.d("Back key pressed")
+            val lQuit = androidUIContainer.findViewById<ViewGroup>(R.id.l_quit)
+            lQuit.visibility = if (lQuit.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+/*    override fun onBackPressed() {
+        LogLS.d("Begin")
+        val lQuit = androidUIContainer.findViewById<ViewGroup>(R.id.l_quit)
+
+        if (lQuit.visibility == View.VISIBLE) {
+            lQuit.visibility = View.GONE
+        } else {
+            lQuit.visibility = View.VISIBLE
+        }
+    }*/
+
+    private fun SetupEndUI() {
+        val lQuit = androidUIContainer.findViewById<ViewGroup>(R.id.l_quit)
+        val bCancel = androidUIContainer.findViewById<View>(R.id.b_cancel)
+        val bEnd = androidUIContainer.findViewById<View>(R.id.b_end)
+
+        // 뒤로가기 버튼 처리
+/*        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                LogLS.d("Begin")
+                if (lQuit.visibility == View.VISIBLE) {
+                    lQuit.visibility = View.GONE
+                } else {
+                    lQuit.visibility = View.VISIBLE
+                }
+            }
+        })*/
+
+        // 취소 버튼
+        bCancel.setOnClickListener {
+            lQuit.visibility = View.GONE
+        }
+
+        // l_quit 외부 영역 클릭 처리
+        androidUIContainer.setOnClickListener {
+            if (lQuit.visibility == View.VISIBLE) {
+                lQuit.visibility = View.GONE
+            }
+        }
+
+        // l_quit 자체는 클릭 이벤트 전파 차단
+        lQuit.setOnClickListener { /* 아무것도 안함 */ }
+
+        // 종료 버튼
+        bEnd.setOnClickListener {
+            finishAffinity() // 모든 액티비티 종료
         }
     }
 

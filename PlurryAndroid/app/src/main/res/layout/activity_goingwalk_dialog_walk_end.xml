@@ -12,7 +12,7 @@
         android:id="@+id/tvWalkEndTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="산책 종료"
+        android:text="항해 종료"
         android:textStyle="bold"
         android:textSize="30sp"
         android:textColor="@color/txt_brown_dark"
