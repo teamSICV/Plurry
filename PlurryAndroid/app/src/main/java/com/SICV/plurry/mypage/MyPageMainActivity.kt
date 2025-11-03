@@ -3,6 +3,7 @@ package com.SICV.plurry.mypage
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -48,6 +49,11 @@ class MyPageMainActivity : AppCompatActivity() {
     private fun settingButton(){
         val logoutBtn = findViewById<TextView>(R.id.myPageLogout)
         val exitBtn = findViewById<TextView>(R.id.myPageExitApp)
+        val BtnQuit = findViewById<ImageView>(R.id.b_quit)
+
+        BtnQuit.setOnClickListener {
+            finish()
+        }
 
         logoutBtn.setOnClickListener {
             signOut()

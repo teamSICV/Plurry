@@ -9,6 +9,17 @@
     tools:context=".mypage.MyPageMainActivity"
     android:background="@drawable/img_mypage">
 
+  <ImageView
+      android:id="@+id/b_quit"
+      android:layout_width="35dp"
+      android:layout_height="35dp"
+      android:src="@drawable/back"
+      android:clickable="true"
+      android:layout_marginStart="20dp"
+      app:tint="@color/black"
+      app:layout_constraintTop_toTopOf="@id/textView2"
+      app:layout_constraintStart_toStartOf="parent"/>
+
   <TextView
       android:id="@+id/textView2"
       android:layout_width="wrap_content"
