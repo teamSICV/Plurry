@@ -194,11 +194,11 @@ class MainActivity : UnityPlayerGameActivity(), MainHomeFragment.OnFragmentInter
         }
 
         // l_quit 외부 영역 클릭 처리
-        androidUIContainer.setOnClickListener {
-            if (lQuit.visibility == View.VISIBLE) {
-                lQuit.visibility = View.GONE
-            }
-        }
+//        androidUIContainer.setOnClickListener {
+//            if (lQuit.visibility == View.VISIBLE) {
+//                lQuit.visibility = View.GONE
+//            }
+//        }
 
         // l_quit 자체는 클릭 이벤트 전파 차단
         lQuit.setOnClickListener { /* 아무것도 안함 */ }

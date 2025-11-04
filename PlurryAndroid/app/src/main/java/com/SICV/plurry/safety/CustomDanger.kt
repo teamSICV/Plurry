@@ -16,7 +16,7 @@ object CustomDanger {
 
     // 여기 수정하면 좌표 추가/변경 가능
     val zones = mutableListOf(
-        Zone("하나누리관 위험지역", 37.650162, 127.019515, 10f)
+        Zone("하나누리관 위험지역", 37.6501888, 127.0195337, 8f)
     )
 
     fun applyToOverlay(manager: SafetyOverlayManager?) {
