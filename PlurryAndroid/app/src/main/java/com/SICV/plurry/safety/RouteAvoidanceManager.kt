@@ -29,8 +29,8 @@ class RouteAvoidanceManager {
     )
 
     companion object {
-        private const val DETOUR_MARGIN = 50.0        // 위험구역에서 50m 더 멀리 우회
-        private const val DETOUR_ARRIVAL_RADIUS = 30.0 // 우회점 도달 판정 반지름
+        private const val DETOUR_MARGIN = 40.0        // 위험지역에서 얼마나 크게 돌 것 인지
+        private const val DETOUR_ARRIVAL_RADIUS = 15.0 // 우회점 도달 판정 반지름
         private const val MAX_DETOUR_DISTANCE = 500.0   // 최대 우회 거리
         private const val DETOUR_TIMEOUT = 10 * 60 * 1000L // 우회 타임아웃 (10분)
     }
@@ -125,7 +125,9 @@ class RouteAvoidanceManager {
         dangerAreas: List<SafetyOverlayManager.DangerArea>
     ): SafetyOverlayManager.DangerArea? {
 
-        return dangerAreas
+        val filteredAreas = dangerAreas.filter { it.detourAllowed }
+
+        return filteredAreas
             .filter { it.safetyDetail.level == com.SICV.plurry.safety.model.SafetyDetail.Level.DANGER }
             .find { area ->
                 // 직선과 원의 교차 판정
@@ -212,16 +214,19 @@ class RouteAvoidanceManager {
         val distanceToDanger = calculateDistance(detourPoint, dangerArea.center)
 
         return distanceToDetour <= MAX_DETOUR_DISTANCE &&
-                distanceToDanger > (dangerArea.radius + DETOUR_MARGIN / 2)
+                distanceToDanger > (dangerArea.radius + DETOUR_MARGIN)
     }
 
     /**
      * 우회가 완료되었는지 체크
      */
-    private fun isDetourCompleted(currentLocation: LatLng, detour: DetourInfo): Boolean {
-        val distanceToDetourPoint = calculateDistance(currentLocation, detour.detourTarget)
-        return distanceToDetourPoint <= DETOUR_ARRIVAL_RADIUS
+    // RouteAvoidanceManager.kt
+    private fun isDetourCompleted(current: LatLng, detour: DetourInfo): Boolean {
+        val arrived = calculateDistance(current, detour.detourTarget) <= DETOUR_ARRIVAL_RADIUS
+        val outside = calculateDistance(current, detour.dangerArea) >= (detour.dangerRadius + DETOUR_MARGIN)
+        return arrived && outside                    // 둘 다 만족해야 true
     }
+
 
     /**
      * 전체 진행률 계산

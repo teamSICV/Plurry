@@ -106,7 +106,7 @@
         android:background="@drawable/img_icon_walk3"
         android:rotation="-65"
         app:backgroundTint="@null"
-        app:layout_constraintBottom_toBottomOf="@+id/btnEndWalk"
+        app:layout_constraintBottom_toTopOf="@+id/tvExplore"
         app:layout_constraintEnd_toEndOf="@+id/btnAddPoint" />
 
     <TextView
@@ -114,7 +114,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="탐색하기"
-        app:layout_constraintTop_toBottomOf="@id/btnExplore"
+        app:layout_constraintBottom_toBottomOf="@id/map"
         app:layout_constraintStart_toStartOf="@id/btnExplore"
         app:layout_constraintEnd_toEndOf="@id/btnExplore"/>
 
@@ -123,22 +123,30 @@
         android:layout_width="70dp"
         android:layout_height="70dp"
         android:background="@drawable/img_icon_walk1"
-        android:layout_marginStart="32dp"
         app:backgroundTint="@null"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintVertical_bias="0.95"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintBottom_toTopOf="@id/tvEndWalk"
+        app:layout_constraintStart_toStartOf="@id/map" />
 
     <TextView
         android:id="@+id/tvEndWalk"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="산책종료"
+        android:text="항해종료"
         android:textColor="@color/txt_black"
         android:textAlignment="center"
-        app:layout_constraintTop_toBottomOf="@id/btnEndWalk"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintBottom_toTopOf="@id/map"
         app:layout_constraintStart_toStartOf="@id/btnEndWalk"
         app:layout_constraintEnd_toEndOf="@id/btnEndWalk"/>
+
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

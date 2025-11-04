@@ -21,11 +21,12 @@
         app:tint="@color/txt_orange_vivid"/>
 
     <TextView
+        android:id="@+id/textView6"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="70dp"
-        android:text="크루 이미지 선택"
         android:layout_marginTop="32dp"
+        android:text="크루 이미지 선택"
         android:textColor="@color/txt_orange_vivid"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -55,31 +56,33 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/crewProfile" />
 
-    <Button
-        android:id="@+id/findLocation"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="주요 활동 위치 설정"
-        android:drawableLeft="@drawable/location"
-        android:layout_marginTop="30dp"
-        android:background="@drawable/img_btn_brown_light"
-        android:paddingHorizontal="50dp"
-        app:backgroundTint="@null"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/editCrewName" />
+<!--    <Button-->
+<!--        android:id="@+id/findLocation"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="주요 활동 위치 설정"-->
+<!--        android:drawableLeft="@drawable/location"-->
+<!--        android:layout_marginTop="30dp"-->
+<!--        android:background="@drawable/img_btn_brown_light"-->
+<!--        android:paddingHorizontal="50dp"-->
+<!--        app:backgroundTint="@null"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/editCrewName" />-->
 
     <Button
         android:id="@+id/btnMakeCrew"
-        android:layout_width="0dp"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
-        android:text="크루 생성"
         android:layout_marginTop="40dp"
         android:background="@drawable/img_btn_brown_light"
         android:paddingHorizontal="50dp"
+        android:text="크루 생성"
         app:backgroundTint="@null"
-        app:layout_constraintEnd_toEndOf="@id/findLocation"
-        app:layout_constraintStart_toStartOf="@id/findLocation"
-        app:layout_constraintTop_toBottomOf="@id/findLocation" />
+        android:layout_marginBottom="200dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+<!--        app:layout_constraintTop_toBottomOf="@id/findLocation" />-->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

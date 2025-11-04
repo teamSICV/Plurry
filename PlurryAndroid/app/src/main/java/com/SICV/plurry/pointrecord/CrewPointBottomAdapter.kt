@@ -10,24 +10,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.SICV.plurry.R
 import com.bumptech.glide.Glide
 
-data class PlaceData(
-    val imageUrl : String,
-    val name : String,
-    val description : String,
-    val placeId: String = "",
-    val lat: Double = 0.0,
-    val lng: Double = 0.0,
-    val imageTime: Long? = null,
-    val isVisited: Boolean = false,
-    val visitedImageUrl: String? = null,
-    val calo: Double = 0.0,
-    val distance: Double = 0.0,
-    val stepNum: Long = 0L
-)
-
 class CrewPointBottomAdapter(
     private val context: Context,
-    private val imageList: List<PlaceData>,
+    private val imageList: List<PointRecordMainActivity.PlaceData>,
     private val crewId: String = ""
 ) : RecyclerView.Adapter<CrewPointBottomAdapter.ImageViewHolder>() {
 

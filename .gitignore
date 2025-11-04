@@ -118,6 +118,9 @@ PlurryUnity/[Aa]ssets/[Ss]treamingAssets/aa/*
 #### Custom Ignore #####
 #######################
 
+.idea/*
+AppBuild/*
+
 #Android
 **/ExampleUnitTest.kt
 PlurryAndroid/secrets.properties
@@ -125,7 +128,7 @@ PlurryAndroid/gradle.properties
 PlurryAndroid/unityLibrary/
 PlurryAndroid/app/google-services.json
 PlurryAndroid/app/src/androidTest/
-
+PlurryAndroid/app/release
 #Unity
 PlurryUnity/*.htm
 PlurryUnity/*/_TerrainAutoUpgrade/

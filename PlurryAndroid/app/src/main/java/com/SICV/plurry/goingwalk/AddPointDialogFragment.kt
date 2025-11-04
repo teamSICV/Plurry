@@ -43,9 +43,9 @@ import java.io.FileOutputStream
 class AddPointDialogFragment : DialogFragment() {
 
     private val CAMERA_REQUEST_CODE = 101
-    private val LOCATION_PERMISSION_REQUEST_CODE = 1001
+    //private val LOCATION_PERMISSION_REQUEST_CODE = 1001
     private lateinit var imageUri: Uri
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    //private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var isUploading = false
 
     // 얼굴 모자이크 처리를 위한 Helper 추가
@@ -80,7 +80,7 @@ class AddPointDialogFragment : DialogFragment() {
         btnDone = view.findViewById(R.id.btnDone)
         progressLayout = view.findViewById(R.id.progressLayout)
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        //fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
         // 얼굴 모자이크 헬퍼 초기화
         faceMosaicHelper = FaceMosaicHelper(requireContext())
@@ -132,19 +132,19 @@ class AddPointDialogFragment : DialogFragment() {
                 return@setOnClickListener
             }
 
-            if (ActivityCompat.checkSelfPermission(
-                    requireContext(),
-                    android.Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                ActivityCompat.requestPermissions(
-                    requireActivity(),
-                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
-                    LOCATION_PERMISSION_REQUEST_CODE
-                )
-                resetUploadState()
-                return@setOnClickListener
-            }
+//            if (ActivityCompat.checkSelfPermission(
+//                    requireContext(),
+//                    android.Manifest.permission.ACCESS_FINE_LOCATION
+//                ) != PackageManager.PERMISSION_GRANTED
+//            ) {
+//                ActivityCompat.requestPermissions(
+//                    requireActivity(),
+//                    arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+//                    LOCATION_PERMISSION_REQUEST_CODE
+//                )
+//                resetUploadState()
+//                return@setOnClickListener
+//            }
 
             // 얼굴 모자이크 처리 후 업로드
             processFaceMosaicAndUpload(finalPlaceName)
@@ -343,123 +343,120 @@ class AddPointDialogFragment : DialogFragment() {
     }
 
     private fun uploadToFirebase(processedFile: File, placeName: String) {
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                if (location != null) {
-                    val currentUser = FirebaseAuth.getInstance().currentUser
-                    val uid = currentUser?.uid
+        val parentFragment = parentFragment as? GoingWalkMainFragment
+        val location = parentFragment?.lastLocation
 
-                    if (uid == null) {
-                        Toast.makeText(requireContext(), "❌ 사용자 인증 오류", Toast.LENGTH_SHORT).show()
-                        resetUploadState()
-                        return@addOnSuccessListener
-                    }
+        if (location != null) {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            val uid = currentUser?.uid
 
-                    val usersRef = FirebaseFirestore.getInstance().collection("Users").document(uid)
-                    usersRef.get().addOnSuccessListener { userDoc ->
-                        val characterId = userDoc.getString("characterId")
-                        val crewAt = userDoc.getString("crewAt") // 크루 ID 가져오기
+            if (uid == null) {
+                Toast.makeText(requireContext(), "❌ 사용자 인증 오류", Toast.LENGTH_SHORT).show()
+                resetUploadState()
+                return
+            }
 
-                        if (characterId == null) {
-                            Toast.makeText(requireContext(), "❌ 사용자 정보 없음 (characterId)", Toast.LENGTH_SHORT).show()
-                            resetUploadState()
-                            return@addOnSuccessListener
-                        }
+            val usersRef = FirebaseFirestore.getInstance().collection("Users").document(uid)
+            usersRef.get().addOnSuccessListener { userDoc ->
+                val characterId = userDoc.getString("characterId")
+                val crewAt = userDoc.getString("crewAt") // 크루 ID 가져오기
 
-                        if (crewAt == null) {
-                            Toast.makeText(requireContext(), "❌ 크루 정보 없음 (crewId)", Toast.LENGTH_SHORT).show()
-                            resetUploadState()
-                            return@addOnSuccessListener
-                        }
+                if (characterId == null) {
+                    Toast.makeText(requireContext(), "❌ 사용자 정보 없음 (characterId)", Toast.LENGTH_SHORT).show()
+                    resetUploadState()
+                    return@addOnSuccessListener
+                }
 
-                        val storageRef = FirebaseStorage.getInstance().reference
-                        val timeStamp = System.currentTimeMillis()
-                        val imageRef = storageRef.child("places/${timeStamp}.jpg")
+                if (crewAt == null) {
+                    Toast.makeText(requireContext(), "❌ 크루 정보 없음 (crewId)", Toast.LENGTH_SHORT).show()
+                    resetUploadState()
+                    return@addOnSuccessListener
+                }
 
-                        // 처리된 파일을 Firebase Storage에 업로드
-                        imageRef.putFile(Uri.fromFile(processedFile)).addOnSuccessListener {
-                            imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                val storageRef = FirebaseStorage.getInstance().reference
+                val timeStamp = System.currentTimeMillis()
+                val imageRef = storageRef.child("places/${timeStamp}.jpg")
 
-                                val placeData = hashMapOf(
-                                    "name" to placeName,
-                                    "geo" to GeoPoint(location.latitude, location.longitude),
-                                    "imageTime" to timeStamp,
-                                    "myImg" to true,
-                                    "myImgUrl" to downloadUri.toString(),
-                                    "addedBy" to characterId
+                // 처리된 파일을 Firebase Storage에 업로드
+                imageRef.putFile(Uri.fromFile(processedFile)).addOnSuccessListener {
+                    imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+
+                        val placeData = hashMapOf(
+                            "name" to placeName,
+                            "geo" to GeoPoint(location.latitude, location.longitude),
+                            "imageTime" to timeStamp,
+                            "myImg" to true,
+                            "myImgUrl" to downloadUri.toString(),
+                            "addedBy" to characterId
+                        )
+
+                        FirebaseFirestore.getInstance()
+                            .collection("Places")
+                            .add(placeData)
+                            .addOnSuccessListener { documentReference ->
+                                val placeId = documentReference.id
+
+                                // Crew/{crewAt}/crewPlace/{placeId} 경로에 추가
+                                val crewPlaceData = hashMapOf(
+                                    placeId to true,
+                                    "imageTime" to timeStamp
                                 )
 
                                 FirebaseFirestore.getInstance()
-                                    .collection("Places")
-                                    .add(placeData)
-                                    .addOnSuccessListener { documentReference ->
-                                        val placeId = documentReference.id
+                                    .collection("Crew")
+                                    .document(crewAt)
+                                    .collection("crewPlace")
+                                    .document(placeId)
+                                    .set(crewPlaceData)
+                                    .addOnSuccessListener {
+                                        Log.d("AddPointDialog", "✅ Crew/$crewAt/crewPlace에 장소 추가 완료: $placeId")
 
-                                        // Crew/{crewAt}/crewPlace/{placeId} 경로에 추가
-                                        val crewPlaceData = hashMapOf(
-                                            placeId to true,
-                                            "imageTime" to timeStamp
-                                        )
+                                        // **보상 로직 시작**
+                                        val userRewardRef = FirebaseFirestore.getInstance()
+                                            .collection("Game")
+                                            .document("users")
+                                            .collection("userReward")
+                                            .document(uid)
 
-                                        FirebaseFirestore.getInstance()
-                                            .collection("Crew")
-                                            .document(crewAt)
-                                            .collection("crewPlace")
-                                            .document(placeId)
-                                            .set(crewPlaceData)
+                                        userRewardRef.update("userRewardItem", FieldValue.increment(1))
                                             .addOnSuccessListener {
-                                                Log.d("AddPointDialog", "✅ Crew/$crewAt/crewPlace에 장소 추가 완료: $placeId")
-
-                                                // **보상 로직 시작**
-                                                val userRewardRef = FirebaseFirestore.getInstance()
-                                                    .collection("Game")
-                                                    .document("users")
-                                                    .collection("userReward")
-                                                    .document(uid)
-
-                                                userRewardRef.update("userRewardItem", FieldValue.increment(1))
-                                                    .addOnSuccessListener {
-                                                        Log.d("AddPointDialog", "✅ 일반 보상 아이템 1개 지급 완료!")
-                                                        showCompletionUI()
-                                                    }
-                                                    .addOnFailureListener { e ->
-                                                        Log.e("AddPointDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
-                                                        handleRewardFailure(e, userRewardRef)
-                                                    }
+                                                Log.d("AddPointDialog", "✅ 일반 보상 아이템 1개 지급 완료!")
+                                                showCompletionUI()
                                             }
                                             .addOnFailureListener { e ->
-                                                Log.e("AddPointDialog", "❌ crewPlace 추가 실패: ${e.message}")
-                                                Toast.makeText(requireContext(), "❌ crewPlace 저장 실패", Toast.LENGTH_SHORT).show()
-                                                resetUploadState()
+                                                Log.e("AddPointDialog", "❌ 일반 보상 아이템 지급 실패 (업데이트): ${e.message}")
+                                                handleRewardFailure(e, userRewardRef)
                                             }
                                     }
-                                    .addOnFailureListener {
-                                        Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
+                                    .addOnFailureListener { e ->
+                                        Log.e("AddPointDialog", "❌ crewPlace 추가 실패: ${e.message}")
+                                        Toast.makeText(requireContext(), "❌ crewPlace 저장 실패", Toast.LENGTH_SHORT).show()
                                         resetUploadState()
                                     }
-
-                            }.addOnFailureListener {
-                                Toast.makeText(requireContext(), "❌ URL 획득 실패", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(requireContext(), "❌ Firestore 저장 실패", Toast.LENGTH_SHORT).show()
                                 resetUploadState()
                             }
-                        }.addOnFailureListener {
-                            Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
-                            resetUploadState()
-                        }
 
                     }.addOnFailureListener {
-                        Toast.makeText(requireContext(), "❌ 사용자 정보 로드 실패", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "❌ URL 획득 실패", Toast.LENGTH_SHORT).show()
                         resetUploadState()
                     }
-
-                } else {
-                    Toast.makeText(requireContext(), "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                }.addOnFailureListener {
+                    Toast.makeText(requireContext(), "❌ 사진 업로드 실패", Toast.LENGTH_SHORT).show()
                     resetUploadState()
                 }
+
             }.addOnFailureListener {
-                Toast.makeText(requireContext(), "위치 획득 실패", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "❌ 사용자 정보 로드 실패", Toast.LENGTH_SHORT).show()
                 resetUploadState()
             }
+
+        } else {
+            Toast.makeText(requireContext(), "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+            resetUploadState()
+        }
     }
 
     private fun handleRewardFailure(e: Exception, userRewardRef: com.google.firebase.firestore.DocumentReference) {
@@ -504,21 +501,23 @@ class AddPointDialogFragment : DialogFragment() {
         isUploading = false
     }
 
+    /*
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(requireContext(), "위치 권한 허용됨. 다시 촬영 완료를 눌러주세요.", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//
+//        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+//            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                Toast.makeText(requireContext(), "위치 권한 허용됨. 다시 촬영 완료를 눌러주세요.", Toast.LENGTH_SHORT).show()
+//            } else {
+//                Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+//            }
+//        }
     }
+     */
 
     private fun openCamera() {
         try {

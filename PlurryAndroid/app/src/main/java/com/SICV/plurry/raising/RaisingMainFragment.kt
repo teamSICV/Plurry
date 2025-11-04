@@ -26,6 +26,7 @@ import com.SICV.plurry.R
 import com.SICV.plurry.ranking.RankingMainActivity
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
+import android.media.MediaPlayer // MediaPlayer 임포트 추가
 
 enum class BoxId {
     NORMAL,
@@ -43,6 +44,9 @@ class RaisingMainFragment : Fragment() {
     private var showingDialogName:String = ""
     private lateinit var androidUIContainer: ViewGroup
     private lateinit var rankingActivityLauncher: ActivityResultLauncher<Intent>
+
+    // 배경 음악을 위한 미디어 플레이어 추가
+    private var mediaPlayer: MediaPlayer? = null
 
 
     override fun onCreateView(
@@ -67,11 +71,48 @@ class RaisingMainFragment : Fragment() {
 
         loadUserDataFromFirebase()
 
+        // --- 음악 초기화 ---
+        try {
+            // R.raw.grow는 res/raw/grow.mp3 또는 grow.ogg 등을 가정합니다.
+            mediaPlayer = MediaPlayer.create(requireContext(), R.raw.grow)
+            mediaPlayer?.isLooping = true // 음악을 계속 반복하도록 설정
+            mediaPlayer?.setVolume(1.0f, 1.0f) // 볼륨 설정
+
+            // onViewCreated에서는 초기화만 하고, 재생은 onResume에서 시작합니다.
+        } catch (e: Exception) {
+            Log.e("RaisingMainFragment", "미디어 플레이어 초기화 오류: ${e.message}")
+        }
+        // --- 음악 초기화 끝 ---
+
+
         Handler(Looper.getMainLooper()).postDelayed({
             view.findViewById<ImageView>(R.id.img_loading)?.visibility = View.GONE
         }, 7000)
     }
 
+    // --- Fragment 생명주기: 음악 재생 관리 ---
+    override fun onResume() {
+        super.onResume()
+        // Fragment가 화면에 나타날 때 음악을 재개합니다.
+        if (mediaPlayer?.isPlaying == false) {
+            mediaPlayer?.start()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // [수정] 랭킹 화면과 같이 잠깐 가려지는 상황에서 음악이 멈추지 않도록 pause() 호출을 제거합니다.
+        // 음악은 이 Fragment가 완전히 파괴될 때 (onDestroyView) 멈춥니다.
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Fragment의 뷰가 파괴될 때 MediaPlayer 리소스를 해제합니다.
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+    // --- Fragment 생명주기: 음악 재생 관리 끝 ---
 
 /* ******************
 *
@@ -259,14 +300,21 @@ class RaisingMainFragment : Fragment() {
 
     private fun setupRaisingGage() {
         val gageRaisingPoint = view?.findViewById<View>(R.id.g_raise)
+        val fGage = view?.findViewById<ImageView>(R.id.f_gage) // f_gage 참조 가져오기
+
+        // f_gage의 실제 가로 길이를 dp로 변환
+        var fGageWidthPx = fGage?.width ?: 250 // 픽셀 단위 가로 길이 (기본값 250)
+        fGageWidthPx-=10
+        val density = resources.displayMetrics.density
+        val fGageWidthDp = (fGageWidthPx / density).toInt() // dp로 변환
 
         if(currentRaisingPoint<=5) {
             gageRaisingPoint?.visibility = View.INVISIBLE
         }
-        else if (currentRaisingPoint>=97) {
+        else if (currentRaisingPoint>=96) {
             gageRaisingPoint?.visibility = View.VISIBLE
             val density = resources.displayMetrics.density
-            var gWidthPx = (236 * density).toInt()
+            var gWidthPx = ((fGageWidthDp - 4) * density).toInt()
             if(gWidthPx==0) {
                 gWidthPx=1
             }
@@ -276,7 +324,7 @@ class RaisingMainFragment : Fragment() {
         else {
             gageRaisingPoint?.visibility = View.VISIBLE
             val density = resources.displayMetrics.density
-            var gWidthPx = ((currentRaisingPoint / 100.0) * 240 * density).toInt()
+            var gWidthPx = ((currentRaisingPoint / 100.0) * fGageWidthDp * density).toInt()
             if(gWidthPx==0) {
                 gWidthPx=1
             }
@@ -409,7 +457,7 @@ class RaisingMainFragment : Fragment() {
 * Story
 *
 * *********/
-    private val storyCount: Int = 5
+    private val storyCount: Int = 4
 
     private fun ShowStoryPopup() {
         //LogLS.d("Begin")
@@ -501,6 +549,7 @@ class RaisingMainFragment : Fragment() {
 *
 * *********/
     private var popupTotalItemGrowingAmount = 0
+    private var popupGetItemGrowingAmount = 0
 
     fun onItemDialogResult(totalItemGrowingAmount: Int, currentNormalItemAmount: Int, currentCrewItemAmount: Int) {
         //LogLS.d("Begin")
@@ -517,6 +566,7 @@ class RaisingMainFragment : Fragment() {
         activity?.runOnUiThread {
             showingDialogName = "Item"
             popupTotalItemGrowingAmount = 0
+            popupGetItemGrowingAmount = 0
 
             // DialogFragment 대신 직접 View를 overlay로 추가
             val inflater = LayoutInflater.from(requireContext())
@@ -563,7 +613,10 @@ class RaisingMainFragment : Fragment() {
         tvCrewlItem.text = currentCrewItemAmount.toString()
 
         val tvGetGrowingAmount = popupView.findViewById<TextView>(R.id.tv_openamount)
-        tvGetGrowingAmount.text = popupTotalItemGrowingAmount.toString()
+        tvGetGrowingAmount.text = popupGetItemGrowingAmount.toString() + " 점 획득!"
+
+        val tvTotalItemGrowingAmount = popupView.findViewById<TextView>(R.id.tv_getamount)
+        tvTotalItemGrowingAmount.text = "총 획득 : " + popupTotalItemGrowingAmount.toString()
     }
 
     private fun openItemBoxInPopup(boxId: BoxId, popupView: View) {
@@ -573,20 +626,21 @@ class RaisingMainFragment : Fragment() {
 
         if (boxId == BoxId.NORMAL) {
             if (currentNormalItemAmount > 0) {
-                randomMin = 0
-                randomMax = 100
+                randomMin = 20
+                randomMax = 70
                 currentNormalItemAmount--
             } else return
         } else {
             if (currentCrewItemAmount > 0) {
                 randomMin = 50
-                randomMax = 200
+                randomMax = 100
                 currentCrewItemAmount--
             } else return
         }
 
-        popupTotalItemGrowingAmount = (randomMin..randomMax).random()
-        currentRaisingAmount += popupTotalItemGrowingAmount
+        popupGetItemGrowingAmount = (randomMin..randomMax).random()
+        currentRaisingAmount += popupGetItemGrowingAmount
+        popupTotalItemGrowingAmount += popupGetItemGrowingAmount
         updatePopupTextViews(popupView)
     }
 
@@ -727,3 +781,5 @@ class RaisingMainFragment : Fragment() {
 //    }
 
 }
+
+

@@ -35,6 +35,7 @@ import com.google.android.gms.location.LocationServices
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
+import android.media.MediaPlayer // MediaPlayer 임포트 추가
 
 class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdateListener {
 
@@ -62,6 +63,9 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
 
     private var isJustJoined = false
     private lateinit var crewRecentPlaceManager: CrewRecentPlaceManager
+
+    // 배경 음악을 위한 미디어 플레이어 추가
+    private var mediaPlayer: MediaPlayer? = null
 
     private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val earthRadius = 6371.0
@@ -94,6 +98,20 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
         val crewBackBtn = findViewById<ImageView>(R.id.crewBackButton)
         val exitCrewMemberTextView = findViewById<TextView>(R.id.ExitCrewMember)
         val morePointButton = findViewById<TextView>(R.id.morePointBtn)
+
+        // --- 음악 시작: 배경 음악 재생을 초기화하고 연속 재생 시작 ---
+        try {
+            // R.raw.background_music이 실제 리소스 이름이라고 가정합니다.
+            // 미디어 플레이어 초기화
+            mediaPlayer = MediaPlayer.create(this, R.raw.crewpage)
+            mediaPlayer?.isLooping = true // 음악을 계속 반복하도록 설정
+            mediaPlayer?.setVolume(0.6f, 0.6f) // 볼륨을 최대(1.0)로 설정
+            mediaPlayer?.start() // 음악 재생 시작
+        } catch (e: Exception) {
+            Log.e("CrewLineMain", "미디어 플레이어 초기화 또는 시작 오류: ${e.message}")
+        }
+        // --- 음악 끝 ---
+
 
         handler = Handler(Looper.getMainLooper())
         timeRunnable = object : Runnable {
@@ -284,31 +302,34 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
         }
 
         // 먼저 크루의 mainField를 가져와서 현재 위치와 비교
-        db.collection("Crew").document(crewId).get()
-            .addOnSuccessListener { crewDoc ->
-                if (crewDoc.exists()) {
-                    val crewMainField = crewDoc.getString("mainField") ?: ""
+//        db.collection("Crew").document(crewId).get()
+//            .addOnSuccessListener { crewDoc ->
+//                if (crewDoc.exists()) {
+//                    val crewMainField = crewDoc.getString("mainField") ?: ""
+//
+//                    // 현재 위치 확인
+//                    getCurrentDistrict { currentDistrict ->
+//                        if (crewMainField.isNotEmpty() && currentDistrict != crewMainField) {
+//                            // 위치가 일치하지 않으면 가입 중단
+//                            Toast.makeText(this, "크루 활동 지역과 현재 위치가\n일치하지 않습니다.", Toast.LENGTH_SHORT).show()
+//                            return@getCurrentDistrict
+//                        }
+//
+//                        // 위치가 일치하면 기존 가입 로직 진행
+//                        proceedWithJoining(crewId, db)
+//                    }
+//                } else {
+//                    Toast.makeText(this, "크루 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+//                }
+//            }
+//            .addOnFailureListener { e ->
+//                Log.e("CrewLineMain", "크루 정보 가져오기 실패", e)
+//                Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
+//            }
 
-                    // 현재 위치 확인
-                    getCurrentDistrict { currentDistrict ->
-                        if (crewMainField.isNotEmpty() && currentDistrict != crewMainField) {
-                            // 위치가 일치하지 않으면 가입 중단
-                            Toast.makeText(this, "크루 활동 지역과 현재 위치가\n일치하지 않습니다.", Toast.LENGTH_SHORT).show()
-                            return@getCurrentDistrict
-                        }
-
-                        // 위치가 일치하면 기존 가입 로직 진행
-                        proceedWithJoining(crewId, db)
-                    }
-                } else {
-                    Toast.makeText(this, "크루 정보를 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("CrewLineMain", "크루 정보 가져오기 실패", e)
-                Toast.makeText(this, "크루 정보를 확인할 수 없습니다.", Toast.LENGTH_SHORT).show()
-            }
-    }
+        //위치 비교없이 가입 진행
+        proceedWithJoining(crewId, db);
+        }
 
     private fun proceedWithJoining(crewId: String, db: FirebaseFirestore) {
         val currentUser = auth.currentUser
@@ -805,18 +826,25 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
             }
     }
 
-    override fun onPause() {
-        super.onPause()
-        if (::refreshHandler.isInitialized) {
-            refreshHandler.removeCallbacks(refreshRunnable)
-        }
-    }
-
+    // --- 음악 관리: Activity 생명주기에 따라 음악 재생/일시정지/해제 ---
     override fun onResume() {
         super.onResume()
+        // Activity가 다시 화면에 나타났을 때 음악을 재개합니다.
+        if (mediaPlayer?.isPlaying == false) {
+            mediaPlayer?.start()
+        }
         if (::refreshHandler.isInitialized) {
             refreshHandler.removeCallbacks(refreshRunnable)
             refreshHandler.postDelayed(refreshRunnable, REFRESH_INTERVAL)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Activity가 화면을 벗어나거나 가려질 때 음악을 일시 정지합니다.
+        mediaPlayer?.pause()
+        if (::refreshHandler.isInitialized) {
+            refreshHandler.removeCallbacks(refreshRunnable)
         }
     }
 
@@ -834,5 +862,11 @@ class CrewLineMainActivity : AppCompatActivity(), CrewWalkManager.WalkDataUpdate
         if (::crewRecentPlaceManager.isInitialized) {
             crewRecentPlaceManager.clearCache()
         }
+
+        // MediaPlayer 리소스 해제
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
+    // --- 음악 관리 끝 ---
 }

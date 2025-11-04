@@ -28,6 +28,9 @@ class SafetyRepo(
 
     }
 
+    private val safeThresholdPoint = 15
+    private val cautionThresholdPoint = 8
+
     suspend fun getSafety(lat: Double, lon: Double): SafetyDetail = withContext(Dispatchers.IO) {
         try {
             val auth = authHeader() // ✅ 자체 메서드 사용
@@ -84,8 +87,8 @@ class SafetyRepo(
                     (tileSummary.cctvCount ?: 0) +   // CCTV: 기본 가중치
                     (tileSummary.streetLightCount ?: 0) // 가로등: 기본 가중치
             val finalLevel = when {
-                weightedScore >= 15 -> SafetyDetail.Level.SAFE      // 매우 안전
-                weightedScore >= 8  -> SafetyDetail.Level.CAUTION   // 보통
+                weightedScore >= safeThresholdPoint -> SafetyDetail.Level.SAFE      // 매우 안전
+                weightedScore >= cautionThresholdPoint  -> SafetyDetail.Level.CAUTION   // 보통
                 else -> SafetyDetail.Level.DANGER                 // 위험
             }
 

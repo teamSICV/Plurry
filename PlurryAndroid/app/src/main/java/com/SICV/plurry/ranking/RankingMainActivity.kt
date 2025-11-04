@@ -16,6 +16,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import de.hdodenhof.circleimageview.CircleImageView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 class RankingMainActivity : AppCompatActivity() {
 
@@ -164,34 +169,49 @@ class RankingMainActivity : AppCompatActivity() {
     }
 
     private fun loadPersonalRankingData() {
-        firestore.collection("Game")
-            .document("users")
-            .collection("userReward")
-            .get()
-            .addOnSuccessListener { documents ->
-                val userRewardList = mutableListOf<Pair<String, Int>>()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Game/users/userReward에서 모든 유저 데이터 가져오기
+                val userRewardSnapshot = firestore.collection("Game")
+                    .document("users")
+                    .collection("userReward")
+                    .get()
+                    .await()
 
-                for (document in documents) {
-                    val userId = document.id
-                    val userRewardItem = document.getLong("userRewardItem")?.toInt() ?: 0
-                    userRewardList.add(Pair(userId, userRewardItem))
+                val userScoreList = mutableListOf<Triple<String, Int, Map<String, Any?>>>()
+
+                for (rewardDoc in userRewardSnapshot.documents) {
+                    val userId = rewardDoc.id
+                    val level = rewardDoc.getLong("level")?.toInt() ?: 0
+                    val currentRaisingPoint = rewardDoc.getLong("currentRaisingPoint")?.toInt() ?: 0
+                    val personalScore = level * 100 + currentRaisingPoint
+
+                    // Users 컬렉션에서 닉네임과 프로필 이미지 가져오기
+                    val userDoc = firestore.collection("Users").document(userId).get().await()
+                    val userInfo = mapOf(
+                        "name" to userDoc.getString("name"),
+                        "profileImg" to userDoc.getString("profileImg")
+                    )
+
+                    userScoreList.add(Triple(userId, personalScore, userInfo))
                 }
 
-                userRewardList.sortByDescending { it.second }
+                userScoreList.sortByDescending { it.second }
 
-                getUserInfoForRanking(userRewardList) { rankingData ->
+                val rankingData = assignRanksWithTies(userScoreList)
+
+                withContext(Dispatchers.Main) {
                     updateRankingList(rankingData)
                     updateTopThreeRanking(rankingData)
                     updateMyRankingInfo(rankingData)
                 }
+            } catch (e: Exception) {
+                Log.e("RankingActivity", "Error loading personal ranking: ", e)
             }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error loading personal ranking: ", exception)
-            }
+        }
     }
 
     private fun loadCrewPersonalRankingData() {
-        // 크루에 속해있지 않으면 빈 데이터 처리
         if (currentUserCrewId == null) {
             updateRankingList(emptyList())
             updateTopThreeRanking(emptyList())
@@ -199,168 +219,176 @@ class RankingMainActivity : AppCompatActivity() {
             return
         }
 
-        firestore.collection("Users")
-            .whereEqualTo("crewAt", currentUserCrewId)
-            .get()
-            .addOnSuccessListener { crewMembers ->
-                val crewMemberIds = crewMembers.documents.map { it.id }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val crewMemberIds = getCrewMembers(currentUserCrewId!!)
 
-                firestore.collection("Game")
-                    .document("users")
-                    .collection("userReward")
-                    .get()
-                    .addOnSuccessListener { documents ->
-                        val crewRewardList = mutableListOf<Pair<String, Int>>()
-
-                        for (document in documents) {
-                            val userId = document.id
-                            if (userId in crewMemberIds) {
-                                val crewRewardItem = document.getLong("crewRewardItem")?.toInt() ?: 0
-                                crewRewardList.add(Pair(userId, crewRewardItem))
-                            }
-                        }
-
-                        crewRewardList.sortByDescending { it.second }
-
-                        getUserInfoForRanking(crewRewardList) { rankingData ->
-                            updateRankingList(rankingData)
-                            updateTopThreeRanking(rankingData)
-                            updateMyRankingInfo(rankingData)
-                        }
+                if (crewMemberIds.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        updateRankingList(emptyList())
+                        updateTopThreeRanking(emptyList())
+                        updateMyRankingInfoForNoCrew()
                     }
-                    .addOnFailureListener { exception ->
-                        Log.e("RankingActivity", "Error loading crew personal ranking: ", exception)
+                    return@launch
+                }
+
+                val userScoreList = mutableListOf<Triple<String, Int, Map<String, Any?>>>()
+
+                for (userId in crewMemberIds) {
+                    // Game/users/userReward에서 레벨과 포인트 가져오기
+                    val rewardDoc = firestore.collection("Game")
+                        .document("users")
+                        .collection("userReward")
+                        .document(userId)
+                        .get()
+                        .await()
+
+                    if (rewardDoc.exists()) {
+                        val level = rewardDoc.getLong("level")?.toInt() ?: 0
+                        val currentRaisingPoint = rewardDoc.getLong("currentRaisingPoint")?.toInt() ?: 0
+                        val personalScore = level * 100 + currentRaisingPoint
+
+                        // Users 컬렉션에서 닉네임과 프로필 이미지 가져오기
+                        val userDoc = firestore.collection("Users").document(userId).get().await()
+                        val userInfo = mapOf(
+                            "name" to userDoc.getString("name"),
+                            "profileImg" to userDoc.getString("profileImg")
+                        )
+
+                        userScoreList.add(Triple(userId, personalScore, userInfo))
                     }
+                }
+
+                userScoreList.sortByDescending { it.second }
+
+                val rankingData = assignRanksWithTies(userScoreList)
+
+                withContext(Dispatchers.Main) {
+                    updateRankingList(rankingData)
+                    updateTopThreeRanking(rankingData)
+                    updateMyRankingInfo(rankingData)
+                }
+            } catch (e: Exception) {
+                Log.e("RankingActivity", "Error loading crew personal ranking: ", e)
             }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error getting crew members: ", exception)
-            }
+        }
     }
 
     private fun loadCrewRankingData() {
-        firestore.collection("Game")
-            .document("crew")
-            .collection("crewReward")
-            .get()
-            .addOnSuccessListener { documents ->
-                val crewRewardList = mutableListOf<Pair<String, Int>>()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val crewsSnapshot = firestore.collection("Crew").get().await()
+                val crewScoreList = mutableListOf<Triple<String, Int, Map<String, Any?>>>()
 
-                if (documents.isEmpty()) {
-                    updateRankingList(emptyList())
-                    updateTopThreeRanking(emptyList())
-                    updateMyCrewRankingInfo()
-                    return@addOnSuccessListener
+                for (crewDoc in crewsSnapshot.documents) {
+                    val crewId = crewDoc.id
+                    val crewMemberIds = getCrewMembers(crewId)
+
+                    var totalScore = 0
+                    for (memberId in crewMemberIds) {
+                        // Game/users/userReward에서 각 멤버의 점수 가져오기
+                        val rewardDoc = firestore.collection("Game")
+                            .document("users")
+                            .collection("userReward")
+                            .document(memberId)
+                            .get()
+                            .await()
+
+                        if (rewardDoc.exists()) {
+                            val level = rewardDoc.getLong("level")?.toInt() ?: 0
+                            val currentRaisingPoint = rewardDoc.getLong("currentRaisingPoint")?.toInt() ?: 0
+                            totalScore += (level * 100 + currentRaisingPoint)
+                        }
+                    }
+
+                    val crewInfo = mapOf(
+                        "name" to crewDoc.getString("name"),
+                        "profileImg" to crewDoc.getString("CrewProfile")
+                    )
+
+                    crewScoreList.add(Triple(crewId, totalScore, crewInfo))
                 }
 
-                for (document in documents) {
-                    val crewId = document.id
-                    val crewRewardItem = document.getLong("crewRewardItem")?.toInt() ?: 0
-                    crewRewardList.add(Pair(crewId, crewRewardItem))
-                }
+                crewScoreList.sortByDescending { it.second }
 
-                crewRewardList.sortByDescending { it.second }
+                val rankingData = assignRanksWithTies(crewScoreList)
 
-                getCrewInfoForRanking(crewRewardList) { rankingData ->
+                withContext(Dispatchers.Main) {
                     updateRankingList(rankingData)
                     updateTopThreeRanking(rankingData)
                     updateMyCrewRankingInfo()
                 }
+            } catch (e: Exception) {
+                Log.e("RankingActivity", "Error loading crew ranking: ", e)
             }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error loading crew ranking: ", exception)
-            }
-    }
-
-    private fun getUserInfoForRanking(
-        userRewardList: List<Pair<String, Int>>,
-        callback: (List<RankingRecord>) -> Unit
-    ) {
-        val userInfoList = mutableListOf<RankingRecord>()
-        var processedCount = 0
-
-        if (userRewardList.isEmpty()) {
-            callback(userInfoList)
-            return
-        }
-
-        for ((index, userRewardPair) in userRewardList.withIndex()) {
-            val (userId, reward) = userRewardPair
-            firestore.collection("Users")
-                .document(userId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val nickname = document.getString("name") ?: "Unknown"
-                        val profileImage = document.getString("profileImg")
-                        userInfoList.add(RankingRecord(
-                            rank = index + 1,
-                            userId = userId,
-                            profileImageUrl = profileImage,
-                            nickname = nickname,
-                            record = "${reward}pt"
-                        ))
-                    }
-
-                    processedCount++
-                    if (processedCount == userRewardList.size) {
-                        callback(userInfoList.sortedBy { it.rank })
-                    }
-                }
-                .addOnFailureListener { exception ->
-                    Log.e("RankingActivity", "Error getting user info for $userId: ", exception)
-                    processedCount++
-                    if (processedCount == userRewardList.size) {
-                        callback(userInfoList.sortedBy { it.rank })
-                    }
-                }
         }
     }
 
-    private fun getCrewInfoForRanking(
-        crewRewardList: List<Pair<String, Int>>,
-        callback: (List<RankingRecord>) -> Unit
-    ) {
-        val crewInfoList = mutableListOf<RankingRecord>()
-        var processedCount = 0
-
-        if (crewRewardList.isEmpty()) {
-            callback(crewInfoList)
-            return
-        }
-
-        for ((index, crewRewardPair) in crewRewardList.withIndex()) {
-            val (crewId, reward) = crewRewardPair
-
-            firestore.collection("Crew")
+    private suspend fun getCrewMembers(crewId: String): List<String> {
+        return try {
+            val crewMemberDoc = firestore.collection("Crew")
                 .document(crewId)
+                .collection("member")
+                .document("members")
                 .get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val crewName = document.getString("name") ?: "Unknown Crew"
-                        val crewImage = document.getString("CrewProfile")
+                .await()
 
-                        crewInfoList.add(RankingRecord(
-                            rank = index + 1,
-                            userId = crewId,
-                            profileImageUrl = crewImage,
-                            nickname = crewName,
-                            record = "${reward}pt"
-                        ))
-                    }
-
-                    processedCount++
-                    if (processedCount == crewRewardList.size) {
-                        callback(crewInfoList.sortedBy { it.rank })
-                    }
-                }
-                .addOnFailureListener { exception ->
-                    Log.e("RankingActivity", "Error getting crew info for $crewId: ", exception)
-                    processedCount++
-                    if (processedCount == crewRewardList.size) {
-                        callback(crewInfoList.sortedBy { it.rank })
-                    }
-                }
+            if (crewMemberDoc.exists()) {
+                crewMemberDoc.data?.keys?.toList() ?: emptyList()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e("RankingActivity", "Error getting crew members: ", e)
+            emptyList()
         }
+    }
+
+    private fun formatScore(score: Int): String {
+        return when {
+            score >= 1_000_000_000 -> {
+                val value = score / 1_000_000_000.0
+                String.format("%.2fB", value)
+            }
+            score >= 1_000_000 -> {
+                val value = score / 1_000_000.0
+                String.format("%.2fM", value)
+            }
+            score >= 1_000 -> {
+                val value = score / 1_000.0
+                String.format("%.2fK", value)
+            }
+            else -> "${score}pt"
+        }
+    }
+
+    private fun assignRanksWithTies(scoreList: List<Triple<String, Int, Map<String, Any?>>>): List<RankingRecord> {
+        val rankingData = mutableListOf<RankingRecord>()
+        var currentRank = 1
+        var previousScore: Int? = null
+
+        for ((index, item) in scoreList.withIndex()) {
+            val (id, score, info) = item
+
+            if (previousScore != null && previousScore != score) {
+                currentRank = index + 1
+            }
+
+            val nickname = info["name"] as? String ?: "Unknown"
+            val profileImage = info["profileImg"] as? String
+
+            rankingData.add(RankingRecord(
+                rank = currentRank,
+                userId = id,
+                profileImageUrl = profileImage,
+                nickname = nickname,
+                record = formatScore(score)
+            ))
+
+            previousScore = score
+        }
+
+        return rankingData
     }
 
     private fun updateMyRankingInfo(rankingData: List<RankingRecord>) {
@@ -370,44 +398,63 @@ class RankingMainActivity : AppCompatActivity() {
             rankingRecord.userId == currentUserId
         }
 
-        firestore.collection("Users")
-            .document(currentUserId)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val nickname = document.getString("name") ?: "Unknown"
-                    val profileImage = document.getString("profileImg")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val userDoc = firestore.collection("Users").document(currentUserId).get().await()
 
-                    if (profileImage != null) {
-                        Glide.with(this)
-                            .load(profileImage)
-                            .placeholder(R.drawable.basicprofile)
-                            .into(myRankProfile)
-                    } else {
-                        myRankProfile.setImageResource(R.drawable.basicprofile)
-                    }
+                withContext(Dispatchers.Main) {
+                    if (userDoc.exists()) {
+                        val nickname = userDoc.getString("name") ?: "Unknown"
+                        val profileImage = userDoc.getString("profileImg")
 
-                    myRankName.text = nickname
+                        if (profileImage != null) {
+                            Glide.with(this@RankingMainActivity)
+                                .load(profileImage)
+                                .placeholder(R.drawable.basicprofile)
+                                .into(myRankProfile)
+                        } else {
+                            myRankProfile.setImageResource(R.drawable.basicprofile)
+                        }
 
-                    if (myRankingInfo != null) {
-                        myRankRanking.text = "${myRankingInfo.rank}"
-                        myRankRecord.text = myRankingInfo.record
-                    } else {
-                        myRankRanking.text = "-"
-                        getMyRecord(currentUserId)
+                        myRankName.text = nickname
+
+                        if (myRankingInfo != null) {
+                            myRankRanking.text = "${myRankingInfo.rank}"
+                            myRankRecord.text = myRankingInfo.record
+                        } else {
+                            myRankRanking.text = "-"
+
+                            // Game/users/userReward에서 내 점수 가져오기
+                            val rewardDoc = firestore.collection("Game")
+                                .document("users")
+                                .collection("userReward")
+                                .document(currentUserId)
+                                .get()
+                                .await()
+
+                            if (rewardDoc.exists()) {
+                                val level = rewardDoc.getLong("level")?.toInt() ?: 0
+                                val currentRaisingPoint = rewardDoc.getLong("currentRaisingPoint")?.toInt() ?: 0
+                                val personalScore = level * 100 + currentRaisingPoint
+                                myRankRecord.text = formatScore(personalScore)
+                            } else {
+                                myRankRecord.text = "0pt"
+                            }
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e("RankingActivity", "Error getting current user info: ", e)
+                withContext(Dispatchers.Main) {
+                    myRankProfile.setImageResource(R.drawable.basicprofile)
+                    myRankName.text = "Unknown"
+                    myRankRanking.text = "-"
+                    myRankRecord.text = "0pt"
+                }
             }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error getting current user info: ", exception)
-                myRankProfile.setImageResource(R.drawable.basicprofile)
-                myRankName.text = "Unknown"
-                myRankRanking.text = "-"
-                myRankRecord.text = "0pt"
-            }
+        }
     }
 
-    // 크루가 없을 때 크루 내 개인 탭에서 사용할 내 랭킹 정보 업데이트
     private fun updateMyRankingInfoForNoCrew() {
         myRankProfile.setImageResource(R.drawable.basicprofile)
         myRankName.text = "No Crew"
@@ -424,35 +471,39 @@ class RankingMainActivity : AppCompatActivity() {
             return
         }
 
-        firestore.collection("Crew")
-            .document(currentUserCrewId!!)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val crewName = document.getString("name") ?: "Unknown Crew"
-                    val crewImage = document.getString("CrewProfile")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val crewDoc = firestore.collection("Crew").document(currentUserCrewId!!).get().await()
 
-                    if (crewImage != null) {
-                        Glide.with(this)
-                            .load(crewImage)
-                            .placeholder(R.drawable.basicprofile)
-                            .into(myRankProfile)
-                    } else {
-                        myRankProfile.setImageResource(R.drawable.basicprofile)
+                withContext(Dispatchers.Main) {
+                    if (crewDoc.exists()) {
+                        val crewName = crewDoc.getString("name") ?: "Unknown Crew"
+                        val crewImage = crewDoc.getString("CrewProfile")
+
+                        if (crewImage != null) {
+                            Glide.with(this@RankingMainActivity)
+                                .load(crewImage)
+                                .placeholder(R.drawable.basicprofile)
+                                .into(myRankProfile)
+                        } else {
+                            myRankProfile.setImageResource(R.drawable.basicprofile)
+                        }
+
+                        myRankName.text = crewName
+                        findMyCrewRanking(currentUserCrewId!!)
+                        getMyCrewRecord(currentUserCrewId!!)
                     }
-
-                    myRankName.text = crewName
-                    findMyCrewRanking(currentUserCrewId!!)
-                    getMyCrewRecord(currentUserCrewId!!)
+                }
+            } catch (e: Exception) {
+                Log.e("RankingActivity", "Error getting crew info: ", e)
+                withContext(Dispatchers.Main) {
+                    myRankProfile.setImageResource(R.drawable.basicprofile)
+                    myRankName.text = "Unknown Crew"
+                    myRankRanking.text = "-"
+                    myRankRecord.text = "0pt"
                 }
             }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error getting crew info: ", exception)
-                myRankProfile.setImageResource(R.drawable.basicprofile)
-                myRankName.text = "Unknown Crew"
-                myRankRanking.text = "-"
-                myRankRecord.text = "0pt"
-            }
+        }
     }
 
     private fun findMyCrewRanking(crewId: String) {
@@ -464,50 +515,38 @@ class RankingMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getMyRecord(userId: String) {
-        val rewardField = when (currentTabType) {
-            TabType.PERSONAL -> "userRewardItem"
-            TabType.CREW_PERSONAL -> "crewRewardItem"
-            TabType.CREW -> return
-        }
-
-        firestore.collection("Game")
-            .document("users")
-            .collection("userReward")
-            .document(userId)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val record = document.getLong(rewardField)?.toInt() ?: 0
-                    myRankRecord.text = "${record}pt"
-                } else {
-                    myRankRecord.text = "0pt"
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error getting my record: ", exception)
-                myRankRecord.text = "0pt"
-            }
-    }
-
     private fun getMyCrewRecord(crewId: String) {
-        firestore.collection("Game")
-            .document("crew")
-            .collection("crewReward")
-            .document(crewId)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    val record = document.getLong("crewRewardItem")?.toInt() ?: 0
-                    myRankRecord.text = "${record}pt"
-                } else {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val crewMemberIds = getCrewMembers(crewId)
+                var totalScore = 0
+
+                for (memberId in crewMemberIds) {
+                    // Game/users/userReward에서 각 멤버의 점수 가져오기
+                    val rewardDoc = firestore.collection("Game")
+                        .document("users")
+                        .collection("userReward")
+                        .document(memberId)
+                        .get()
+                        .await()
+
+                    if (rewardDoc.exists()) {
+                        val level = rewardDoc.getLong("level")?.toInt() ?: 0
+                        val currentRaisingPoint = rewardDoc.getLong("currentRaisingPoint")?.toInt() ?: 0
+                        totalScore += (level * 100 + currentRaisingPoint)
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    myRankRecord.text = formatScore(totalScore)
+                }
+            } catch (e: Exception) {
+                Log.e("RankingActivity", "Error getting my crew record: ", e)
+                withContext(Dispatchers.Main) {
                     myRankRecord.text = "0pt"
                 }
             }
-            .addOnFailureListener { exception ->
-                Log.e("RankingActivity", "Error getting my crew record: ", exception)
-                myRankRecord.text = "0pt"
-            }
+        }
     }
 
     private fun updateTopThreeRanking(rankingData: List<RankingRecord>) {
@@ -525,7 +564,6 @@ class RankingMainActivity : AppCompatActivity() {
         rankingTxt2.visibility = android.view.View.INVISIBLE
         rankingTxt3.visibility = android.view.View.INVISIBLE
 
-        // 랭킹 데이터가 있을 때만 표시
         if (rankingData.isNotEmpty()) {
             val first = rankingData[0]
             rankingTxt1.text = first.nickname
@@ -594,24 +632,19 @@ class RankingMainActivity : AppCompatActivity() {
     private fun refreshCurrentTab() {
         when (currentTabType) {
             TabType.PERSONAL -> {
+                loadPersonalRankingData()
             }
             TabType.CREW_PERSONAL -> {
                 loadCrewPersonalRankingData()
             }
             TabType.CREW -> {
-                currentUserCrewId?.let { crewId ->
-                    crewTotalManager.manualRecalculateCrewScore(crewId)
-                }
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    loadCrewRankingData()
-                }, 1000)
+                loadCrewRankingData()
             }
         }
     }
 
     private fun manualRefresh() {
         getUserCrewInfo()
-
         refreshCurrentTab()
     }
 
