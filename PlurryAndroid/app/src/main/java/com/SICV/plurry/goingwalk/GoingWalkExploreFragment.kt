@@ -588,7 +588,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     }
 
     private fun startIndoorExplore() {
-        LogLS.d("Begin")
+        Toast.makeText(requireContext(), "실내시연을 시작합니다.", Toast.LENGTH_SHORT).show()
         //if (!isAdded || activity == null || view == null) return
         var currentLocation:Location = Location("").apply {
             latitude = 37.6501888
@@ -1063,6 +1063,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     }
 
     private fun triggerDangerVibration() {
+        LogLS.d("Begin")
         try {
             if (isAdded && context != null) {
                 val vibrator = requireContext().getSystemService(Context.VIBRATOR_SERVICE) as Vibrator

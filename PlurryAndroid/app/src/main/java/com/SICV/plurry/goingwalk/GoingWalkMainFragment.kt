@@ -165,7 +165,7 @@ class GoingWalkMainFragment : Fragment() {
 
         // 개발자 옵션 활성화 여부 확인
         if (isDeveloperOptionsEnabled()) {
-            Toast.makeText(requireContext(), "참고: 개발자 옵션이 활성화되어 있습니다.", Toast.LENGTH_LONG).show()
+//            Toast.makeText(requireContext(), "참고: 개발자 옵션이 활성화되어 있습니다.", Toast.LENGTH_LONG).show()
         }
 
         // 버튼 리스너 설정
@@ -223,7 +223,7 @@ class GoingWalkMainFragment : Fragment() {
         btnAddPoint.setOnClickListener {
             // childFragmentManager를 사용하여 Fragment 내에서 DialogFragment를 관리
 
-/*            if(lastLocation == null) {
+            if(lastLocation == null) {
                 Toast.makeText(requireContext(), "위치 정보가 없습니다!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -231,13 +231,13 @@ class GoingWalkMainFragment : Fragment() {
             if((lastLocation!!.latitude<minExploreLatitude)||(lastLocation!!.latitude>maxExploreLatitude)||(lastLocation!!.longitude<minExploreLongitude)||(lastLocation!!.longitude>maxExploreLongitude)) {
                 Toast.makeText(requireContext(), "서명 서비스를 제공하지 않는 위치입니다!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
-            }*/
+            }
 
             AddPointDialogFragment().show(childFragmentManager, "AddPointDialog")
         }
         btnExplore.setOnClickListener {
 
-/*            if(lastLocation == null) {
+            if(lastLocation == null) {
                 Toast.makeText(requireContext(), "위치 정보가 없습니다!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -245,7 +245,7 @@ class GoingWalkMainFragment : Fragment() {
             if((lastLocation!!.latitude<minExploreLatitude)||(lastLocation!!.latitude>maxExploreLatitude)||(lastLocation!!.longitude<minExploreLongitude)||(lastLocation!!.longitude>maxExploreLongitude)) {
                 Toast.makeText(requireContext(), "서명 서비스를 제공하지 않는 위치입니다!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
-            }*/
+            }
 
             PointSelectFragment().show(childFragmentManager, "PointSelectDialog")
             setButtonStateStartExplore()
@@ -326,7 +326,7 @@ class GoingWalkMainFragment : Fragment() {
             startWalk()
         } else {
             //LogLS.d("requestPermissions")
-            LogLS.t(requireContext(), "requestPermissions")
+//            LogLS.t(requireContext(), "requestPermissions")
             // Google Fit 권한 요청
             GoogleSignIn.requestPermissions(
                 requireActivity(),
@@ -699,7 +699,7 @@ class GoingWalkMainFragment : Fragment() {
             location?.let {
                 checkLocationIntegrityAndHandleExit(it, "수동 새로고침")
                 val currentLatLng = LatLng(it.latitude, it.longitude)
-                Toast.makeText(requireContext(), "현재 위치 : ${it.latitude}, ${it.longitude}", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "현재 위치 : ${it.latitude}, ${it.longitude}", Toast.LENGTH_SHORT).show()
                 googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, mapCameraZoom))
             } ?: run {
                 Toast.makeText(requireContext(), "현재 위치를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
