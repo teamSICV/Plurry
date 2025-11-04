@@ -54,6 +54,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import com.SICV.plurry.MainActivity
 import com.SICV.plurry.safety.CustomDanger
+import android.view.Surface
 
 class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
@@ -77,6 +78,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val I = FloatArray(9)
     private val orientation = FloatArray(3)
     private var currentAzimuth = 0f
+    //정확도 높이기
+    private var rotationVectorSensor: Sensor? = null
+    private var lastTrueHeading = 0f
 
     private var googleMap: com.google.android.gms.maps.GoogleMap? = null
     private var targetLat = 0.0
@@ -339,6 +343,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
             // 센서 관리자 및 센서 초기화
             sensorManager = requireContext().getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
             magnetometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
@@ -357,6 +362,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
+        rotationVectorSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
         accelerometerSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
         magnetometerSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
     }
@@ -368,19 +376,74 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
     // SensorEventListener 구현
     override fun onSensorChanged(event: SensorEvent) {
-        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            System.arraycopy(event.values, 0, gravity, 0, event.values.size)
-        } else if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
-            System.arraycopy(event.values, 0, geomagnetic, 0, event.values.size)
-        }
+        when (event.sensor.type) {
+            Sensor.TYPE_ROTATION_VECTOR -> {
+                val R = FloatArray(9)
+                SensorManager.getRotationMatrixFromVector(R, event.values)
 
-        if (gravity.isNotEmpty() && geomagnetic.isNotEmpty()) {
-            val success = SensorManager.getRotationMatrix(R_Matrix, I, gravity, geomagnetic)
-            if (success) {
-                SensorManager.getOrientation(R_Matrix, orientation)
-                currentAzimuth = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                currentAzimuth = (currentAzimuth + 360) % 360
+                // 디스플레이 회전에 맞춰 좌표계 재맵핑 (세로/가로 모드 보정)
+                val outR = FloatArray(9)
+                val rotation = getDisplayRotation()
+                when (rotation) {
+                    Surface.ROTATION_0 -> SensorManager.remapCoordinateSystem(
+                        R, SensorManager.AXIS_X, SensorManager.AXIS_Z, outR
+                    )
+                    Surface.ROTATION_90 -> SensorManager.remapCoordinateSystem(
+                        R, SensorManager.AXIS_Z, SensorManager.AXIS_MINUS_X, outR
+                    )
+                    Surface.ROTATION_180 -> SensorManager.remapCoordinateSystem(
+                        R, SensorManager.AXIS_MINUS_X, SensorManager.AXIS_MINUS_Z, outR
+                    )
+                    Surface.ROTATION_270 -> SensorManager.remapCoordinateSystem(
+                        R, SensorManager.AXIS_MINUS_Z, SensorManager.AXIS_X, outR
+                    )
+                    else -> System.arraycopy(R, 0, outR, 0, 9)
+                }
+
+                val orientation = FloatArray(3)
+                SensorManager.getOrientation(outR, orientation)
+
+                // 자북(자기북) → 진북 보정
+                var azimuthDeg = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                if (azimuthDeg < 0f) azimuthDeg += 360f
+
+                // 현재 위치가 있으면 편차(Declination) 보정
+                lastLocation?.let { loc ->
+                    val gmf = android.hardware.GeomagneticField(
+                        loc.latitude.toFloat(),
+                        loc.longitude.toFloat(),
+                        loc.altitude.toFloat(),
+                        System.currentTimeMillis()
+                    )
+                    azimuthDeg = (azimuthDeg + gmf.declination) % 360f
+                    if (azimuthDeg < 0f) azimuthDeg += 360f
+                }
+
+                // (선택) 원형 EMA 스무딩으로 바늘 흔들림 억제
+                currentAzimuth = smoothHeading(lastTrueHeading, azimuthDeg, alpha = 0.25f)
+                lastTrueHeading = currentAzimuth
             }
+
+            // ↓ 회전벡터가 없을 때를 대비한 fallback (원하면 삭제)
+            Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_MAGNETIC_FIELD -> {
+                // no-op 또는 기존 코드 유지
+            }
+        }
+    }
+
+    private fun smoothHeading(prev: Float, now: Float, alpha: Float): Float {
+        val diff = (((now - prev + 540f) % 360f) - 180f) // -180~180
+        var out = (prev + alpha * diff) % 360f
+        if (out < 0f) out += 360f
+        return out
+    }
+    private fun getDisplayRotation(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // API 30+
+            requireActivity().display?.rotation ?: Surface.ROTATION_0
+        } else {
+            @Suppress("DEPRECATION")
+            requireActivity().windowManager.defaultDisplay.rotation  // API 24~29
         }
     }
 
