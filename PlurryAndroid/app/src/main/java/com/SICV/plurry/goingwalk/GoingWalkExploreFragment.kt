@@ -144,10 +144,14 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val EXIT_RADIUS_M = distancearrive + 5
     private val ARRIVE_COOLDOWN_MS = 10_000L
 
-    //함수 반복호출 Handler
-//    private val locationTrackingHandler = Handler(Looper.getMainLooper())
-//    private var locationTrackingRunnable: Runnable? = null
-//    private val trackingTimeInterval: Long = 500L
+    //실내시연 타이머 호출 Handler
+    private val indoorExploregHandler = Handler(Looper.getMainLooper())
+    private var indoorExploreRunnable: Runnable? = null
+    private val dangerAlertInterval = 15
+    private val safeAlertInterval = 10
+    private var indoorExploreDistance = 20
+    private var indoorExploreSpeed = 3
+    private val indoorExploreTargetName = "플루리실내시연"
 
     data class PendingSafetyEvaluation(
         val lat: Double,
@@ -437,6 +441,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
         if (out < 0f) out += 360f
         return out
     }
+
     private fun getDisplayRotation(): Int {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // API 30+
@@ -547,12 +552,23 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
 
     private fun startLocationTracking() {
         LogLS.d("Begin")
+
         hasArrived = false
         lastArriveTime = 0L
         inDanger = false
         safeStreak = 0
         lastDangerNotifyAt = 0L
         arrivalDialogShown = false
+
+
+
+        if(targetPlaceName==indoorExploreTargetName) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                startIndoorExplore()
+            }, 3 * 1000L) // n초를 밀리초로
+            return
+        }
+
 
         // trackingTimeInterval마다 processLocationTracking 호출
 /*        locationTrackingRunnable = object : Runnable {
@@ -569,6 +585,93 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             parentMainFragment.isExploreTracking = true
 //            LogLS.d("isExploreTracking true됨")
         }
+    }
+
+    private fun startIndoorExplore() {
+        LogLS.d("Begin")
+        //if (!isAdded || activity == null || view == null) return
+        var currentLocation:Location = Location("").apply {
+            latitude = 37.6501888
+            longitude = 127.0195337
+        }
+
+        // parentFragmentManager를 통해 부모 Fragment 찾기
+        val parentMainFragment = parentFragmentManager.fragments.firstOrNull { it is GoingWalkMainFragment } as? GoingWalkMainFragment
+        if(parentMainFragment!=null) {
+            parentMainFragment.isIndoorExplore = true
+            lastLocation?.let { currentLocation = it }
+            LogLS.d("isExploreTracking true됨")
+        }
+        else {
+            LogLS.e("parentMainFragment is null")
+        }
+
+/*        requireActivity().runOnUiThread {
+            lastLocation = currentLocation
+            lastLocationTime = currentLocation.elapsedRealtimeNanos
+
+            // 위험 지역 진입 체크
+            checkDangerAreaEntry(currentLocation)
+
+            // 안전도 평가
+            evaluateSafetyIfNeeded(currentLocation)
+
+            // 우회 경로 계산 및 네비게이션
+            handleNavigationAndDetour(currentLocation)
+        }*/
+
+        tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %d m".format(indoorExploreDistance) + latestSafetyLine
+    }
+
+    public fun updateIndoorExploreRemainDistance() {
+        LogLS.d("Begin")
+        indoorExploreDistance-=indoorExploreSpeed
+
+        if(indoorExploreDistance<dangerAlertInterval) {
+            indoorCheckDangerAreaEntry(true)
+        }
+
+        if(indoorExploreDistance<safeAlertInterval) {
+            indoorCheckDangerAreaEntry(false)
+        }
+
+        if(indoorExploreDistance<distancearrive) {
+            onArriveAtPlace()
+        }
+
+        if(indoorExploreDistance<=0) {
+            indoorExploreDistance = 0
+        }
+
+        tvDistanceInfo.text = "${targetPlaceName ?: "목표 장소"} 남은 거리: %d m".format(indoorExploreDistance) + latestSafetyLine
+    }
+
+    private fun indoorCheckDangerAreaEntry(isDanger:Boolean) {
+        inDanger = isDanger
+        safetyBanner?.visibility = View.VISIBLE
+
+        if(inDanger) {
+            //showDangerAreaWarning()
+            safetyBannerText?.text = "현재 안전도: 위험"
+            safetyBanner?.setBackgroundColor(
+                ContextCompat.getColor(requireContext(), android.R.color.holo_red_light)
+            )
+            if(currentSafety!=SafetyDetail.Level.DANGER) {
+                currentSafety=SafetyDetail.Level.DANGER
+                updateSea("DANGER")
+            }
+            triggerDangerVibration()
+        }
+        else {
+            safetyBanner?.setBackgroundColor(
+                ContextCompat.getColor(requireContext(), android.R.color.holo_green_light)
+            )
+            if(currentSafety!=SafetyDetail.Level.SAFE) {
+                currentSafety=SafetyDetail.Level.SAFE
+                updateSea("SAFE")
+            }
+        }
+
     }
 
     public fun processLocationTracking(location: Location) {

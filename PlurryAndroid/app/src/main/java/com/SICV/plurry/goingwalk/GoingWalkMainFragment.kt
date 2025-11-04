@@ -104,6 +104,22 @@ class GoingWalkMainFragment : Fragment() {
 //ExploreTracking
     public var isExploreTracking: Boolean = false
 
+//IndoorExplore
+    public var isIndoorExplore:Boolean = false
+
+    //차미리사관
+/*    private val indoorMinExploreLatitude = 37.65251353967091
+    private val indoorMaxExploreLatitude = 37.653644374251755
+    private val indoorMinExploreLongitude = 127.01598976575612
+    private val indoorMaxExploreLongitude = 127.01672044053508*/
+
+    //하나누리관
+    private val indoorMinExploreLatitude = 37.649875423067805
+    private val indoorMaxExploreLatitude = 37.65053329268455
+    private val indoorMinExploreLongitude = 127.01894951827047
+    private val indoorMaxExploreLongitude = 127.01987288055236
+
+
 
 /* ******************
 *
@@ -494,6 +510,13 @@ class GoingWalkMainFragment : Fragment() {
                                 "lastLocation으로 카메라 이동: ${location.latitude}, ${location.longitude}"
                             )
                             //LogLS.d("lastLocation으로 카메라 이동: ${location.latitude}, ${location.longitude}")
+
+                            if((location.latitude<indoorMinExploreLatitude)||(location.latitude>indoorMaxExploreLatitude)||(location.longitude<indoorMinExploreLongitude)||(location.longitude>indoorMaxExploreLongitude)) {
+                                indoorMapSetting(true)
+                            } else {
+                                indoorMapSetting(false)
+                            }
+
                         } else {
                             Log.w("MapDebug", "lastLocation이 null입니다. 실시간 위치 업데이트를 기다립니다")
                             LogLS.w("lastLocation이 null입니다. 실시간 위치 업데이트를 기다립니다")
@@ -559,6 +582,8 @@ class GoingWalkMainFragment : Fragment() {
     }
 
     private fun isTeleporting(currentLocation: Location): Boolean {
+        LogLS.d("Begin")
+
         /*
         lastLocation?.let { prevLocation ->
             val timeElapsedSeconds = (System.currentTimeMillis() - lastLocationTime) / 1000.0
@@ -750,6 +775,21 @@ class GoingWalkMainFragment : Fragment() {
                                     totalSteps += dp.getValue(Field.FIELD_STEPS).asInt()
                                     if(dp.getValue(Field.FIELD_STEPS).asInt()>postSteps) {
                                         postSteps = dp.getValue(Field.FIELD_STEPS).asInt()
+                                        if(isIndoorExplore) {
+                                            val fragment = parentFragmentManager.findFragmentById(R.id.fragmentContainerExplore)
+                                            LogLS.d("Found fragment: $fragment")
+
+                                            if (fragment == null) {
+                                                LogLS.e("GoingWalkExploreFragment not found with tag: going_walk_explore_tag")
+                                            } else if (fragment !is GoingWalkExploreFragment) {
+                                                LogLS.e("Fragment found but wrong type: ${fragment::class.simpleName}")
+                                            } else {
+                                                LogLS.d("Indoor Explore Walking Detacted")
+                                                fragment.updateIndoorExploreRemainDistance()
+                                                LogLS.d("updateIndoorExploreRemainDistance called successfully")
+                                            }
+
+                                        }
                                         val activity = requireActivity()
                                         if (activity is MainActivity) {
                                             activity.SendMessageToUnity("MoveShip")
@@ -835,4 +875,23 @@ class GoingWalkMainFragment : Fragment() {
                 LogLS.e("산책 종료 시 데이터 로드 실패")
             }
     }
+
+/* ******************
+*
+* IndoorExplore Session
+*
+* ******************/
+
+    private fun indoorMapSetting(isMapView:Boolean) {
+        LogLS.d("${isMapView}")
+
+        val mapView = view?.findViewById<View>(R.id.map)
+        if(isMapView) {
+            mapView?.visibility = if(isMapView) View.VISIBLE else View.VISIBLE
+        }
+        else {
+            mapView?.visibility = if(isMapView) View.VISIBLE else View.INVISIBLE
+        }
+    }
+
 }
