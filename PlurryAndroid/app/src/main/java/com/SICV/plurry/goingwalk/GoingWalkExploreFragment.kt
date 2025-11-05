@@ -150,8 +150,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val dangerAlertInterval = 15
     private val safeAlertInterval = 10
     private var indoorExploreDistance = 20
-    private var indoorExploreSpeed = 3
+    private var indoorExploreSpeed = 2
     private val indoorExploreTargetName = "플루리실내시연"
+    private var isIndoorArrived = false
 
     data class PendingSafetyEvaluation(
         val lat: Double,
@@ -635,8 +636,11 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             indoorCheckDangerAreaEntry(false)
         }
 
-        if(indoorExploreDistance<distancearrive) {
-            onArriveAtPlace()
+        if(indoorExploreDistance<=distancearrive) {
+            if(!isIndoorArrived) {
+                isIndoorArrived = true
+                onArriveAtPlace()
+            }
         }
 
         if(indoorExploreDistance<=0) {
