@@ -133,9 +133,9 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private val SAFE_CLEAR_COUNT = 3
 
     //탐색 범위 거리 조정
-    private val distanceLevel1 = 10
-    private val distanceLevel2 = 8
-    private val distancearrive = 5
+    private val distanceLevel1 = 100
+    private val distanceLevel2 = 50
+    private val distancearrive = 30
 
     // Arrive gate (목표 도착 1회 호출)
     private var hasArrived = false
@@ -153,6 +153,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
     private var indoorExploreSpeed = 2
     private val indoorExploreTargetName = "플루리실내시연"
     private var isIndoorArrived = false
+    private var indoorDistanceArrive = 5
 
     data class PendingSafetyEvaluation(
         val lat: Double,
@@ -636,7 +637,7 @@ class GoingWalkExploreFragment : Fragment(), SensorEventListener {
             indoorCheckDangerAreaEntry(false)
         }
 
-        if(indoorExploreDistance<=distancearrive) {
+        if(indoorExploreDistance<=indoorDistanceArrive) {
             if(!isIndoorArrived) {
                 isIndoorArrived = true
                 onArriveAtPlace()
