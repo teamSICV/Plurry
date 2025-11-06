@@ -190,16 +190,32 @@ class MainRankingManager(
                 .collection("userReward")
                 .get()
                 .addOnSuccessListener { documents ->
-                    val userRewardList = mutableListOf<Pair<String, Int>>()
+                    val userScoreList = mutableListOf<Pair<String, Int>>()
 
                     for (document in documents) {
                         val docUserId = document.id
-                        val userRewardItem = document.getLong("userRewardItem")?.toInt() ?: 0
-                        userRewardList.add(Pair(docUserId, userRewardItem))
+                        val level = document.getLong("level")?.toInt() ?: 0
+                        val currentRaisingPoint = document.getLong("currentRaisingPoint")?.toInt() ?: 0
+                        val score = level * 100 + currentRaisingPoint
+                        userScoreList.add(Pair(docUserId, score))
                     }
 
-                    userRewardList.sortByDescending { it.second }
-                    val myRank = userRewardList.indexOfFirst { it.first == userId } + 1
+                    userScoreList.sortByDescending { it.second }
+
+                    // 동점자 처리
+                    var rank = 1
+                    var previousScore: Int? = null
+                    val rankMap = mutableMapOf<String, Int>()
+
+                    userScoreList.forEachIndexed { index, (id, score) ->
+                        if (previousScore != null && previousScore != score) {
+                            rank = index + 1
+                        }
+                        rankMap[id] = rank
+                        previousScore = score
+                    }
+
+                    val myRank = rankMap[userId] ?: 0
                     valueTextView.text = if (myRank > 0) myRank.toString() else "0"
                 }
         }
@@ -227,14 +243,29 @@ class MainRankingManager(
                         for (document in documents) {
                             val userId = document.id
                             if (userId in crewMemberIds) {
-                                val crewRewardItem = document.getLong("crewRewardItem")?.toInt() ?: 0
-                                crewContributionList.add(Pair(userId, crewRewardItem))
+                                val level = document.getLong("level")?.toInt() ?: 0
+                                val currentRaisingPoint = document.getLong("currentRaisingPoint")?.toInt() ?: 0
+                                val score = level * 100 + currentRaisingPoint
+                                crewContributionList.add(Pair(userId, score))
                             }
                         }
 
                         crewContributionList.sortByDescending { it.second }
 
-                        val myContributionRank = crewContributionList.indexOfFirst { it.first == currentUserId } + 1
+                        // 동점자 처리
+                        var rank = 1
+                        var previousScore: Int? = null
+                        val rankMap = mutableMapOf<String, Int>()
+
+                        crewContributionList.forEachIndexed { index, (id, score) ->
+                            if (previousScore != null && previousScore != score) {
+                                rank = index + 1
+                            }
+                            rankMap[id] = rank
+                            previousScore = score
+                        }
+
+                        val myContributionRank = rankMap[currentUserId] ?: 0
                         valueTextView.text = if (myContributionRank > 0) myContributionRank.toString() else "--"
                     }
                     .addOnFailureListener {
@@ -252,26 +283,92 @@ class MainRankingManager(
             return
         }
 
-        firestore.collection("Game")
-            .document("crew")
-            .collection("crewReward")
+        firestore.collection("Crew")
             .get()
-            .addOnSuccessListener { documents ->
-                val crewRewardList = mutableListOf<Pair<String, Int>>()
+            .addOnSuccessListener { crewDocs ->
+                val crewScoreList = mutableListOf<Pair<String, Int>>()
 
-                for (document in documents) {
-                    val docCrewId = document.id
-                    val crewRewardItem = document.getLong("crewRewardItem")?.toInt() ?: 0
-                    crewRewardList.add(Pair(docCrewId, crewRewardItem))
+                val tasksCompleted = java.util.concurrent.atomic.AtomicInteger(0)
+                val totalCrews = crewDocs.size()
+
+                if (totalCrews == 0) {
+                    valueTextView.text = "--"
+                    return@addOnSuccessListener
                 }
 
-                crewRewardList.sortByDescending { it.second }
-                val myCrewRank = crewRewardList.indexOfFirst { it.first == currentCrewId } + 1
-                valueTextView.text = if (myCrewRank > 0) myCrewRank.toString() else "--"
+                for (crewDoc in crewDocs) {
+                    val crewId = crewDoc.id
+
+                    firestore.collection("Users")
+                        .whereEqualTo("crewAt", crewId)
+                        .get()
+                        .addOnSuccessListener { members ->
+                            val memberIds = members.documents.map { it.id }
+
+                            if (memberIds.isEmpty()) {
+                                if (tasksCompleted.incrementAndGet() == totalCrews) {
+                                    calculateCrewRanking(crewScoreList)
+                                }
+                                return@addOnSuccessListener
+                            }
+
+                            firestore.collection("Game")
+                                .document("users")
+                                .collection("userReward")
+                                .get()
+                                .addOnSuccessListener { userRewards ->
+                                    var totalScore = 0
+
+                                    for (userReward in userRewards) {
+                                        if (userReward.id in memberIds) {
+                                            val level = userReward.getLong("level")?.toInt() ?: 0
+                                            val currentRaisingPoint = userReward.getLong("currentRaisingPoint")?.toInt() ?: 0
+                                            totalScore += (level * 100 + currentRaisingPoint)
+                                        }
+                                    }
+
+                                    crewScoreList.add(Pair(crewId, totalScore))
+
+                                    if (tasksCompleted.incrementAndGet() == totalCrews) {
+                                        calculateCrewRanking(crewScoreList)
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    if (tasksCompleted.incrementAndGet() == totalCrews) {
+                                        calculateCrewRanking(crewScoreList)
+                                    }
+                                }
+                        }
+                        .addOnFailureListener {
+                            if (tasksCompleted.incrementAndGet() == totalCrews) {
+                                calculateCrewRanking(crewScoreList)
+                            }
+                        }
+                }
             }
             .addOnFailureListener {
                 valueTextView.text = "--"
             }
+    }
+
+    private fun calculateCrewRanking(crewScoreList: List<Pair<String, Int>>) {
+        crewScoreList.sortedByDescending { it.second }.let { sortedList ->
+            // 동점자 처리
+            var rank = 1
+            var previousScore: Int? = null
+            val rankMap = mutableMapOf<String, Int>()
+
+            sortedList.forEachIndexed { index, (id, score) ->
+                if (previousScore != null && previousScore != score) {
+                    rank = index + 1
+                }
+                rankMap[id] = rank
+                previousScore = score
+            }
+
+            val myCrewRank = rankMap[currentCrewId] ?: 0
+            valueTextView.text = if (myCrewRank > 0) myCrewRank.toString() else "--"
+        }
     }
 
     private fun getNextType(): RankingType {
